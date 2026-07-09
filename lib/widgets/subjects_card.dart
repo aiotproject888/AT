@@ -80,6 +80,7 @@ class SubjectCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              
               ],
             ),
 
