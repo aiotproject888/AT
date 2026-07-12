@@ -10,6 +10,7 @@ class Subject {
     required this.subjectCode,
     required this.year,
     required this.semester,
+
   });
 
 }

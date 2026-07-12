@@ -4,60 +4,47 @@ import '/widgets/subjects_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
- 
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   int currentIndex = 0;
-   List<Subject> subjects = [];
+  List<Subject> subjects = [];
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       backgroundColor: const Color(0xff0D0B1A),
 
       floatingActionButton: FloatingActionButton(
-  backgroundColor: Colors.transparent,
-  elevation: 0,
-  onPressed: () {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-      return AddSubjectDialog(
-      onAdd: (subject) {
-      setState(() {
-        subjects.add(subject);
-      });
-    },
-  );
-},
-    );
-  },
-  child: const Icon(
-    Icons.add,
-    color: Colors.white,
-    size: 45,
-  ),
-),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        onPressed: () {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) {
+              return AddSubjectDialog(
+                onAdd: (subject) {
+                  setState(() {
+                    subjects.add(subject);
+                  });
+                },
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white, size: 45),
+      ),
 
       bottomNavigationBar: BottomNavigationBar(
-
         currentIndex: currentIndex,
 
-        onTap: (index){
-
+        onTap: (index) {
           setState(() {
             currentIndex = index;
           });
-
         },
 
         backgroundColor: const Color(0xff171522),
@@ -69,9 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
 
         items: const [
-
-          
-
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
             label: "วิชา",
@@ -82,26 +66,18 @@ class _HomeScreenState extends State<HomeScreen> {
             label: "แชทบอท",
           ),
 
-          
-
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: "บัญชี",
           ),
-
         ],
       ),
 
       body: SafeArea(
-
         child: Column(
-
           children: [
-
             //---------------- HEADER ----------------//
-
             Container(
-
               width: double.infinity,
 
               padding: const EdgeInsets.only(
@@ -112,240 +88,154 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               decoration: const BoxDecoration(
-
                 gradient: LinearGradient(
-
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
 
-                  colors: [
-
-                    Color(0xff2F246B),
-
-                    Color(0xff241D54),
-
-                  ],
-
+                  colors: [Color(0xff2F246B), Color(0xff241D54)],
                 ),
-
               ),
 
               child: Column(
-
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-
                   const Text(
-
                     "รายวิชาของฉัน",
 
                     style: TextStyle(
-
                       color: Colors.white,
 
                       fontSize: 34,
 
                       fontWeight: FontWeight.bold,
-
                     ),
-
                   ),
 
                   const SizedBox(height: 6),
 
                   const Text(
-
                     "ยินดีต้อนรับ , อ.สมชาย",
 
-                    style: TextStyle(
-
-                      color: Colors.white70,
-
-                      fontSize: 18,
-
-                    ),
-
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
                   ),
 
                   const SizedBox(height: 28),
 
                   Container(
-
                     height: 60,
 
                     decoration: BoxDecoration(
-
                       color: const Color(0xff5A5575),
 
                       borderRadius: BorderRadius.circular(18),
-
                     ),
 
                     child: const TextField(
-
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(color: Colors.white),
 
                       decoration: InputDecoration(
-
                         border: InputBorder.none,
 
                         hintText: "ค้นหารายวิชา",
 
-                        hintStyle: TextStyle(
-                          color: Colors.white60,
-                        ),
+                        hintStyle: TextStyle(color: Colors.white60),
 
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: Colors.white70,
-                        ),
-
+                        prefixIcon: Icon(Icons.search, color: Colors.white70),
                       ),
-
                     ),
-
                   ),
-
                 ],
-
               ),
-
             ),
 
             //---------------- BODY ----------------//
-
             Expanded(
-
               child: subjects.isEmpty
-              ? Center(
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
 
-                child: Column(
+                        children: const [
+                          SizedBox(height: 18),
 
-                  mainAxisAlignment: MainAxisAlignment.center,
+                          Text(
+                            "ยังไม่มีรายวิชา",
 
-                  children: const [
+                            style: TextStyle(
+                              color: Colors.white38,
 
-                    SizedBox(height: 18),
+                              fontSize: 32,
 
-                    Text(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
 
-                      "ยังไม่มีรายวิชา",
+                          SizedBox(height: 10),
 
-                      style: TextStyle(
+                          Text(
+                            "กดปุ่ม + เพื่อเพิ่มรายวิชา",
 
-                        color: Colors.white38,
+                            style: TextStyle(
+                              color: Colors.white24,
 
-                        fontSize: 32,
-
-                        fontWeight: FontWeight.bold,
-
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      itemCount: subjects.length,
 
+                      itemBuilder: (context, index) {
+                        Subject subject = subjects[index];
+
+                        return SubjectCard(subject: subjects[index]);
+                      },
                     ),
-
-                    SizedBox(height: 10),
-
-                    Text(
-
-                      "กดปุ่ม + เพื่อเพิ่มรายวิชา",
-
-                      style: TextStyle(
-
-                        color: Colors.white24,
-
-                        fontSize: 18,
-
-                      ),
-
-                    ),
-
-                  ],
-
-                ),
-
-              )
-                : ListView.builder(
-
-          itemCount: subjects.length,
-
-          itemBuilder: (context,index){
-
-            Subject subject = subjects[index];
-
-            return SubjectCard(
-    subject: subjects[index],
-);
-
-          },
-
-        ),
-
-),
-
-
+            ),
           ],
-
         ),
-
       ),
-
     );
-
   }
-
 }
 
 //เพิ่มรายวิชาใหม่
 
 class AddSubjectDialog extends StatefulWidget {
-
   final Function(Subject) onAdd;
 
-  const AddSubjectDialog({
-    super.key,
-    required this.onAdd,
-  });
+  const AddSubjectDialog({super.key, required this.onAdd});
 
   @override
   State<AddSubjectDialog> createState() => _AddSubjectDialogState();
 }
 
-
-class _AddSubjectDialogState extends State<AddSubjectDialog>  {
-
-final nameController = TextEditingController();
-final yearController = TextEditingController();
-final semesterController = TextEditingController();
-final codeController = TextEditingController();
+class _AddSubjectDialogState extends State<AddSubjectDialog> {
+  final nameController = TextEditingController();
+  final yearController = TextEditingController();
+  final semesterController = TextEditingController();
+  final codeController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-
     return Dialog(
-
       backgroundColor: const Color(0xff343046),
 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(25),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
 
       child: Padding(
-
         padding: const EdgeInsets.all(25),
 
         child: SingleChildScrollView(
-
           child: Column(
-
             mainAxisSize: MainAxisSize.min,
 
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               const Text(
                 "เพิ่มรายวิชาใหม่",
                 style: TextStyle(
@@ -359,39 +249,26 @@ final codeController = TextEditingController();
 
               const Text(
                 "กรอกข้อมูลวิชาที่ต้องการเพิ่ม",
-                style: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white60, fontSize: 16),
               ),
 
               const SizedBox(height: 25),
 
-              const Text(
-                "ชื่อวิชา*",
-                style: TextStyle(
-                  color: Colors.white70,
-                ),
-              ),
+              const Text("ชื่อวิชา*", style: TextStyle(color: Colors.white70)),
 
               const SizedBox(height: 8),
 
-              _textField(controller: nameController),
+              _TextField(controller: nameController),
 
               const SizedBox(height: 18),
 
               Row(
-
                 children: [
-
                   Expanded(
-
                     child: Column(
-
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-
                         const Text(
                           "ปีการศึกษา*",
                           style: TextStyle(color: Colors.white70),
@@ -399,24 +276,18 @@ final codeController = TextEditingController();
 
                         const SizedBox(height: 8),
 
-                       _textField(controller: yearController),
-
+                        _TextField(controller: yearController),
                       ],
-
                     ),
-
                   ),
 
                   const SizedBox(width: 12),
 
                   Expanded(
-
                     child: Column(
-
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-
                         const Text(
                           "เทอม*",
                           style: TextStyle(color: Colors.white70),
@@ -424,133 +295,88 @@ final codeController = TextEditingController();
 
                         const SizedBox(height: 8),
 
-                        _textField(controller: semesterController),
-
+                        _TextField(controller: semesterController),
                       ],
-
                     ),
-
                   ),
-
                 ],
-
               ),
 
               const SizedBox(height: 18),
 
-              const Text(
-                "รหัสวิชา*",
-                style: TextStyle(color: Colors.white70),
-              ),
+              const Text("รหัสวิชา*", style: TextStyle(color: Colors.white70)),
 
               const SizedBox(height: 8),
 
-             _textField(controller: codeController),
+              _TextField(controller: codeController),
 
               const SizedBox(height: 30),
 
               SizedBox(
-
                 width: double.infinity,
 
                 height: 55,
 
                 child: ElevatedButton.icon(
-
                   onPressed: () {
+                    Subject subject = Subject(
+                      subjectName: nameController.text,
+                      year: yearController.text,
+                      semester: semesterController.text,
+                      subjectCode: codeController.text,
+                    );
 
-  Subject subject = Subject(
+                    widget.onAdd(subject);
 
-    subjectName: nameController.text,
+                    Navigator.pop(context);
+                  },
 
-    year: yearController.text,
-
-    semester: semesterController.text,
-
-    subjectCode: codeController.text,
-
-  );
-
-  widget.onAdd(subject);
-
-  Navigator.pop(context);
-
-},
-
-                  icon: const Icon(
-                    Icons.add,
-                    color: Colors.black,
-                  ),
+                  icon: const Icon(Icons.add, color: Colors.black),
 
                   label: const Text(
                     "เพิ่มรายวิชา",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                    ),
+                    style: TextStyle(color: Colors.black, fontSize: 20),
                   ),
 
                   style: ElevatedButton.styleFrom(
-
                     backgroundColor: Colors.white,
 
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-
                   ),
-
                 ),
-
               ),
-
             ],
-
           ),
-
         ),
-
       ),
-
     );
-
   }
-
 }
 
-class _textField extends StatelessWidget {
-
+class _TextField extends StatelessWidget {
   final TextEditingController controller;
 
-  const _textField({
-    required this.controller,
-  });
+  const _TextField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
-
     return TextField(
-
       controller: controller,
+      style: const TextStyle(color: Colors.black),
 
       decoration: InputDecoration(
-
         filled: true,
 
-        fillColor: Colors.white,
+        fillColor: const Color.fromARGB(255, 255, 255, 255),
 
         border: OutlineInputBorder(
-
           borderRadius: BorderRadius.circular(10),
 
           borderSide: BorderSide.none,
-
         ),
-
       ),
-
     );
-
   }
-
 }

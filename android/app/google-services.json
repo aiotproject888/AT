@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "98760653135",
+    "firebase_url": "https://emoteach-test-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "emoteach-test",
+    "storage_bucket": "emoteach-test.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:98760653135:android:47713c3fa32c2c5a312d3a",
+        "android_client_info": {
+          "package_name": "com.example.emoti_teach_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAFlQ-uBv4vQV1cbTE-vJVbPYu0HZ18tk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
