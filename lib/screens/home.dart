@@ -15,10 +15,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xff0D0B1A),
+      backgroundColor: const Color(0xff151222),
 
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color.fromARGB(255, 138, 131, 216),
         elevation: 0,
         onPressed: () {
           showDialog(
@@ -89,11 +89,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    Color(0xff4C3AA8),
+                    Color(0xff34256F),
+                    Color(0xff241D54),
+                  ],
 
-                  colors: [Color(0xff2F246B), Color(0xff241D54)],
                 ),
+                
               ),
 
               child: Column(
@@ -126,8 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 60,
 
                     decoration: BoxDecoration(
-                      color: const Color(0xff5A5575),
-
+                      gradient: const LinearGradient(
+                        colors: [Color(0xff68618C), Color(0xff575070)],
+                      ),
+                      
+                      border: Border.all(color: Colors.white12),
                       borderRadius: BorderRadius.circular(18),
                     ),
 
@@ -144,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         prefixIcon: Icon(Icons.search, color: Colors.white70),
                       ),
                     ),
+
+                    
                   ),
                 ],
               ),

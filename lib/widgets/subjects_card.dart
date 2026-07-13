@@ -21,9 +21,9 @@ class SubjectCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xff2B2939),
+          color: Color(0xff2D2A3C),
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: Colors.white10),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
