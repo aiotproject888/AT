@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '/models/subjects.dart';
 import '/widgets/subjects_card.dart';
+import '/screens/chat.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,9 +43,28 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: currentIndex,
 
         onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
+          if (index == 1) {
+            // กดแชทบอท → ไปหน้า ChatScreen เลย
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(
+                  emotionData: {
+                    'subject': 'วิชาภาษา C เบื้องต้น',
+                    'date': '10 ม.ค. 2569',
+                    'students': 32,
+                    'before': 6.0,
+                    'during': 5.4,
+                    'after': 7.6,
+                  },
+                ),
+              ),
+            );
+          } else {
+            setState(() {
+              currentIndex = index;
+            });
+          }
         },
 
         backgroundColor: const Color(0xff171522),
@@ -199,8 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: subjects.length,
 
                       itemBuilder: (context, index) {
-                        Subject subject = subjects[index];
-
                         return SubjectCard(subject: subjects[index]);
                       },
                     ),
