@@ -1,4 +1,4 @@
-class emotionSum {
+class EmotionSum {
 
   final String emotion;
 
@@ -8,7 +8,7 @@ class emotionSum {
 
   final String phase;
 
-  emotionSum({
+  EmotionSum({
 
     required this.emotion,
 
