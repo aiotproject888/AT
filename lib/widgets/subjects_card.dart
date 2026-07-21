@@ -56,7 +56,7 @@ class SubjectCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             /// ส่วนแสดงอารมณ์
             Container(
@@ -67,7 +67,7 @@ class SubjectCard extends StatelessWidget {
               ),
               child: const EmotionSummaryWidget(),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
 
             /// แถวล่าง
             Row(

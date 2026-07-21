@@ -224,7 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
 Future<void> sendMessage() async {
-  print("กดส่งแล้ว");
+  //print("กดส่งแล้ว");
   if (_controller.text.trim().isEmpty) return;
 
   String userMessage = _controller.text;
