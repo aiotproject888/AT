@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/subjects.dart';
+import '../models/subject.dart';
 
 class SubjectDashboard extends StatelessWidget {
   final Subject subject;
@@ -8,10 +8,6 @@ class SubjectDashboard extends StatelessWidget {
     super.key,
     required this.subject,
   });
-
-  // =========================
-  // Color Theme
-  // =========================
 
   static const Color appBarColor = Color(0xff151225);
   static const Color cardColor = Color(0xff1E1B32);
@@ -22,10 +18,6 @@ class SubjectDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: appBarColor,
-
-      // =========================
-      // AppBar
-      // =========================
 
       appBar: AppBar(
         backgroundColor: appBarColor,
@@ -62,10 +54,6 @@ class SubjectDashboard extends StatelessWidget {
         ],
       ),
 
-      // =========================
-      // Body
-      // =========================
-
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -86,9 +74,7 @@ class SubjectDashboard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
-              // =========================
               // ข้อมูลรายวิชา
-              // =========================
 
               Container(
                 width: double.infinity,
@@ -179,7 +165,7 @@ class SubjectDashboard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 10),
 
               // =========================
               // Emotion Dashboard
@@ -196,11 +182,9 @@ class SubjectDashboard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 15),
 
-              // =========================
               // AI Recommendation
-              // =========================
 
               Container(
                 width: double.infinity,

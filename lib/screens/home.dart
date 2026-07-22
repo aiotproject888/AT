@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '/models/subjects.dart';
+import '/models/subject.dart';
 import '/widgets/subjects_card.dart';
 import '/screens/chat.dart';
+import '/services/subject_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -116,9 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Color(0xff34256F),
                     Color(0xff241D54),
                   ],
-
                 ),
-                
               ),
 
               child: Column(
@@ -154,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       gradient: const LinearGradient(
                         colors: [Color(0xff68618C), Color(0xff575070)],
                       ),
-                      
+
                       border: Border.all(color: Colors.white12),
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -172,8 +171,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         prefixIcon: Icon(Icons.search, color: Colors.white70),
                       ),
                     ),
-
-                    
                   ),
                 ],
               ),
@@ -229,8 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
 
 //เพิ่มรายวิชาใหม่
 
@@ -344,21 +339,30 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
               SizedBox(
                 width: double.infinity,
-
                 height: 55,
-
                 child: ElevatedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     Subject subject = Subject(
-                      subjectName: nameController.text,
-                      year: yearController.text,
-                      semester: semesterController.text,
-                      subjectCode: codeController.text,
+                      subjectName: nameController.text.trim(),
+                      year: yearController.text.trim(),
+                      semester: semesterController.text.trim(),
+                      subjectCode: codeController.text.trim(),
                     );
 
-                    widget.onAdd(subject);
+                    try {
+                      // บันทึกข้อมูลลง Firebase
+                      await SubjectService().createSubject(subject);
 
-                    Navigator.pop(context);
+                      // อัปเดตข้อมูลในหน้าแอป
+                      widget.onAdd(subject);
+
+                      // ปิด Dialog
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      print('เกิดข้อผิดพลาดในการบันทึกวิชา: $e');
+                    }
                   },
 
                   icon: const Icon(Icons.add, color: Colors.black),

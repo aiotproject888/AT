@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/subjects.dart';
+import '../models/subject.dart';
 import '../screens/subjects_dashboard.dart';
 import '../widgets/emotion_card.dart';
 
