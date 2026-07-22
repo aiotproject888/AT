@@ -3,6 +3,8 @@ import '../models/subject.dart';
 import '../services/emotion_service.dart';
 import '../services/session_service.dart';
 
+
+
 class SubjectDashboard extends StatefulWidget {
   final Subject subject;
 
@@ -21,15 +23,18 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   int positivePercentage = 0;
 
   String? _sessionId;
-
   bool _isClassActive = false;
-
   bool _isLoading = false;
+
+  DateTime? _selectedDate;
+  List<Map<String, dynamic>> _selectedSessions = [];
+  bool _isLoadingHistory = false;
 
   @override
   void initState() {
     super.initState();
 
+    _loadActiveSession();
     _loadEmotionData();
   }
 
@@ -85,6 +90,118 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     }
   }
 
+  Future<void> _endClassroom() async {
+    if (_sessionId == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _sessionService.endSession(_sessionId!);
+
+      setState(() {
+        _isClassActive = false;
+        _sessionId = null;
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ปิดห้องเรียนเรียบร้อยแล้ว')),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ไม่สามารถปิดห้องเรียนได้: $e')));
+    }
+  }
+
+  Future<void> _loadActiveSession() async {
+    try {
+      final session = await _sessionService.getActiveSession(
+        widget.subject.subjectCode,
+      );
+
+      if (!mounted) return;
+
+      if (session != null) {
+        setState(() {
+          _sessionId = session['sessionId'];
+
+          _isClassActive = true;
+        });
+
+        await _loadEmotionData();
+      } else {
+        setState(() {
+          _sessionId = null;
+          _isClassActive = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('ไม่สามารถโหลด Session ได้: $e');
+    }
+  }
+
+  //ฟังก์ชันวันที่
+  Future<void> _selectDate() async {
+    final pickedDate = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _thaiCalendarBottomSheet();
+      },
+    );
+
+    if (pickedDate == null) {
+      return;
+    }
+
+    await _loadSessionsByDate(pickedDate);
+  }
+
+  Future<void> _loadSessionsByDate(DateTime date) async {
+    setState(() {
+      _isLoadingHistory = true;
+      _selectedDate = date;
+    });
+
+    try {
+      final sessions = await _sessionService.getSessionsByDate(
+        subjectCode: widget.subject.subjectCode,
+        date: date,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _selectedSessions = sessions;
+        _isLoadingHistory = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingHistory = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลย้อนหลังได้: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -119,7 +236,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: _selectDate,
             icon: const Icon(
               Icons.calendar_today_outlined,
               color: Colors.white70,
@@ -150,6 +267,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               _subjectCard(),
 
               const SizedBox(height: 20),
+            
 
               // Dashboard Title
               Row(
@@ -233,15 +351,14 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           // Header
           Row(
             children: [
+              // ไอคอนรายวิชา
               Container(
                 width: 48,
                 height: 48,
-
                 decoration: BoxDecoration(
                   color: purple.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(15),
                 ),
-
                 child: const Icon(
                   Icons.school_outlined,
                   color: Colors.white,
@@ -262,6 +379,67 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                     SizedBox(height: 3),
                   ],
+                ),
+              ),
+
+              // ปุ่ม Active Classroom
+              GestureDetector(
+                onTap: _isLoading
+                    ? null
+                    : (_isClassActive ? _endClassroom : _startClassroom),
+
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+
+                  width: 58,
+                  height: 32,
+
+                  padding: const EdgeInsets.all(4),
+
+                  decoration: BoxDecoration(
+                    color: _isClassActive
+                        ? Colors.green
+                        : Colors.white.withOpacity(0.12),
+
+                    borderRadius: BorderRadius.circular(20),
+
+                    border: Border.all(
+                      color: _isClassActive
+                          ? Colors.greenAccent
+                          : Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 250),
+
+                    alignment: _isClassActive
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+
+                    child: Container(
+                      width: 24,
+                      height: 24,
+
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+
+                      child: _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              _isClassActive
+                                  ? Icons.play_arrow
+                                  : Icons.power_settings_new,
+                              size: 14,
+                              color: _isClassActive ? purple : Colors.black54,
+                            ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -368,24 +546,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-
-                decoration: BoxDecoration(
-                  color: purple.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-
-                child: const Icon(
-                  Icons.mood_outlined,
-                  color: Colors.white70,
-                  size: 18,
                 ),
               ),
             ],
@@ -634,6 +794,255 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         ],
       ),
     );
+  }
+
+  // Selected Date Card
+  Widget _thaiCalendarBottomSheet() {
+    DateTime selectedDate = _selectedDate ?? DateTime.now();
+
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
+
+          decoration: const BoxDecoration(
+            color: Color(0xff19162A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // =========================
+              // Drag Handle
+              // =========================
+              Container(
+                width: 45,
+                height: 5,
+
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // =========================
+              // Header
+              // =========================
+              Row(
+                children: [
+                  Container(
+                    width: 45,
+                    height: 45,
+
+                    decoration: BoxDecoration(
+                      color: purple.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+
+                    child: const Icon(
+                      Icons.calendar_month_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+                      Text(
+                        'เลือกวันที่',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      SizedBox(height: 3),
+
+                      Text(
+                        'ดูข้อมูลการเรียนย้อนหลัง',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 25),
+
+              // =========================
+              // Selected Date
+              // =========================
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      purple.withOpacity(0.25),
+                      purple.withOpacity(0.08),
+                    ],
+                  ),
+
+                  borderRadius: BorderRadius.circular(16),
+
+                  border: Border.all(color: purple.withOpacity(0.25)),
+                ),
+
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.event_outlined,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    Text(
+                      _formatThaiDate(selectedDate),
+
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // =========================
+              // Calendar
+              // =========================
+              Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: const ColorScheme.dark(
+                    primary: Color(0xff7C5CFC),
+                    surface: Color(0xff19162A),
+                  ),
+                ),
+
+                child: CalendarDatePicker(
+                  initialDate: selectedDate,
+
+                  firstDate: DateTime(2020),
+
+                  lastDate: DateTime.now(),
+
+                  onDateChanged: (date) {
+                    setModalState(() {
+                      selectedDate = date;
+                    });
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // =========================
+              // Buttons
+              // =========================
+              Row(
+                children: [
+                  // วันนี้
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setModalState(() {
+                          selectedDate = DateTime.now();
+                        });
+                      },
+
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+
+                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
+
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+
+                      child: const Text('ยกเลิก'),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  // เลือกวันที่
+                  Expanded(
+                    flex: 2,
+
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context, selectedDate);
+                      },
+
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: purple,
+
+                        foregroundColor: Colors.white,
+
+                        elevation: 0,
+
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+
+                      child: const Text(
+                        'ดูข้อมูล',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatThaiDate(DateTime date) {
+    const months = [
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม',
+    ];
+
+    final thaiYear = date.year + 543;
+
+    return '${date.day} '
+        '${months[date.month - 1]} '
+        '$thaiYear';
   }
   // build...
 

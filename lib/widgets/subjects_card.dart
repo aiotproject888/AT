@@ -21,10 +21,23 @@ class SubjectCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Color(0xff2D2A3C),
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(32),
+
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+
+            end: Alignment.bottomRight,
+
+            colors: [
+              Colors.white.withOpacity(.09),
+
+              Colors.white.withOpacity(.03),
+            ],
+          ),
+
           border: Border.all(color: Colors.white10),
         ),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -43,6 +56,7 @@ class SubjectCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 5),
                       Text(
                         "${subject.subjectCode} ปี${subject.year} เทอม${subject.semester}",
                         style: const TextStyle(

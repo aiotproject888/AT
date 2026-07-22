@@ -10,7 +10,18 @@ class SessionService {
 
   // เริ่ม Session
   Future<String> startSession({required String subjectCode}) async {
-    // สร้าง Session ใน Firestore
+    final activeSessions = await _firestore
+        .collection('class_sessions')
+        .where('status', isEqualTo: 'active')
+        .get();
+
+    for (final doc in activeSessions.docs) {
+      await doc.reference.update({
+        'status': 'ended',
+        'endTime': FieldValue.serverTimestamp(),
+      });
+    }
+
     final sessionRef = await _firestore.collection('class_sessions').add({
       'subjectCode': subjectCode,
       'status': 'active',
@@ -47,6 +58,85 @@ class SessionService {
       'endTime': FieldValue.serverTimestamp(),
     });
 
-    await _currentSessionRef.update({'status': 'inactive'});
+     final currentSnapshot =
+        await _currentSessionRef.get();
+
+    if (currentSnapshot.exists) {
+      final data =
+          Map<String, dynamic>.from(
+        currentSnapshot.value as Map,
+      );
+
+      // ถ้าเป็น Session ปัจจุบัน
+      // ให้เปลี่ยนสถานะเป็น inactive
+      if (data['sessionId'] == sessionId) {
+        await _currentSessionRef.update({
+          'status': 'inactive',
+        });
+      }
+    }
   }
+
+  Future<Map<String, dynamic>?> getActiveSession(String subjectCode) async {
+    final snapshot = await _firestore
+        .collection('class_sessions')
+        .where('subjectCode', isEqualTo: subjectCode)
+        .where('status', isEqualTo: 'active')
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      return null;
+    }
+
+    final doc = snapshot.docs.first;
+
+    return {'sessionId': doc.id, ...doc.data()};
+  }
+
+
+
+// ดึง Session ของรายวิชาตามวันที่
+Future<List<Map<String, dynamic>>> getSessionsByDate({
+  required String subjectCode,
+  required DateTime date,
+}) async {
+  final snapshot = await _firestore
+      .collection('class_sessions')
+      .where(
+        'subjectCode',
+        isEqualTo: subjectCode,
+      )
+      .get();
+
+  final sessions = <Map<String, dynamic>>[];
+
+  for (final doc in snapshot.docs) {
+    final data = doc.data();
+
+    final startTime = data['startTime'];
+
+    if (startTime == null) {
+      continue;
+    }
+
+    final sessionDate =
+        (startTime as Timestamp).toDate();
+
+    if (sessionDate.year == date.year &&
+        sessionDate.month == date.month &&
+        sessionDate.day == date.day) {
+      sessions.add({
+        'sessionId': doc.id,
+        ...data,
+      });
+    }
+  }
+
+  return sessions;
+}
+
+
+
+
 }

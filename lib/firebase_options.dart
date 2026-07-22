@@ -50,22 +50,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyD-Lz8P1jYccdkhyHs7TbVNtN0pchH-zcM',
-    appId: '1:98760653135:web:33ff13ad68821da4312d3a',
-    messagingSenderId: '98760653135',
-    projectId: 'emoteach-test',
-    authDomain: 'emoteach-test.firebaseapp.com',
-    databaseURL: 'https://emoteach-test-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'emoteach-test.firebasestorage.app',
-    measurementId: 'G-9PXQ7SH6HK',
+    apiKey: 'AIzaSyAnMwGsHMwKKSRKVf-abQe-1p6tRVAE7X0',
+    appId: '1:222966337560:web:adcf9b6fee8e25ee67736d',
+    messagingSenderId: '222966337560',
+    projectId: 'projectfinaltest-ebc2a',
+    authDomain: 'projectfinaltest-ebc2a.firebaseapp.com',
+    databaseURL: 'https://projectfinaltest-ebc2a-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'projectfinaltest-ebc2a.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAAFlQ-uBv4vQV1cbTE-vJVbPYu0HZ18tk',
-    appId: '1:98760653135:android:47713c3fa32c2c5a312d3a',
-    messagingSenderId: '98760653135',
-    projectId: 'emoteach-test',
-    databaseURL: 'https://emoteach-test-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'emoteach-test.firebasestorage.app',
+    apiKey: 'AIzaSyDjy2QJHBd8RfG_ugsfWeiMnYOrD2pyxaw',
+    appId: '1:222966337560:android:1f2318bef9d9161467736d',
+    messagingSenderId: '222966337560',
+    projectId: 'projectfinaltest-ebc2a',
+    databaseURL: 'https://projectfinaltest-ebc2a-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'projectfinaltest-ebc2a.firebasestorage.app',
   );
 }

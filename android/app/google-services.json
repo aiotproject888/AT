@@ -1,14 +1,33 @@
 {
   "project_info": {
-    "project_number": "98760653135",
-    "firebase_url": "https://emoteach-test-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "project_id": "emoteach-test",
-    "storage_bucket": "emoteach-test.firebasestorage.app"
+    "project_number": "222966337560",
+    "firebase_url": "https://projectfinaltest-ebc2a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "projectfinaltest-ebc2a",
+    "storage_bucket": "projectfinaltest-ebc2a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:98760653135:android:47713c3fa32c2c5a312d3a",
+        "mobilesdk_app_id": "1:222966337560:android:9da2e4158d67b4b167736d",
+        "android_client_info": {
+          "package_name": "com.Emoti.Teach"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjy2QJHBd8RfG_ugsfWeiMnYOrD2pyxaw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222966337560:android:1f2318bef9d9161467736d",
         "android_client_info": {
           "package_name": "com.example.emoti_teach_app"
         }
@@ -16,7 +35,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAAFlQ-uBv4vQV1cbTE-vJVbPYu0HZ18tk"
+          "current_key": "AIzaSyDjy2QJHBd8RfG_ugsfWeiMnYOrD2pyxaw"
         }
       ],
       "services": {

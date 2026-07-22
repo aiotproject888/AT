@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
+
 import '/models/subject.dart';
 import '/widgets/subjects_card.dart';
 import '/screens/chat.dart';
@@ -103,79 +105,96 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   //HEADER
+                  //================ HEADER =================
                   Container(
                     width: double.infinity,
-
-                    padding: const EdgeInsets.only(
-                      left: 25,
-                      right: 25,
-                      top: 25,
-                      bottom: 35,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 25),
 
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                         colors: [
-                          Color(0xff4C3AA8),
-                          Color(0xff34256F),
-                          Color(0xff241D54),
+                          Color(0xff4935A8),
+                          Color(0xff30235F),
+                          Color(0xff171522),
                         ],
                       ),
                     ),
 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-                        const Text(
-                          "รายวิชาของฉัน",
+                        /// ชื่อหน้า + รูปโปรไฟล์
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    "รายวิชาของฉัน",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
 
-                          style: TextStyle(
-                            color: Colors.white,
+                                  SizedBox(height: 5),
 
-                            fontSize: 34,
-
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        const Text(
-                          "ยินดีต้อนรับ , อ.สมชาย",
-
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        Container(
-                          height: 60,
-
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xff68618C), Color(0xff575070)],
+                                  Text(
+                                    "ยินดีต้อนรับ, อ.เอ็ม",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                        ),
 
-                            border: Border.all(color: Colors.white12),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
+                        const SizedBox(height: 25),
 
-                          child: const TextField(
-                            style: TextStyle(color: Colors.white),
+                        /// Search Box
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
 
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
+                            child: Container(
+                              height: 56,
 
-                              hintText: "ค้นหารายวิชา",
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.08),
 
-                              hintStyle: TextStyle(color: Colors.white60),
+                                borderRadius: BorderRadius.circular(30),
 
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Colors.white70,
+                                border: Border.all(color: Colors.white12),
+                              ),
+
+                              child: const TextField(
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+
+                                  hintText: "ค้นหารายวิชา",
+
+                                  hintStyle: TextStyle(color: Colors.white54),
+
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    color: Colors.white70,
+                                  ),
+
+                                  contentPadding: EdgeInsets.only(top: 16),
+                                ),
                               ),
                             ),
                           ),
@@ -185,46 +204,105 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   //Body
+                  //================ BODY =================
                   Expanded(
                     child: subjects.isEmpty
                         ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-
-                              children: const [
-                                SizedBox(height: 18),
-
-                                Text(
-                                  "ยังไม่มีรายวิชา",
-
-                                  style: TextStyle(
-                                    color: Colors.white38,
-
-                                    fontSize: 32,
-
-                                    fontWeight: FontWeight.bold,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 30,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 90,
+                                    height: 90,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(.06),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.menu_book_rounded,
+                                      size: 45,
+                                      color: Colors.white70,
+                                    ),
                                   ),
-                                ),
 
-                                SizedBox(height: 10),
+                                  const SizedBox(height: 15),
 
-                                Text(
-                                  "กดปุ่ม + เพื่อเพิ่มรายวิชา",
-
-                                  style: TextStyle(
-                                    color: Colors.white24,
-
-                                    fontSize: 18,
+                                  const Text(
+                                    "ยังไม่มีรายวิชา",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                              ],
+
+                                  const SizedBox(height: 10),
+
+                                  const Text(
+                                    "กดปุ่ม + เพื่อเพิ่มรายวิชา\nแล้วเริ่มติดตามอารมณ์ของผู้เรียน",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 16,
+                                      height: 1.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
-                        : ListView.builder(
-                            itemCount: subjects.length,
-                            itemBuilder: (context, index) {
-                              return SubjectCard(subject: subjects[index]);
-                            },
+                        : ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                            children: [
+                              /// หัวข้อ
+                              Row(
+                                children: [
+                                  const Text(
+                                    "รายวิชาทั้งหมด",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+
+                                  const Spacer(),
+
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+
+                                    decoration: BoxDecoration(
+                                      color: Colors.deepPurple.withOpacity(.25),
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+
+                                    child: Text(
+                                      "${subjects.length} วิชา",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 15),
+
+                              ...subjects.map(
+                                (subject) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 18),
+                                  child: SubjectCard(subject: subject),
+                                ),
+                              ),
+                            ],
                           ),
                   ),
                 ],
