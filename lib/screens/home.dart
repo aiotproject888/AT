@@ -6,6 +6,7 @@ import '/services/subject_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -14,52 +15,68 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
   List<Subject> subjects = [];
 
+  final SubjectService _subjectService = SubjectService();
+
+  @override
+  void initState() {
+    super.initState();
+
+    loadSubjects();
+  }
+
+  Future<void> loadSubjects() async {
+    try {
+      final data = await _subjectService.getSubjects();
+
+      setState(() {
+        subjects = data;
+      });
+    } catch (e) {
+      print('เกิดข้อผิดพลาดในการโหลดรายวิชา: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xff151222),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 138, 131, 216),
-        elevation: 0,
-        onPressed: () {
-          showDialog(
-            context: context,
-            barrierDismissible: true,
-            builder: (context) {
-              return AddSubjectDialog(
-                onAdd: (subject) {
-                  setState(() {
-                    subjects.add(subject);
-                  });
-                },
-              );
-            },
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white, size: 45),
-      ),
+      floatingActionButton: currentIndex == 0
+          ? FloatingActionButton(
+              backgroundColor: const Color.fromARGB(255, 138, 131, 216),
+              elevation: 0,
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  barrierDismissible: true,
+                  builder: (context) {
+                    return AddSubjectDialog(
+                      onAdd: (subject) {
+                        setState(() {
+                          subjects.add(subject);
+                        });
+                      },
+                    );
+                  },
+                );
+              },
+
+              child: const Icon(Icons.add, color: Colors.white, size: 45),
+            )
+          : null,
 
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
+        backgroundColor: const Color(0xff171522),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white54,
+        type: BottomNavigationBarType.fixed,
 
+        currentIndex: currentIndex,
         onTap: (index) {
           if (index == 1) {
-            // กดแชทบอท → ไปหน้า ChatScreen เลย
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(
-                  emotionData: {
-                    'subject': 'วิชาภาษา C เบื้องต้น',
-                    'date': '10 ม.ค. 2569',
-                    'students': 32,
-                    'before': 6.0,
-                    'during': 5.4,
-                    'after': 7.6,
-                  },
-                ),
-              ),
+              MaterialPageRoute(builder: (context) => const ChatScreen()),
             );
           } else {
             setState(() {
@@ -67,14 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           }
         },
-
-        backgroundColor: const Color(0xff171522),
-
-        selectedItemColor: Colors.white,
-
-        unselectedItemColor: Colors.white54,
-
-        type: BottomNavigationBarType.fixed,
 
         items: const [
           BottomNavigationBarItem(
@@ -86,143 +95,142 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.chat_bubble_outline),
             label: "แชทบอท",
           ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: "บัญชี",
-          ),
         ],
       ),
 
-      body: SafeArea(
-        child: Column(
-          children: [
-            //HEADER
-            Container(
-              width: double.infinity,
-
-              padding: const EdgeInsets.only(
-                left: 25,
-                right: 25,
-                top: 25,
-                bottom: 35,
-              ),
-
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    Color(0xff4C3AA8),
-                    Color(0xff34256F),
-                    Color(0xff241D54),
-                  ],
-                ),
-              ),
-
+      body: currentIndex == 0
+          ? SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-
                 children: [
-                  const Text(
-                    "รายวิชาของฉัน",
-
-                    style: TextStyle(
-                      color: Colors.white,
-
-                      fontSize: 34,
-
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  const Text(
-                    "ยินดีต้อนรับ , อ.สมชาย",
-
-                    style: TextStyle(color: Colors.white70, fontSize: 18),
-                  ),
-
-                  const SizedBox(height: 28),
-
+                  //HEADER
                   Container(
-                    height: 60,
+                    width: double.infinity,
 
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xff68618C), Color(0xff575070)],
-                      ),
-
-                      border: Border.all(color: Colors.white12),
-                      borderRadius: BorderRadius.circular(18),
+                    padding: const EdgeInsets.only(
+                      left: 25,
+                      right: 25,
+                      top: 25,
+                      bottom: 35,
                     ),
 
-                    child: const TextField(
-                      style: TextStyle(color: Colors.white),
-
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-
-                        hintText: "ค้นหารายวิชา",
-
-                        hintStyle: TextStyle(color: Colors.white60),
-
-                        prefixIcon: Icon(Icons.search, color: Colors.white70),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Color(0xff4C3AA8),
+                          Color(0xff34256F),
+                          Color(0xff241D54),
+                        ],
                       ),
                     ),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        const Text(
+                          "รายวิชาของฉัน",
+
+                          style: TextStyle(
+                            color: Colors.white,
+
+                            fontSize: 34,
+
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        const Text(
+                          "ยินดีต้อนรับ , อ.สมชาย",
+
+                          style: TextStyle(color: Colors.white70, fontSize: 18),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        Container(
+                          height: 60,
+
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xff68618C), Color(0xff575070)],
+                            ),
+
+                            border: Border.all(color: Colors.white12),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+
+                          child: const TextField(
+                            style: TextStyle(color: Colors.white),
+
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+
+                              hintText: "ค้นหารายวิชา",
+
+                              hintStyle: TextStyle(color: Colors.white60),
+
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  //Body
+                  Expanded(
+                    child: subjects.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+
+                              children: const [
+                                SizedBox(height: 18),
+
+                                Text(
+                                  "ยังไม่มีรายวิชา",
+
+                                  style: TextStyle(
+                                    color: Colors.white38,
+
+                                    fontSize: 32,
+
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                SizedBox(height: 10),
+
+                                Text(
+                                  "กดปุ่ม + เพื่อเพิ่มรายวิชา",
+
+                                  style: TextStyle(
+                                    color: Colors.white24,
+
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: subjects.length,
+                            itemBuilder: (context, index) {
+                              return SubjectCard(subject: subjects[index]);
+                            },
+                          ),
                   ),
                 ],
               ),
-            ),
-
-            //---------------- BODY ----------------//
-            Expanded(
-              child: subjects.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-
-                        children: const [
-                          SizedBox(height: 18),
-
-                          Text(
-                            "ยังไม่มีรายวิชา",
-
-                            style: TextStyle(
-                              color: Colors.white38,
-
-                              fontSize: 32,
-
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
-                          SizedBox(height: 10),
-
-                          Text(
-                            "กดปุ่ม + เพื่อเพิ่มรายวิชา",
-
-                            style: TextStyle(
-                              color: Colors.white24,
-
-                              fontSize: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: subjects.length,
-
-                      itemBuilder: (context, index) {
-                        return SubjectCard(subject: subjects[index]);
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
+            )
+          : const ChatScreen(),
     );
   }
 }

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import '../services/chat_service.dart';
 import '../models/chat_message.dart';
 import '../services/prompt_service.dart';
 import '../widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Map<String, dynamic> emotionData;
+  // ข้อมูลอารมณ์จะถูกส่งเข้ามาเฉพาะตอนที่มาจาก Dashboard
+  final Map<String, dynamic>? emotionData;
 
-  const ChatScreen({super.key, required this.emotionData});
+  const ChatScreen({
+    super.key,
+    this.emotionData,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -18,34 +21,36 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  bool showContext = true;
-  Timer? timer;
-
   final Color backgroundColor = const Color(0xff151222);
   final Color primaryColor = const Color(0xff6A5CFF);
 
   final List<ChatMessage> messages = [];
 
+  bool isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-
       body: SafeArea(
         child: Column(
           children: [
             _buildAppBar(),
 
-            if (showContext) _buildContextCard(),
+            // แสดง Context เฉพาะเมื่อมีข้อมูลอารมณ์
+            if (widget.emotionData != null)
+              _buildContextCard(),
 
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-
                 padding: const EdgeInsets.all(16),
-
                 itemCount: messages.length,
-
                 itemBuilder: (context, index) {
                   return MessageBubble(
                     message: messages[index],
@@ -62,38 +67,40 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+
+  //App Bar
+
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
+      ),
       child: Row(
         children: [
           IconButton(
             onPressed: () {
               Navigator.pop(context);
             },
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+            ),
           ),
 
           const SizedBox(width: 10),
 
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "EmotiTeach AI",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-
-                Text(
-                  widget.emotionData["subject"] ?? "วิชาภาษา C เบื้องต้น",
-
-                  style: const TextStyle(color: Colors.white60, fontSize: 13),
                 ),
               ],
             ),
@@ -102,14 +109,15 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             width: 40,
             height: 40,
-
             decoration: BoxDecoration(
-              color: primaryColor,
+              color: Color(0xff6A5CFF),
               borderRadius: BorderRadius.circular(10),
             ),
-
             child: const Center(
-              child: Text("🤖", style: TextStyle(fontSize: 18)),
+              child: Text(
+                "🤖",
+                style: TextStyle(fontSize: 18),
+              ),
             ),
           ),
         ],
@@ -117,188 +125,232 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  // Context ข้อมูล Emotion
+  
+
   Widget _buildContextCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-
+      margin: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 8,
+      ),
       padding: const EdgeInsets.all(12),
-
       decoration: BoxDecoration(
         color: primaryColor.withOpacity(0.15),
-
         borderRadius: BorderRadius.circular(12),
-
-        border: Border.all(color: primaryColor.withOpacity(0.3)),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.3),
+        ),
       ),
-
       child: Row(
         children: [
-          const Text("📊", style: TextStyle(fontSize: 20)),
+          const Text(
+            "📊",
+            style: TextStyle(fontSize: 20),
+          ),
 
           const SizedBox(width: 10),
 
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "ดึงข้อมูลอารมณ์เรียบร้อยแล้ว",
-
+                Text(
+                  "ข้อมูลอารมณ์ของรายวิชา",
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
 
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
 
                 Text(
-                  "${widget.emotionData["students"] ?? 32} คน",
-
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  "AI สามารถนำข้อมูลนี้ไปใช้ในการวิเคราะห์ได้",
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
           ),
 
-          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+          const Icon(
+            Icons.check_circle,
+            color: Colors.green,
+            size: 20,
+          ),
         ],
       ),
     );
   }
 
+ 
+
   Widget _buildInputBar() {
-  return Container(
-    padding: const EdgeInsets.all(12),
-    child: Row(
-      children: [
-
-        // ปุ่ม +
-        IconButton(
-          onPressed: () {
-            // ยังไม่ใช้งาน
-          },
-          icon: const Icon(
-            Icons.add,
-            color: Colors.white70,
-          ),
-        ),
-
-        // ช่องพิมพ์
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            decoration: BoxDecoration(
-              color: const Color(0xff24223A),
-              borderRadius: BorderRadius.circular(20),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.add,
+              color: Colors.white70,
             ),
-            child: TextField(
-              controller: _controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: "พิมพ์ข้อความ...",
-                hintStyle: TextStyle(color: Colors.white54),
-                border: InputBorder.none,
+          ),
+
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 15,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xff24223A),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TextField(
+                controller: _controller,
+                style: const TextStyle(
+                  color: Colors.white,
+                ),
+                decoration: const InputDecoration(
+                  hintText: "พิมพ์ข้อความ...",
+                  hintStyle: TextStyle(
+                    color: Colors.white54,
+                  ),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) {
+                  sendMessage();
+                },
               ),
             ),
           ),
-        ),
 
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-        // ปุ่มส่ง
-        IconButton(
-          onPressed: () async {
-            await sendMessage();
-          },
-          icon: Icon(
-            Icons.send,
-            color: primaryColor,
+          IconButton(
+            onPressed: isSending
+                ? null
+                : () {
+                    sendMessage();
+                  },
+            icon: Icon(
+              Icons.send,
+              color: isSending
+                  ? Colors.white30
+                  : primaryColor,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-
-
-Future<void> sendMessage() async {
-  //print("กดส่งแล้ว");
-  if (_controller.text.trim().isEmpty) return;
-
-  String userMessage = _controller.text;
-
-  // แสดงข้อความของผู้ใช้
-  setState(() {
-    messages.add(
-      ChatMessage(
-        isAI: false,
-        text: userMessage,
-        time: DateTime.now(),
+        ],
       ),
     );
-  });
-
-  _controller.clear();
-
-  // เลื่อนลงล่าง
-  Future.delayed(const Duration(milliseconds: 100), () {
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  });
-
-  try {
-    // สร้าง Prompt
-    String prompt = PromptService.buildPrompt(
-      emotionData: widget.emotionData,
-      question: userMessage,
-    );
-
-    // ส่งไปหา Ollama
-    String answer = await ChatService().sendMessage(prompt);
-
-    // แสดงคำตอบ AI
-    setState(() {
-      messages.add(
-        ChatMessage(
-          isAI: true,
-          text: answer,
-          time: DateTime.now(),
-        ),
-      );
-    });
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-  } catch (e) {
-    setState(() {
-      messages.add(
-        ChatMessage(
-          isAI: true,
-          text: "❌ ไม่สามารถเชื่อมต่อ Ollama ได้\n$e",
-          time: DateTime.now(),
-        ),
-      );
-    });
   }
-}
+
+  //ส่งข้อความ
   
+  Future<void> sendMessage() async {
+    if (_controller.text.trim().isEmpty) {
+      return;
+    }
+
+    if (isSending) {
+      return;
+    }
+
+    String userMessage = _controller.text.trim();
+
+    // แสดงข้อความของผู้ใช้
+    setState(() {
+      messages.add(
+        ChatMessage(
+          isAI: false,
+          text: userMessage,
+          time: DateTime.now(),
+        ),
+      );
+
+      isSending = true;
+    });
+
+    _controller.clear();
+
+    scrollToBottom();
+
+    try {
+      String prompt;
+
+    
+      //ถ้ามีข้อมูล Emotion
+      if (widget.emotionData != null) {
+        prompt = PromptService.buildPrompt(
+          emotionData: widget.emotionData!,
+          question: userMessage,
+        );
+      }
+
+    
+      // ถ้าไม่มีข้อมูล Emotion
+      else {
+        prompt = PromptService.buildNormalPrompt(
+          question: userMessage,
+        );
+      }
+
+      // ส่ง Prompt ไป Ollama
+      String answer = await ChatService().sendMessage(prompt);
+
+      // แสดงคำตอบ AI
+      setState(() {
+        messages.add(
+          ChatMessage(
+            isAI: true,
+            text: answer,
+            time: DateTime.now(),
+          ),
+        );
+      });
+
+      scrollToBottom();
+    } catch (e) {
+      setState(() {
+        messages.add(
+          ChatMessage(
+            isAI: true,
+            text: "ไม่สามารถเชื่อมต่อกับ Ollama ได้",
+            time: DateTime.now(),
+          ),
+        );
+      });
+    } finally {
+      setState(() {
+        isSending = false;
+      });
+    }
+  }
+
+  void scrollToBottom() {
+    Future.delayed(
+      const Duration(milliseconds: 100),
+      () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(
+              milliseconds: 300,
+            ),
+            curve: Curves.easeOut,
+          );
+        }
+      },
+    );
+  }
 
   @override
   void dispose() {
-    timer?.cancel();
-
     _controller.dispose();
-
     _scrollController.dispose();
 
     super.dispose();
