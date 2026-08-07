@@ -8,10 +8,7 @@ class ChatScreen extends StatefulWidget {
   // ข้อมูลอารมณ์จะถูกส่งเข้ามาเฉพาะตอนที่มาจาก Dashboard
   final Map<String, dynamic>? emotionData;
 
-  const ChatScreen({
-    super.key,
-    this.emotionData,
-  });
+  const ChatScreen({super.key, this.emotionData});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -43,8 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
             _buildAppBar(),
 
             // แสดง Context เฉพาะเมื่อมีข้อมูลอารมณ์
-            if (widget.emotionData != null)
-              _buildContextCard(),
+            if (widget.emotionData != null) _buildContextCard(),
 
             Expanded(
               child: ListView.builder(
@@ -60,6 +56,26 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
+            if (isSending)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      "กำลังวิเคราะห์ข้อมูล...",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+
             _buildInputBar(),
           ],
         ),
@@ -67,25 +83,18 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-
   //App Bar
 
   Widget _buildAppBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           IconButton(
             onPressed: () {
               Navigator.pop(context);
             },
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           ),
 
           const SizedBox(width: 10),
@@ -114,10 +123,7 @@ class _ChatScreenState extends State<ChatScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Center(
-              child: Text(
-                "🤖",
-                style: TextStyle(fontSize: 18),
-              ),
+              child: Text("🤖", style: TextStyle(fontSize: 18)),
             ),
           ),
         ],
@@ -126,28 +132,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // Context ข้อมูล Emotion
-  
 
   Widget _buildContextCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 8,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: primaryColor.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: primaryColor.withOpacity(0.3),
-        ),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          const Text(
-            "📊",
-            style: TextStyle(fontSize: 20),
-          ),
+          const Text("📊", style: TextStyle(fontSize: 20)),
 
           const SizedBox(width: 10),
 
@@ -167,26 +164,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 Text(
                   "AI สามารถนำข้อมูลนี้ไปใช้ในการวิเคราะห์ได้",
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
                 ),
               ],
             ),
           ),
 
-          const Icon(
-            Icons.check_circle,
-            color: Colors.green,
-            size: 20,
-          ),
+          const Icon(Icons.check_circle, color: Colors.green, size: 20),
         ],
       ),
     );
   }
-
- 
 
   Widget _buildInputBar() {
     return Container(
@@ -195,31 +183,22 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(
-              Icons.add,
-              color: Colors.white70,
-            ),
+            icon: const Icon(Icons.add, color: Colors.white70),
           ),
 
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 15,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(
                 color: const Color(0xff24223A),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: TextField(
                 controller: _controller,
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   hintText: "พิมพ์ข้อความ...",
-                  hintStyle: TextStyle(
-                    color: Colors.white54,
-                  ),
+                  hintStyle: TextStyle(color: Colors.white54),
                   border: InputBorder.none,
                 ),
                 onSubmitted: (_) {
@@ -239,9 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
             icon: Icon(
               Icons.send,
-              color: isSending
-                  ? Colors.white30
-                  : primaryColor,
+              color: isSending ? Colors.white30 : primaryColor,
             ),
           ),
         ],
@@ -250,7 +227,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   //ส่งข้อความ
-  
+
   Future<void> sendMessage() async {
     if (_controller.text.trim().isEmpty) {
       return;
@@ -265,11 +242,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // แสดงข้อความของผู้ใช้
     setState(() {
       messages.add(
-        ChatMessage(
-          isAI: false,
-          text: userMessage,
-          time: DateTime.now(),
-        ),
+        ChatMessage(isAI: false, text: userMessage, time: DateTime.now()),
       );
 
       isSending = true;
@@ -282,7 +255,6 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       String prompt;
 
-    
       //ถ้ามีข้อมูล Emotion
       if (widget.emotionData != null) {
         prompt = PromptService.buildPrompt(
@@ -290,13 +262,9 @@ class _ChatScreenState extends State<ChatScreen> {
           question: userMessage,
         );
       }
-
-    
       // ถ้าไม่มีข้อมูล Emotion
       else {
-        prompt = PromptService.buildNormalPrompt(
-          question: userMessage,
-        );
+        prompt = PromptService.buildNormalPrompt(question: userMessage);
       }
 
       // ส่ง Prompt ไป Ollama
@@ -305,11 +273,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // แสดงคำตอบ AI
       setState(() {
         messages.add(
-          ChatMessage(
-            isAI: true,
-            text: answer,
-            time: DateTime.now(),
-          ),
+          ChatMessage(isAI: true, text: answer, time: DateTime.now()),
         );
       });
 
@@ -332,20 +296,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void scrollToBottom() {
-    Future.delayed(
-      const Duration(milliseconds: 100),
-      () {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(
-              milliseconds: 300,
-            ),
-            curve: Curves.easeOut,
-          );
-        }
-      },
-    );
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override

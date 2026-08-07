@@ -293,9 +293,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
               const SizedBox(height: 15),
 
-              // =========================
               // Emotion Dashboard
-              // =========================
+              
               SizedBox(
                 height: 580,
 
@@ -687,27 +686,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     );
   }
 
-  // =====================================================
-  // AI Recommendation
-  // =====================================================
-
+  // AI 
   Widget _aiRecommendation() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-
-          colors: [purple.withOpacity(0.25), pink.withOpacity(0.12), cardColor],
-        ),
-
-        border: Border.all(color: purple.withOpacity(0.25)),
-      ),
 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,21 +698,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         children: [
           Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-
-                decoration: BoxDecoration(
-                  color: purple.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-
-                child: const Icon(
-                  Icons.auto_awesome,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
 
               const SizedBox(width: 14),
 
@@ -737,34 +705,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-                  Text(
-                    "AI Recommendation",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
                   SizedBox(height: 3),
-
-                  Text(
-                    "Smart teaching insights",
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
-                  ),
                 ],
               ),
             ],
           ),
-
-          const SizedBox(height: 18),
-
-          const Text(
-            "วิเคราะห์ข้อมูลอารมณ์ของนักศึกษา เพื่อช่วยแนะนำเทคนิคและแนวทางในการจัดการเรียนการสอนที่เหมาะสม",
-            style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
-          ),
-
-          const SizedBox(height: 20),
 
           SizedBox(
             width: double.infinity,
@@ -776,7 +721,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               icon: const Icon(Icons.auto_awesome, size: 20),
 
               label: const Text(
-                "Analyze Emotion Data",
+                "ไปยังแชทบอท",
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
 

@@ -15,9 +15,10 @@ class ChatService {
       },
 
       body: jsonEncode({
-        "model": "qwen3.6:latest",
+        "model": "qwen3:4b",
         "prompt": prompt,
         "stream": false,
+        "keep_alive":"1h"
       }),
     );
 
