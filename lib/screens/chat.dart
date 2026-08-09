@@ -28,6 +28,14 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+
+      messages.add(
+    ChatMessage(
+      isAI: true,
+      text: "สวัสดีครับ 👋 ยินดีต้อนรับสู่ EmotiTeach AI\nมีอะไรให้ผมช่วยไหมครับ?",
+      time: DateTime.now(),
+    ),
+  );
   }
 
   @override

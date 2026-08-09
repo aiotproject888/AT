@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/subject.dart';
 import '../services/emotion_service.dart';
 import '../services/session_service.dart';
-
-
+import '../screens/chat.dart';
 
 class SubjectDashboard extends StatefulWidget {
   final Subject subject;
@@ -19,8 +18,14 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   final SessionService _sessionService = SessionService();
 
-  int studentCount = 0;
-  int positivePercentage = 0;
+  int beforeStudentCount = 0;
+  int beforePositivePercentage = 0;
+
+  int afterStudentCount = 0;
+  int afterPositivePercentage = 0;
+
+  Map<String, dynamic> beforeEmotionData = {};
+  Map<String, dynamic> afterEmotionData = {};
 
   String? _sessionId;
   bool _isClassActive = false;
@@ -35,7 +40,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     super.initState();
 
     _loadActiveSession();
-    _loadEmotionData();
+    _loadEmotionData(date: DateTime.now());
   }
 
   static const Color backgroundColor = Color(0xff0F0D1A);
@@ -45,14 +50,59 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   static const Color blue = Color(0xff4F8CFF);
   static const Color pink = Color(0xffD66BFF);
 
-  Future<void> _loadEmotionData() async {
-    final students = await _emotionService.getStudentCount();
+  Future<void> _loadEmotionData({DateTime? date}) async {
+    final selectedDate = date ?? DateTime.now();
 
-    final positive = await _emotionService.getPositivePercentage();
+    final beforeRecords = await _emotionService.getEmotionRecordsByDate(
+      subjectCode: widget.subject.subjectCode,
+      date: selectedDate,
+      type: 'before_class',
+    );
+
+    final afterRecords = await _emotionService.getEmotionRecordsByDate(
+      subjectCode: widget.subject.subjectCode,
+      date: selectedDate,
+      type: 'after_class',
+    );
+
+    int beforePositive = 0;
+    int afterPositive = 0;
+
+    for (final record in beforeRecords) {
+      final emotion = record['emotion'];
+
+      if (emotion == 'รู้สึกสนใจ' ||
+          emotion == 'รู้สึกตื่นเต้น' ||
+          emotion == 'รู้สึกสนุกสนาน' ||
+          emotion == 'รู้สึกเฉยๆ') {
+        beforePositive++;
+      }
+    }
+
+    for (final record in afterRecords) {
+      final emotion = record['emotion'];
+
+      if (emotion == 'รู้สึกสนใจ' ||
+          emotion == 'รู้สึกตื่นเต้น' ||
+          emotion == 'รู้สึกสนุกสนาน' ||
+          emotion == 'รู้สึกเฉยๆ') {
+        afterPositive++;
+      }
+    }
+
+    if (!mounted) return;
 
     setState(() {
-      studentCount = students;
-      positivePercentage = positive;
+      beforeStudentCount = beforeRecords.length;
+      afterStudentCount = afterRecords.length;
+
+      beforePositivePercentage = beforeRecords.isEmpty
+          ? 0
+          : ((beforePositive / beforeRecords.length) * 100).round();
+
+      afterPositivePercentage = afterRecords.isEmpty
+          ? 0
+          : ((afterPositive / afterRecords.length) * 100).round();
     });
   }
 
@@ -178,10 +228,14 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     });
 
     try {
+      // โหลด Session ของวันที่เลือก
       final sessions = await _sessionService.getSessionsByDate(
         subjectCode: widget.subject.subjectCode,
         date: date,
       );
+
+      // โหลด Emotion ของวันที่เลือก
+      await _loadEmotionData(date: date);
 
       if (!mounted) return;
 
@@ -267,7 +321,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               _subjectCard(),
 
               const SizedBox(height: 20),
-            
 
               // Dashboard Title
               Row(
@@ -294,14 +347,22 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               const SizedBox(height: 15),
 
               // Emotion Dashboard
-              
               SizedBox(
                 height: 580,
 
                 child: PageView(
                   children: [
-                    _emotionCard("ก่อนเรียน"),
-                    _emotionCard("หลังเรียน"),
+                    _emotionCard(
+                      "ก่อนเรียน",
+                      beforeStudentCount,
+                      beforePositivePercentage,
+                    ),
+
+                    _emotionCard(
+                      "หลังเรียน",
+                      afterStudentCount,
+                      afterPositivePercentage,
+                    ),
                   ],
                 ),
               ),
@@ -508,7 +569,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // Emotion Card
   // =====================================================
 
-  Widget _emotionCard(String title) {
+  Widget _emotionCard(String title, int studentCount, int positivePercentage) {
     return Container(
       margin: const EdgeInsets.only(right: 5),
 
@@ -686,7 +747,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     );
   }
 
-  // AI 
+  // AI
   Widget _aiRecommendation() {
     return Container(
       width: double.infinity,
@@ -698,40 +759,40 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         children: [
           Row(
             children: [
-
               const SizedBox(width: 14),
 
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
 
-                children: [
-                  SizedBox(height: 3),
-                ],
+                children: [SizedBox(height: 3)],
               ),
             ],
           ),
 
-          SizedBox(
-            width: double.infinity,
-            height: 52,
+          Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: 170,
+              height: 52,
 
-            child: ElevatedButton.icon(
-              onPressed: () {},
+              child: ElevatedButton.icon(
+                onPressed: openChatbot,
 
-              icon: const Icon(Icons.auto_awesome, size: 20),
+                icon: const Icon(Icons.auto_awesome, size: 20),
 
-              label: const Text(
-                "ไปยังแชทบอท",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
+                label: const Text(
+                  "ไปยังแชทบอท",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
 
-              style: ElevatedButton.styleFrom(
-                backgroundColor: purple,
-                foregroundColor: Colors.white,
-                elevation: 0,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: purple,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
 
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
@@ -990,6 +1051,55 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         '$thaiYear';
   }
   // build...
+
+  Future<void> openChatbot() async {
+    Map<String, dynamic>? emotionData;
+
+    try {
+      // =====================================================
+      // กรณีเลือกวันที่ย้อนหลัง
+      // =====================================================
+
+      final selectedDate = _selectedDate ?? DateTime.now();
+
+      // อ่าน Current Session
+      final currentSession = await _sessionService.getCurrentSession();
+
+      String? type;
+
+      if (currentSession != null) {
+        type = currentSession['type']?.toString();
+      }
+
+      // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
+      type ??= 'before_class';
+
+      // =====================================================
+      // ดึงข้อมูล Emotion
+      // =====================================================
+
+      emotionData = await _emotionService.getEmotionSummaryForAI(
+        subjectCode: widget.subject.subjectCode,
+        date: selectedDate,
+        type: type,
+      );
+    } catch (e) {
+      debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e');
+    }
+
+    if (!mounted) return;
+
+    // =====================================================
+    // เข้า Chatbot ได้เสมอ
+    // =====================================================
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(emotionData: emotionData),
+      ),
+    );
+  }
 
   // Colors
 }
