@@ -4,16 +4,15 @@ import 'package:firebase_database/firebase_database.dart';
 class SessionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final DatabaseReference _currentSessionRef =
-      FirebaseDatabase.instance.ref('current_session');
+  final DatabaseReference _currentSessionRef = FirebaseDatabase.instance.ref(
+    'current_session',
+  );
 
   // =====================================================
   // เริ่ม Session
   // =====================================================
 
-  Future<String> startSession({
-    required String subjectCode,
-  }) async {
+  Future<String> startSession({required String subjectCode}) async {
     // ปิด Session ที่ active อยู่ก่อน
     final activeSessions = await _firestore
         .collection('class_sessions')
@@ -28,8 +27,7 @@ class SessionService {
     }
 
     // สร้าง Session ใหม่
-    final sessionRef =
-        await _firestore.collection('class_sessions').add({
+    final sessionRef = await _firestore.collection('class_sessions').add({
       'subjectCode': subjectCode,
       'status': 'active',
       'startTime': FieldValue.serverTimestamp(),
@@ -66,10 +64,7 @@ class SessionService {
   // =====================================================
 
   Future<void> endSession(String sessionId) async {
-    await _firestore
-        .collection('class_sessions')
-        .doc(sessionId)
-        .update({
+    await _firestore.collection('class_sessions').doc(sessionId).update({
       'status': 'ended',
       'endTime': FieldValue.serverTimestamp(),
     });
@@ -77,14 +72,10 @@ class SessionService {
     final currentSnapshot = await _currentSessionRef.get();
 
     if (currentSnapshot.exists && currentSnapshot.value != null) {
-      final data = Map<String, dynamic>.from(
-        currentSnapshot.value as Map,
-      );
+      final data = Map<String, dynamic>.from(currentSnapshot.value as Map);
 
       if (data['sessionId'] == sessionId) {
-        await _currentSessionRef.update({
-          'status': 'inactive',
-        });
+        await _currentSessionRef.update({'status': 'inactive'});
       }
     }
   }
@@ -93,9 +84,7 @@ class SessionService {
   // ดึง Session ที่กำลัง Active
   // =====================================================
 
-  Future<Map<String, dynamic>?> getActiveSession(
-    String subjectCode,
-  ) async {
+  Future<Map<String, dynamic>?> getActiveSession(String subjectCode) async {
     final snapshot = await _firestore
         .collection('class_sessions')
         .where('subjectCode', isEqualTo: subjectCode)
@@ -109,10 +98,7 @@ class SessionService {
 
     final doc = snapshot.docs.first;
 
-    return {
-      'sessionId': doc.id,
-      ...doc.data(),
-    };
+    return {'sessionId': doc.id, ...doc.data()};
   }
 
   // =====================================================
@@ -123,38 +109,32 @@ class SessionService {
     required String subjectCode,
     required DateTime date,
   }) async {
-    final startOfDay = DateTime(
-      date.year,
-      date.month,
-      date.day,
-    );
-
-    final endOfDay = startOfDay.add(
-      const Duration(days: 1),
-    );
-
     final snapshot = await _firestore
         .collection('class_sessions')
-        .where(
-          'subjectCode',
-          isEqualTo: subjectCode,
-        )
-        .where(
-          'startTime',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-        )
-        .where(
-          'startTime',
-          isLessThan: Timestamp.fromDate(endOfDay),
-        )
+        .where('subjectCode', isEqualTo: subjectCode)
         .get();
 
-    return snapshot.docs.map((doc) {
-      return {
-        'sessionId': doc.id,
-        ...doc.data(),
-      };
-    }).toList();
+    final sessions = <Map<String, dynamic>>[];
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+
+      final startTime = data['startTime'];
+
+      if (startTime == null) {
+        continue;
+      }
+
+      final sessionDate = (startTime as Timestamp).toDate();
+
+      if (sessionDate.year == date.year &&
+          sessionDate.month == date.month &&
+          sessionDate.day == date.day) {
+        sessions.add({'sessionId': doc.id, ...data});
+      }
+    }
+
+    return sessions;
   }
 
   // =====================================================
@@ -168,8 +148,6 @@ class SessionService {
       return null;
     }
 
-    return Map<String, dynamic>.from(
-      snapshot.value as Map,
-    );
+    return Map<String, dynamic>.from(snapshot.value as Map);
   }
 }

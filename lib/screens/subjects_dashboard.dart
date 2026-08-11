@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+
 import '../models/subject.dart';
 import '../services/emotion_service.dart';
+import '../widgets/emotion_card.dart';
 import '../services/session_service.dart';
 import '../screens/chat.dart';
 
@@ -26,6 +29,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   Map<String, dynamic> beforeEmotionData = {};
   Map<String, dynamic> afterEmotionData = {};
+  Map<String, int> beforeEmotionDistribution = {};
+  Map<String, int> afterEmotionDistribution = {};
 
   String? _sessionId;
   bool _isClassActive = false;
@@ -53,57 +58,112 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   Future<void> _loadEmotionData({DateTime? date}) async {
     final selectedDate = date ?? DateTime.now();
 
-    final beforeRecords = await _emotionService.getEmotionRecordsByDate(
-      subjectCode: widget.subject.subjectCode,
-      date: selectedDate,
-      type: 'before_class',
-    );
+    try {
+      final beforeRecords = await _emotionService.getEmotionRecordsByDate(
+        subjectCode: widget.subject.subjectCode,
+        date: selectedDate,
+        type: 'before_class',
+      );
 
-    final afterRecords = await _emotionService.getEmotionRecordsByDate(
-      subjectCode: widget.subject.subjectCode,
-      date: selectedDate,
-      type: 'after_class',
-    );
+      final afterRecords = await _emotionService.getEmotionRecordsByDate(
+        subjectCode: widget.subject.subjectCode,
+        date: selectedDate,
+        type: 'after_class',
+      );
 
-    int beforePositive = 0;
-    int afterPositive = 0;
+      final beforeDistribution = await _emotionService
+          .getEmotionDistributionByDate(
+            subjectCode: widget.subject.subjectCode,
+            date: selectedDate,
+            type: 'before_class',
+          );
 
-    for (final record in beforeRecords) {
-      final emotion = record['emotion'];
+      final afterDistribution = await _emotionService
+          .getEmotionDistributionByDate(
+            subjectCode: widget.subject.subjectCode,
+            date: selectedDate,
+            type: 'after_class',
+          );
 
-      if (emotion == 'รู้สึกสนใจ' ||
-          emotion == 'รู้สึกตื่นเต้น' ||
-          emotion == 'รู้สึกสนุกสนาน' ||
-          emotion == 'รู้สึกเฉยๆ') {
-        beforePositive++;
+      // คำนวณก่อนเรียน
+
+      int beforeStudentTotal = 0;
+      int beforePositive = 0;
+
+      for (final record in beforeRecords) {
+        final count = (record['counter'] ?? 1) as num;
+
+        beforeStudentTotal += count.toInt();
+
+        final emotion = record['emotion'];
+
+        if (emotion == 'รู้สึกสนใจ' ||
+            emotion == 'รู้สึกตื่นเต้น' ||
+            emotion == 'รู้สึกสนุกสนาน' ||
+            emotion == 'รู้สึกเฉยๆ') {
+          beforePositive += count.toInt();
+        }
       }
-    }
 
-    for (final record in afterRecords) {
-      final emotion = record['emotion'];
+      // =====================================================
+      // คำนวณหลังเรียน
+      // =====================================================
 
-      if (emotion == 'รู้สึกสนใจ' ||
-          emotion == 'รู้สึกตื่นเต้น' ||
-          emotion == 'รู้สึกสนุกสนาน' ||
-          emotion == 'รู้สึกเฉยๆ') {
-        afterPositive++;
+      int afterStudentTotal = 0;
+      int afterPositive = 0;
+
+      for (final record in afterRecords) {
+        final count = (record['counter'] ?? 1) as num;
+
+        afterStudentTotal += count.toInt();
+
+        final emotion = record['emotion'];
+
+        if (emotion == 'รู้สึกสนใจ' ||
+            emotion == 'รู้สึกตื่นเต้น' ||
+            emotion == 'รู้สึกสนุกสนาน' ||
+            emotion == 'รู้สึกเฉยๆ') {
+          afterPositive += count.toInt();
+        }
       }
+
+      // =====================================================
+      // อัปเดตหน้าจอ
+      // =====================================================
+
+      if (!mounted) return;
+
+      setState(() {
+        beforeStudentCount = beforeRecords.length;
+        afterStudentCount = afterRecords.length;
+
+        beforePositivePercentage = beforeRecords.isEmpty
+            ? 0
+            : ((beforePositive / beforeRecords.length) * 100).round();
+
+        afterPositivePercentage = afterRecords.isEmpty
+            ? 0
+            : ((afterPositive / afterRecords.length) * 100).round();
+
+        beforeEmotionDistribution = beforeDistribution;
+        afterEmotionDistribution = afterDistribution;
+      });
+
+      debugPrint('ก่อนเรียน: $beforeStudentTotal คน');
+
+      debugPrint('หลังเรียน: $afterStudentTotal คน');
+    } catch (e) {
+      debugPrint('โหลด Emotion ไม่สำเร็จ: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        beforeStudentCount = 0;
+        afterStudentCount = 0;
+        beforePositivePercentage = 0;
+        afterPositivePercentage = 0;
+      });
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      beforeStudentCount = beforeRecords.length;
-      afterStudentCount = afterRecords.length;
-
-      beforePositivePercentage = beforeRecords.isEmpty
-          ? 0
-          : ((beforePositive / beforeRecords.length) * 100).round();
-
-      afterPositivePercentage = afterRecords.isEmpty
-          ? 0
-          : ((afterPositive / afterRecords.length) * 100).round();
-    });
   }
 
   Future<void> _startClassroom() async {
@@ -244,14 +304,26 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         _isLoadingHistory = false;
       });
     } catch (e) {
+      debugPrint('โหลดข้อมูลย้อนหลังไม่สำเร็จ: $e');
+
       if (!mounted) return;
 
       setState(() {
+        _selectedSessions = [];
         _isLoadingHistory = false;
+
+        beforeStudentCount = 0;
+        afterStudentCount = 0;
+
+        beforePositivePercentage = 0;
+        afterPositivePercentage = 0;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลย้อนหลังได้: $e')),
+        const SnackBar(
+          content: Text('ไม่มีข้อมูล'),
+          duration: Duration(seconds: 2),
+        ),
       );
     }
   }
@@ -348,7 +420,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
               // Emotion Dashboard
               SizedBox(
-                height: 580,
+                height: 680,
 
                 child: PageView(
                   children: [
@@ -639,26 +711,17 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             child: Container(
               width: double.infinity,
 
+              padding: const EdgeInsets.all(15),
+
               decoration: BoxDecoration(
                 color: chartColor,
                 borderRadius: BorderRadius.circular(18),
               ),
 
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-
-                  children: [
-                    Icon(Icons.donut_large, color: Colors.white38, size: 50),
-
-                    SizedBox(height: 10),
-
-                    Text(
-                      "Doughnut Chart",
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
-                  ],
-                ),
+              child: EmotionDonutChart(
+                emotionData: title == 'ก่อนเรียน'
+                    ? beforeEmotionDistribution
+                    : afterEmotionDistribution,
               ),
             ),
           ),
@@ -1056,9 +1119,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     Map<String, dynamic>? emotionData;
 
     try {
-      // =====================================================
       // กรณีเลือกวันที่ย้อนหลัง
-      // =====================================================
 
       final selectedDate = _selectedDate ?? DateTime.now();
 
@@ -1074,10 +1135,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
       type ??= 'before_class';
 
-      // =====================================================
       // ดึงข้อมูล Emotion
-      // =====================================================
-
       emotionData = await _emotionService.getEmotionSummaryForAI(
         subjectCode: widget.subject.subjectCode,
         date: selectedDate,
@@ -1089,10 +1147,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
     if (!mounted) return;
 
-    // =====================================================
     // เข้า Chatbot ได้เสมอ
-    // =====================================================
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1100,6 +1155,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       ),
     );
   }
+
 
   // Colors
 }

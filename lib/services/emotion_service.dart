@@ -9,45 +9,53 @@ class EmotionService {
   // =====================================================
 
   Future<List<Map<String, dynamic>>> getEmotionRecordsByDate({
-    required String subjectCode,
-    required DateTime date,
-    required String type,
-  }) async {
-    final dateString =
-        '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
+  required String subjectCode,
+  required DateTime date,
+  required String type,
+}) async {
+  final dateString =
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 
-    final path = '$subjectCode/${type}_$dateString';
+  final path = '$subjectCode/${type}_$dateString';
 
-    final snapshot = await _emotionRef.child(path).get();
+  final snapshot = await _emotionRef.child(path).get();
 
-    if (!snapshot.exists || snapshot.value == null) {
-      return [];
+  if (!snapshot.exists || snapshot.value == null) {
+    return [];
+  }
+
+  final rawData = snapshot.value;
+
+  if (rawData is! Map) {
+    return [];
+  }
+
+  final data = Map<String, dynamic>.from(rawData);
+
+  final records = <Map<String, dynamic>>[];
+
+  for (final entry in data.entries) {
+    if (entry.value is! Map) {
+      continue;
     }
 
-    final data = Map<String, dynamic>.from(
-      snapshot.value as Map,
-    );
+    final record = Map<String, dynamic>.from(entry.value);
 
-    return data.entries.map((entry) {
-      final record =
-          Map<String, dynamic>.from(entry.value);
-
-      return {
-        'id': entry.key,
-
-        // ใช้ชื่อ field ให้เป็นมาตรฐานเดียวกันในแอป
-        'emotion': record['emotion_name'],
-
-        'emotion_id': record['emotion_id'],
-        'emotion_name': record['emotion_name'],
-        'subjectCode': record['subjectCode'],
-        'timestamp': record['timestamp'],
-        'counter': record['counter'] ?? 1,
-      };
-    }).toList();
+    records.add({
+      'id': entry.key.toString(),
+      'emotion': record['emotion_name'],
+      'emotion_id': record['emotion_id'],
+      'emotion_name': record['emotion_name'],
+      'subjectCode': record['subjectCode'],
+      'timestamp': record['timestamp'],
+      'counter': record['counter'] ?? 1,
+    });
   }
+
+  return records;
+}
 
   // =====================================================
   // จำนวน Emotion Responses ตามวันที่

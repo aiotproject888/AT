@@ -146,40 +146,6 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryColor.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Text("📊", style: TextStyle(fontSize: 20)),
-
-          const SizedBox(width: 10),
-
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "ข้อมูลอารมณ์ของรายวิชา",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                SizedBox(height: 3),
-
-                Text(
-                  "AI สามารถนำข้อมูลนี้ไปใช้ในการวิเคราะห์ได้",
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-
-          const Icon(Icons.check_circle, color: Colors.green, size: 20),
-        ],
       ),
     );
   }
