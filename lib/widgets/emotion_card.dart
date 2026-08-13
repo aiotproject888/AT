@@ -267,39 +267,7 @@ class EmotionDonutChart extends StatelessWidget {
       ],
     );
   }
-
-  // =========================
-  // Emoji ของแต่ละ Emotion
-  // =========================
-
-  String _getEmotionEmoji(String emotion) {
-    switch (emotion) {
-      case "รู้สึกสนใจ":
-        return "🧐";
-
-      case "รู้สึกตื่นเต้น":
-        return "🤩";
-
-      case "รู้สึกสนุกสนาน":
-        return "😄";
-
-      case "รู้สึกเฉยๆ":
-        return "😐";
-
-      case "รู้สึกวิตกกังวล":
-        return "😟";
-
-      case "รู้สึกเครียด":
-        return "🤯";
-
-      case "รู้สึกเบื่อหน่าย":
-        return "😒";
-
-      case "รู้สึกกลัว":
-        return "😨";
-
-      default:
-        return "🙂";
-    }
-  }
 }
+
+
+

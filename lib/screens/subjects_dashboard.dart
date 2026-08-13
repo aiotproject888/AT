@@ -17,6 +17,86 @@ class SubjectDashboard extends StatefulWidget {
 }
 
 class _SubjectDashboardState extends State<SubjectDashboard> {
+  ////
+  double _getEmotionScore(String emotion) {
+    switch (emotion) {
+      case 'รู้สึกสนุกสนาน':
+        return 1;
+
+      case 'รู้สึกตื่นเต้น':
+        return 1;
+
+      case 'รู้สึกสนใจ':
+        return 1;
+
+      case 'รู้สึกเฉยๆ':
+        return 0;
+
+      case 'รู้สึกวิตกกังวล':
+        return -1;
+
+      case 'รู้สึกเบื่อหน่าย':
+        return -1;
+
+      case 'รู้สึกเครียด':
+        return -1;
+
+      case 'รู้สึกกลัว':
+        return -1;
+
+      default:
+        return 0;
+    }
+  }
+
+  double _calculateEmotionScore(Map<String, int> distribution) {
+    if (distribution.isEmpty) {
+      return 0;
+    }
+
+    int positive = 0;
+    int negative = 0;
+
+    distribution.forEach((emotion, count) {
+      // อารมณ์ด้านบวก
+      if (emotion == 'รู้สึกสนใจ' ||
+          emotion == 'รู้สึกตื่นเต้น' ||
+          emotion == 'รู้สึกสนุกสนาน' ||
+          emotion == 'รู้สึกเฉยๆ') {
+        positive += count;
+      }
+      // อารมณ์ด้านลบ
+      else if (emotion == 'รู้สึกวิตกกังวล' ||
+          emotion == 'รู้สึกเครียด' ||
+          emotion == 'รู้สึกเบื่อหน่าย' ||
+          emotion == 'รู้สึกกลัว') {
+        negative += count;
+      }
+    });
+
+    final total = positive + negative;
+
+    if (total == 0) {
+      return 0;
+    }
+
+    final positiveRatio = positive / total;
+    final negativeRatio = negative / total;
+
+    // หลักการ A
+    if (positiveRatio > negativeRatio) {
+      return 1;
+    }
+
+    if (negativeRatio > positiveRatio) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  ////
+
   final EmotionService _emotionService = EmotionService();
 
   final SessionService _sessionService = SessionService();
@@ -735,27 +815,14 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             child: Container(
               width: double.infinity,
 
+              padding: const EdgeInsets.all(15),
+
               decoration: BoxDecoration(
                 color: chartColor,
                 borderRadius: BorderRadius.circular(18),
               ),
 
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-
-                  children: [
-                    Icon(Icons.bar_chart, color: Colors.white38, size: 50),
-
-                    SizedBox(height: 10),
-
-                    Text(
-                      "Emotion Distribution",
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
+              child: _emotionTrendChart(),
             ),
           ),
         ],
@@ -1141,6 +1208,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         date: selectedDate,
         type: type,
       );
+
+      debugPrint('========== EMOTION DATA FOR AI ==========');
+      debugPrint(emotionData.toString());
+      debugPrint('=========================================');
     } catch (e) {
       debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e');
     }
@@ -1156,6 +1227,223 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     );
   }
 
+  Widget _emotionTrendChart() {
+    // คะแนนที่คำนวณจริง
+    final beforeScore = _calculateEmotionScore(beforeEmotionDistribution);
 
-  // Colors
+    final afterScore = _calculateEmotionScore(afterEmotionDistribution);
+
+    final hasBefore = beforeEmotionDistribution.isNotEmpty;
+    final hasAfter = afterEmotionDistribution.isNotEmpty;
+
+    // ถ้ายังไม่มีข้อมูลก่อนเรียน
+    if (!hasBefore) {
+      return const Center(
+        child: Text(
+          'ยังไม่มีข้อมูล',
+          style: TextStyle(color: Colors.white54, fontSize: 14),
+        ),
+      );
+    }
+
+    return LineChart(
+      LineChartData(
+        minY: -1,
+        maxY: 1,
+
+        // =========================
+        // Grid
+        // =========================
+        gridData: FlGridData(
+          show: true,
+
+          horizontalInterval: 0.5,
+
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.white.withOpacity(0.12),
+              strokeWidth: 1,
+              dashArray: [5, 5],
+            );
+          },
+
+          verticalInterval: 1,
+
+          getDrawingVerticalLine: (value) {
+            return FlLine(
+              color: Colors.white.withOpacity(0.10),
+              strokeWidth: 1,
+              dashArray: [5, 5],
+            );
+          },
+        ),
+
+        // =========================
+        // แกน X / Y
+        // =========================
+        titlesData: FlTitlesData(
+          // -------------------------
+          // แกน Y
+          // -------------------------
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 65,
+
+              interval: 0.5,
+
+              getTitlesWidget: (value, meta) {
+                String text;
+
+                switch (value.toStringAsFixed(1)) {
+                  case '1.0':
+                    text = 'ดีมาก';
+
+                  case '0.5':
+                    text = 'ดี';
+
+                  case '0.0':
+                    text = 'เฉยๆ';
+
+                  case '-0.5':
+                    text = 'แย่';
+
+                  case '-1.0':
+                    text = 'แย่มาก';
+
+                  default:
+                    return const SizedBox();
+                }
+
+                return Text(
+                  text,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                );
+              },
+            ),
+          ),
+
+          // -------------------------
+          // แกน X
+          // -------------------------
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 35,
+
+              getTitlesWidget: (value, meta) {
+                if (value == 0) {
+                  return const Text(
+                    'ก่อนเรียน',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  );
+                }
+
+                if (value == 1) {
+                  return const Text(
+                    'หลังเรียน',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  );
+                }
+
+                return const SizedBox();
+              },
+            ),
+          ),
+
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+
+        // =========================
+        // เส้นกราฟ
+        // =========================
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              FlSpot(0, beforeScore),
+
+              // มีเส้นไปหลังเรียนเฉพาะเมื่อมีข้อมูล
+              if (hasAfter) FlSpot(1, afterScore),
+            ],
+
+            isCurved: true,
+
+            curveSmoothness: 0.25,
+
+            color: Colors.white,
+
+            barWidth: 3,
+
+            isStrokeCapRound: true,
+
+            dotData: FlDotData(
+              show: true,
+
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: 6,
+                  color: index == 0 ? purple : Colors.green,
+                  strokeWidth: 3,
+                  strokeColor: Colors.white,
+                );
+              },
+            ),
+
+            belowBarData: BarAreaData(
+              show: true,
+              color: purple.withOpacity(0.08),
+            ),
+          ),
+        ],
+
+        // =========================
+        // เส้นกรอบ
+        // =========================
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            left: BorderSide(color: Colors.white.withOpacity(0.18)),
+            bottom: BorderSide(color: Colors.white.withOpacity(0.18)),
+          ),
+        ),
+
+        // =========================
+        // จุดสัมผัสกราฟ
+        // =========================
+        lineTouchData: LineTouchData(
+          enabled: true,
+
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                String label;
+
+                if (spot.y == 1) {
+                  label = 'ดีขึ้นมาก';
+                } else if (spot.y == 0) {
+                  label = 'ไม่เปลี่ยนแปลง';
+                } else {
+                  label = 'แย่ลง';
+                }
+
+                return LineTooltipItem(
+                  label,
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }

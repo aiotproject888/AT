@@ -101,8 +101,7 @@ class EmotionService {
 
       if (emotion == 'รู้สึกสนใจ' ||
           emotion == 'รู้สึกตื่นเต้น' ||
-          emotion == 'รู้สึกสนุกสนาน' ||
-          emotion == 'รู้สึกเฉยๆ') {
+          emotion == 'รู้สึกสนุกสนาน')  {
         positiveCount++;
       }
     }
