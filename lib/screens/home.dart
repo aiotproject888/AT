@@ -1,10 +1,28 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
-import '/models/subject.dart';
-import '/widgets/subjects_card.dart';
-import '/screens/chat.dart';
-import '/services/subject_service.dart';
+import '../models/subject.dart';
+import '../services/subject_service.dart';
+import '../widgets/subjects_card.dart';
+import 'chat.dart';
+
+class _HomeColors {
+  // Values read from Figma frames 93:1804 and 93:1848.
+  static const background = Color(0xFF0E0D18);
+  static const accent = Color(0xFF6C52E5);
+  static const navigation = Color(0xFF191820);
+
+  static const searchBackground = Color(0x33D9D9D9); // #D9D9D9 20%
+  static const searchBorder = Color(0x40FFFFFF); // white 25%
+  static const navigationBorder = Color(0x26FFFFFF); // white 15%
+
+  static const dialogBackground = Color(0xBF23222F); // #23222F 75%
+  static const dialogBorder = Color(0x40F8F6F6); // #F8F6F6 25%
+
+  static const primaryText = Color(0xFFFFFFFF);
+  static const secondaryText = Color(0x99FFFFFF); // white 60%
+  static const mutedText = Color(0x73FFFFFF); // white 45%
+  static const faintText = Color(0x4DFFFFFF); // white 30%
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,309 +32,440 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int currentIndex = 0;
+  int currentIndex = 1;
   List<Subject> subjects = [];
 
   final SubjectService _subjectService = SubjectService();
 
+  bool _isLoadingSubjects = true;
+  String? _loadError;
+  String _searchQuery = '';
+
+  List<Subject> get _filteredSubjects {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return subjects;
+
+    return subjects.where((subject) {
+      return subject.subjectName.toLowerCase().contains(query) ||
+          subject.subjectCode.toLowerCase().contains(query);
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
-
-    loadSubjects();
+    _loadSubjects();
   }
 
-  Future<void> loadSubjects() async {
+  Future<void> _loadSubjects() async {
+    setState(() {
+      _isLoadingSubjects = true;
+      _loadError = null;
+    });
+
     try {
       final data = await _subjectService.getSubjects();
+      if (!mounted) return;
 
       setState(() {
         subjects = data;
+        _isLoadingSubjects = false;
       });
-    } catch (e) {
-      print('เกิดข้อผิดพลาดในการโหลดรายวิชา: $e');
+    } catch (error) {
+      debugPrint('เกิดข้อผิดพลาดในการโหลดรายวิชา: $error');
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingSubjects = false;
+        _loadError = 'ไม่สามารถโหลดรายวิชาได้';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xff151222),
-
-      floatingActionButton: currentIndex == 0
-          ? FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 138, 131, 216),
-              elevation: 0,
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: true,
-                  builder: (context) {
-                    return AddSubjectDialog(
-                      onAdd: (subject) {
-                        setState(() {
-                          subjects.add(subject);
-                        });
-                      },
-                    );
-                  },
-                );
-              },
-
-              child: const Icon(Icons.add, color: Colors.white, size: 45),
+      backgroundColor: _HomeColors.background,
+      floatingActionButton: currentIndex == 1
+          ? Padding(
+              padding: const EdgeInsets.only(right: 19, bottom: 12),
+              child: FloatingActionButton(
+                mini: true,
+                backgroundColor: Colors.transparent,
+                foregroundColor: _HomeColors.primaryText,
+                elevation: 0,
+                highlightElevation: 0,
+                hoverElevation: 0,
+                splashColor: _HomeColors.accent.withOpacity(0.18),
+                onPressed: _showAddSubjectDialog,
+                child: const Icon(Icons.add, size: 34),
+              ),
             )
           : null,
-
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xff171522),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white54,
-        type: BottomNavigationBarType.fixed,
-
+      bottomNavigationBar: _HomeBottomNavigation(
         currentIndex: currentIndex,
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ChatScreen()),
-            );
-          } else {
-            setState(() {
-              currentIndex = index;
-            });
-          }
-        },
-
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined),
-            label: "วิชา",
+        onTap: _onNavigationTap,
+      ),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.18, -1.18),
+            radius: 1.05,
+            colors: [
+              Color(0xFF33265F),
+              Color(0xFF171329),
+              _HomeColors.background,
+            ],
+            stops: [0.0, 0.42, 1.0],
           ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(child: _buildSubjectBody()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: "แชทบอท",
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(30, 14, 30, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'รายวิชาของฉัน',
+            style: TextStyle(
+              color: _HomeColors.primaryText,
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.48,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'ยินดีต้อนรับ, อ.สมชาย',
+            style: TextStyle(
+              color: _HomeColors.secondaryText,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 47,
+            child: TextField(
+              onChanged: (value) {
+                setState(() => _searchQuery = value);
+              },
+              style: const TextStyle(
+                color: _HomeColors.primaryText,
+                fontSize: 15,
+              ),
+              cursorColor: _HomeColors.accent,
+              decoration: InputDecoration(
+                hintText: 'ค้นหารายวิชา',
+                hintStyle: const TextStyle(
+                  color: _HomeColors.mutedText,
+                  fontSize: 15,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: _HomeColors.secondaryText,
+                  size: 22,
+                ),
+                filled: true,
+                fillColor: _HomeColors.searchBackground,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(
+                    color: _HomeColors.searchBorder,
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(
+                    color: _HomeColors.searchBorder,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(
+                    color: _HomeColors.accent,
+                    width: 1.4,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
 
-      body: currentIndex == 0
-          ? SafeArea(
-              child: Column(
-                children: [
-                  //HEADER
-                  //================ HEADER =================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 25),
+  Widget _buildSubjectBody() {
+    if (_isLoadingSubjects) {
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: _HomeColors.accent,
+        ),
+      );
+    }
 
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xff4935A8),
-                          Color(0xff30235F),
-                          Color(0xff171522),
-                        ],
-                      ),
-                    ),
-
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        /// ชื่อหน้า + รูปโปรไฟล์
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    "รายวิชาของฉัน",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 5),
-
-                                  Text(
-                                    "ยินดีต้อนรับ, อ.เอ็ม",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        /// Search Box
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(30),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-
-                            child: Container(
-                              height: 56,
-
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.08),
-
-                                borderRadius: BorderRadius.circular(30),
-
-                                border: Border.all(color: Colors.white12),
-                              ),
-
-                              child: const TextField(
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-
-                                  hintText: "ค้นหารายวิชา",
-
-                                  hintStyle: TextStyle(color: Colors.white54),
-
-                                  prefixIcon: Icon(
-                                    Icons.search_rounded,
-                                    color: Colors.white70,
-                                  ),
-
-                                  contentPadding: EdgeInsets.only(top: 16),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  //Body
-                  //================ BODY =================
-                  Expanded(
-                    child: subjects.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 90,
-                                    height: 90,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(.06),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.menu_book_rounded,
-                                      size: 45,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 15),
-
-                                  const Text(
-                                    "ยังไม่มีรายวิชา",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 10),
-
-                                  const Text(
-                                    "กดปุ่ม + เพื่อเพิ่มรายวิชา\nแล้วเริ่มติดตามอารมณ์ของผู้เรียน",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 16,
-                                      height: 1.6,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-                            children: [
-                              /// หัวข้อ
-                              Row(
-                                children: [
-                                  const Text(
-                                    "รายวิชาทั้งหมด",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-
-                                  const Spacer(),
-
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-
-                                    decoration: BoxDecoration(
-                                      color: Colors.deepPurple.withOpacity(.25),
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-
-                                    child: Text(
-                                      "${subjects.length} วิชา",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 15),
-
-                              ...subjects.map(
-                                (subject) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 18),
-                                  child: SubjectCard(subject: subject),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ],
+    if (_loadError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _loadError!,
+              style: const TextStyle(
+                color: _HomeColors.secondaryText,
+                fontSize: 15,
               ),
-            )
-          : const ChatScreen(),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _loadSubjects,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('ลองใหม่'),
+              style: TextButton.styleFrom(
+                foregroundColor: _HomeColors.accent,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final visibleSubjects = _filteredSubjects;
+    if (subjects.isEmpty) return const _EmptySubjects();
+    if (visibleSubjects.isEmpty) return const _NoSearchResults();
+
+    return RefreshIndicator(
+      color: _HomeColors.accent,
+      onRefresh: _loadSubjects,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(32, 32, 32, 100),
+        itemCount: visibleSubjects.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: SubjectCard(subject: visibleSubjects[index]),
+          );
+        },
+      ),
+    );
+  }
+
+  void _onNavigationTap(int index) {
+    if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (context) => const ChatScreen(),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      currentIndex = index;
+    });
+  }
+
+  void _showAddSubjectDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.34),
+      builder: (context) {
+        return AddSubjectDialog(
+          onAdd: (subject) {
+            if (!mounted) return;
+            setState(() {
+              subjects.insert(0, subject);
+            });
+          },
+        );
+      },
     );
   }
 }
 
-//เพิ่มรายวิชาใหม่
+class _HomeBottomNavigation extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  const _HomeBottomNavigation({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  static const _items = [
+    _NavigationData(Icons.home_outlined, Icons.home_rounded, 'หน้าหลัก'),
+    _NavigationData(Icons.grid_view_outlined, Icons.grid_view_rounded, 'วิชา'),
+    _NavigationData(
+      Icons.chat_bubble_outline,
+      Icons.chat_bubble_rounded,
+      'แชทบอท',
+    ),
+    _NavigationData(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'กราฟ'),
+    _NavigationData(Icons.person_outline, Icons.person_rounded, 'บัญชี'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
+      decoration: const BoxDecoration(
+        color: _HomeColors.navigation,
+        border: Border(
+          top: BorderSide(color: _HomeColors.navigationBorder),
+        ),
+      ),
+      child: Row(
+        children: List.generate(_items.length, (index) {
+          final item = _items[index];
+          final selected = currentIndex == index;
+
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index == _items.length - 1 ? 0 : 7,
+              ),
+              child: InkWell(
+                onTap: () => onTap(index),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: const Color(0x40191820),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? _HomeColors.searchBorder
+                          : const Color(0x1A928B8B),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x40000000),
+                        offset: Offset(0, 4),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? item.activeIcon : item.icon,
+                        size: 24,
+                        color: selected
+                            ? _HomeColors.primaryText
+                            : _HomeColors.secondaryText,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        item.label,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: selected
+                              ? _HomeColors.primaryText
+                              : _HomeColors.secondaryText,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _NavigationData {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _NavigationData(this.icon, this.activeIcon, this.label);
+}
+
+class _EmptySubjects extends StatelessWidget {
+  const _EmptySubjects();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'ยังไม่มีรายวิชา',
+            style: TextStyle(
+              color: _HomeColors.faintText,
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.48,
+            ),
+          ),
+          SizedBox(height: 2),
+          Text(
+            'กดปุ่ม + เพื่อเพิ่มรายวิชา',
+            style: TextStyle(
+              color: _HomeColors.faintText,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoSearchResults extends StatelessWidget {
+  const _NoSearchResults();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            color: _HomeColors.faintText,
+            size: 34,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'ไม่พบรายวิชาที่ค้นหา',
+            style: TextStyle(
+              color: _HomeColors.faintText,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class AddSubjectDialog extends StatefulWidget {
-  final Function(Subject) onAdd;
+  final ValueChanged<Subject> onAdd;
 
   const AddSubjectDialog({super.key, required this.onAdd});
 
@@ -329,140 +478,125 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
   final yearController = TextEditingController();
   final semesterController = TextEditingController();
   final codeController = TextEditingController();
+  final SubjectService _subjectService = SubjectService();
+
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    yearController.dispose();
+    semesterController.dispose();
+    codeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xff343046),
-
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-
+      alignment: Alignment.bottomCenter,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 2),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(
+          maxWidth: 420,
+          minHeight: 461,
+        ),
+        padding: const EdgeInsets.fromLTRB(28, 22, 28, 30),
+        decoration: BoxDecoration(
+          color: _HomeColors.dialogBackground,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(15),
+          ),
+          border: Border.all(color: _HomeColors.dialogBorder),
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               const Text(
-                "เพิ่มรายวิชาใหม่",
+                'เพิ่มรายวิชาใหม่',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                  color: _HomeColors.primaryText,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-
-              const SizedBox(height: 5),
-
+              const SizedBox(height: 3),
               const Text(
-                "กรอกข้อมูลวิชาที่ต้องการเพิ่ม",
-                style: TextStyle(color: Colors.white60, fontSize: 16),
+                'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
+                style: TextStyle(
+                  color: _HomeColors.secondaryText,
+                  fontSize: 15,
+                ),
               ),
-
-              const SizedBox(height: 25),
-
-              const Text("ชื่อวิชา*", style: TextStyle(color: Colors.white70)),
-
-              const SizedBox(height: 8),
-
-              _TextField(controller: nameController),
-
               const SizedBox(height: 18),
-
+              const _FieldLabel('ชื่อวิชา*'),
+              const SizedBox(height: 6),
+              _SubjectTextField(controller: nameController),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-                        const Text(
-                          "ปีการศึกษา*",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        _TextField(controller: yearController),
+                        const _FieldLabel('ปีการศึกษา*'),
+                        const SizedBox(height: 6),
+                        _SubjectTextField(controller: yearController),
                       ],
                     ),
                   ),
-
-                  const SizedBox(width: 12),
-
+                  const SizedBox(width: 9),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-                        const Text(
-                          "เทอม*",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        _TextField(controller: semesterController),
+                        const _FieldLabel('เทอม*'),
+                        const SizedBox(height: 6),
+                        _SubjectTextField(controller: semesterController),
                       ],
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 18),
-
-              const Text("รหัสวิชา*", style: TextStyle(color: Colors.white70)),
-
-              const SizedBox(height: 8),
-
-              _TextField(controller: codeController),
-
-              const SizedBox(height: 30),
-
+              const SizedBox(height: 12),
+              const _FieldLabel('รหัสวิชา*'),
+              const SizedBox(height: 6),
+              _SubjectTextField(controller: codeController),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 55,
+                height: 38,
                 child: ElevatedButton.icon(
-                  onPressed: () async {
-                    Subject subject = Subject(
-                      subjectName: nameController.text.trim(),
-                      year: yearController.text.trim(),
-                      semester: semesterController.text.trim(),
-                      subjectCode: codeController.text.trim(),
-                    );
-
-                    try {
-                      // บันทึกข้อมูลลง Firebase
-                      await SubjectService().createSubject(subject);
-
-                      // อัปเดตข้อมูลในหน้าแอป
-                      widget.onAdd(subject);
-
-                      // ปิด Dialog
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    } catch (e) {
-                      print('เกิดข้อผิดพลาดในการบันทึกวิชา: $e');
-                    }
-                  },
-
-                  icon: const Icon(Icons.add, color: Colors.black),
-
-                  label: const Text(
-                    "เพิ่มรายวิชา",
-                    style: TextStyle(color: Colors.black, fontSize: 20),
+                  onPressed: _isSaving ? null : _addSubject,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Icon(Icons.add, color: Colors.black, size: 25),
+                  label: Text(
+                    _isSaving ? 'กำลังบันทึก...' : 'เพิ่มรายวิชา',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
-
                   style: ElevatedButton.styleFrom(
+                    elevation: 0,
                     backgroundColor: Colors.white,
-
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(5),
                     ),
                   ),
                 ),
@@ -473,28 +607,105 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
       ),
     );
   }
+
+  Future<void> _addSubject() async {
+    final subjectName = nameController.text.trim();
+    final year = yearController.text.trim();
+    final semester = semesterController.text.trim();
+    final subjectCode = codeController.text.trim();
+
+    if (subjectName.isEmpty ||
+        year.isEmpty ||
+        semester.isEmpty ||
+        subjectCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง')),
+      );
+      return;
+    }
+
+    final subject = Subject(
+      subjectName: subjectName,
+      year: year,
+      semester: semester,
+      subjectCode: subjectCode,
+    );
+
+    setState(() => _isSaving = true);
+
+    try {
+      await _subjectService.createSubject(subject);
+      if (!mounted) return;
+
+      widget.onAdd(subject);
+      Navigator.pop(context);
+    } catch (error) {
+      debugPrint('เกิดข้อผิดพลาดในการบันทึกวิชา: $error');
+      if (!mounted) return;
+
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ไม่สามารถบันทึกรายวิชาได้')),
+      );
+    }
+  }
 }
 
-class _TextField extends StatelessWidget {
-  final TextEditingController controller;
+class _FieldLabel extends StatelessWidget {
+  final String text;
 
-  const _TextField({required this.controller});
+  const _FieldLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(color: Colors.black),
+    return Text(
+      text,
+      style: const TextStyle(
+        color: _HomeColors.secondaryText,
+        fontSize: 15,
+      ),
+    );
+  }
+}
 
-      decoration: InputDecoration(
-        filled: true,
+class _SubjectTextField extends StatelessWidget {
+  final TextEditingController controller;
 
-        fillColor: const Color.fromARGB(255, 255, 255, 255),
+  const _SubjectTextField({required this.controller});
 
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-
-          borderSide: BorderSide.none,
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(
+          color: Color(0xFF24222B),
+          fontSize: 14,
+        ),
+        cursorColor: _HomeColors.accent,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(
+              color: _HomeColors.accent,
+              width: 1.4,
+            ),
+          ),
         ),
       ),
     );
