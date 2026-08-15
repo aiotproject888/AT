@@ -257,7 +257,7 @@ class _ChatScreenState extends State<ChatScreen> {
         messages.add(
           ChatMessage(
             isAI: true,
-            text: "ไม่สามารถเชื่อมต่อกับ Ollama ได้",
+            text: "ไม่สามารถเชื่อมต่อได้",
             time: DateTime.now(),
           ),
         );

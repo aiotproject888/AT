@@ -1,41 +1,22 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:firebase_ai/firebase_ai.dart';
 
 class ChatService {
-
-  static const String baseUrl = "http://localhost:11434";
+  final GenerativeModel _model =
+      FirebaseAI.googleAI().generativeModel(
+    model: 'gemini-3.5-flash',
+  );
 
   Future<String> sendMessage(String prompt) async {
-
-    final response = await http.post(
-      Uri.parse("$baseUrl/api/generate"),
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: jsonEncode({
-        "model": "qwen3:4b",
-        "prompt": prompt,
-        "stream": false,
-        "keep_alive":"1h"
-      }),
-    );
-
-    if (response.statusCode == 200) {
-
-      final data = jsonDecode(response.body);
-
-      return data["response"] ?? "AI ไม่ได้ตอบกลับ";
-
-    } else {
-
-      throw Exception(
-        "Ollama Error ${response.statusCode}\n${response.body}",
+    try {
+      final response = await _model.generateContent(
+        [
+          Content.text(prompt),
+        ],
       );
 
+      return response.text ?? "AI ไม่ได้ตอบกลับ";
+    } catch (e) {
+      throw Exception("Gemini Error: $e");
     }
-
   }
-
 }

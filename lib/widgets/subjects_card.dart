@@ -3,106 +3,214 @@ import '../models/subject.dart';
 import '../screens/subjects_dashboard.dart';
 import '../widgets/emotion_card.dart';
 
+class _SubjectCardColors {
+  static const card = Color(0xBF23222F);
+  static const cardBorder = Color(0x40FFFFFF);
+  static const summary = Color(0xFF292733);
+  static const primaryText = Color(0xFFFFFFFF);
+  static const secondaryText = Color(0x99FFFFFF);
+  static const faintText = Color(0x59FFFFFF);
+  static const accent = Color(0xFF6C52E5);
+  static const statusBackground = Color(0x3324B47E);
+  static const statusText = Color(0xFF54C99A);
+}
+
 class SubjectCard extends StatelessWidget {
   final Subject subject;
 
-  const SubjectCard({super.key, required this.subject});
+  const SubjectCard({
+    super.key,
+    required this.subject,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => SubjectDashboard(subject: subject)),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        padding: const EdgeInsets.all(18),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(19),
+      child: Ink(
+        width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-
-            end: Alignment.bottomRight,
-
-            colors: [
-              Colors.white.withOpacity(.09),
-
-              Colors.white.withOpacity(.03),
-            ],
+          color: _SubjectCardColors.card,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: _SubjectCardColors.cardBorder,
           ),
-
-          border: Border.all(color: Colors.white10),
         ),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// แถวบน
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        subject.subjectName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        "${subject.subjectCode} ปี${subject.year} เทอม${subject.semester}",
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ],
+            /// ส่วนบนของ Card
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SubjectDashboard(
+                      subject: subject,
+                    ),
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            /// ส่วนแสดงอารมณ์
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xff363344),
-                borderRadius: BorderRadius.circular(18),
+                );
+              },
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(19),
               ),
-              child: const EmotionSummaryWidget(),
-            ),
-            const SizedBox(height: 10),
+              splashColor: _SubjectCardColors.accent.withOpacity(0.12),
+              highlightColor: Colors.white.withOpacity(0.025),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                subject.subjectName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _SubjectCardColors.primaryText,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.15,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${subject.subjectCode}  ${subject.year}  เทอม ${subject.semester}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _SubjectCardColors.secondaryText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-            /// แถวล่าง
-            Row(
-              children: [
-                const SizedBox(width: 8),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SubjectDashboard(subject: subject),
+                        const SizedBox(width: 10),
+
+                        /// สถานะ
+                        Container(
+                          height: 20,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                          ),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _SubjectCardColors.statusBackground,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text(
+                            'กำลังสอน',
+                            style: TextStyle(
+                              color: _SubjectCardColors.statusText,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w400,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    /// ส่วนแสดงอารมณ์
+                    Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(
+                        minHeight: 82,
                       ),
-                    );
-                  },
-                  child: const Text(
-                    "ดูรายละเอียด",
-                    style: TextStyle(color: Colors.deepPurpleAccent),
-                  ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _SubjectCardColors.summary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const EmotionSummaryWidget(),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ),
+
+            /// Footer
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.groups_2_outlined,
+                    size: 17,
+                    color: _SubjectCardColors.faintText,
+                  ),
+
+                  const SizedBox(width: 5),
+
+                  const Text(
+                    '32/32 คนตอนนี้',
+                    style: TextStyle(
+                      color: _SubjectCardColors.faintText,
+                      fontSize: 10,
+                      height: 1.2,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SubjectDashboard(
+                            subject: subject,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 3,
+                        vertical: 3,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'ดูรายละเอียด',
+                            style: TextStyle(
+                              color: _SubjectCardColors.accent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
+                              height: 1.2,
+                            ),
+                          ),
+                          SizedBox(width: 3),
+                          Icon(
+                            Icons.arrow_forward,
+                            color: _SubjectCardColors.accent,
+                            size: 13,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -6,22 +6,25 @@ import '../widgets/subjects_card.dart';
 import 'chat.dart';
 
 class _HomeColors {
-  // Values read from Figma frames 93:1804 and 93:1848.
+  // Background
   static const background = Color(0xFF0E0D18);
   static const accent = Color(0xFF6C52E5);
   static const navigation = Color(0xFF191820);
 
-  static const searchBackground = Color(0x33D9D9D9); // #D9D9D9 20%
-  static const searchBorder = Color(0x40FFFFFF); // white 25%
-  static const navigationBorder = Color(0x26FFFFFF); // white 15%
+  // Search
+  static const searchBackground = Color(0x33D9D9D9);
+  static const searchBorder = Color(0x40FFFFFF);
+  static const navigationBorder = Color(0x26FFFFFF);
 
-  static const dialogBackground = Color(0xBF23222F); // #23222F 75%
-  static const dialogBorder = Color(0x40F8F6F6); // #F8F6F6 25%
+  // Dialog
+  static const dialogBackground = Color(0xBF23222F);
+  static const dialogBorder = Color(0x40F8F6F6);
 
+  // Text
   static const primaryText = Color(0xFFFFFFFF);
-  static const secondaryText = Color(0x99FFFFFF); // white 60%
-  static const mutedText = Color(0x73FFFFFF); // white 45%
-  static const faintText = Color(0x4DFFFFFF); // white 30%
+  static const secondaryText = Color(0x99FFFFFF);
+  static const mutedText = Color(0x73FFFFFF);
+  static const faintText = Color(0x4DFFFFFF);
 }
 
 class HomeScreen extends StatefulWidget {
@@ -33,6 +36,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 1;
+
   List<Subject> subjects = [];
 
   final SubjectService _subjectService = SubjectService();
@@ -43,7 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Subject> get _filteredSubjects {
     final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return subjects;
+
+    if (query.isEmpty) {
+      return subjects;
+    }
 
     return subjects.where((subject) {
       return subject.subjectName.toLowerCase().contains(query) ||
@@ -65,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final data = await _subjectService.getSubjects();
+
       if (!mounted) return;
 
       setState(() {
@@ -73,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (error) {
       debugPrint('เกิดข้อผิดพลาดในการโหลดรายวิชา: $error');
+
       if (!mounted) return;
 
       setState(() {
@@ -86,9 +95,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _HomeColors.background,
+
+      /// ปุ่ม +
       floatingActionButton: currentIndex == 1
           ? Padding(
-              padding: const EdgeInsets.only(right: 19, bottom: 12),
+              padding: const EdgeInsets.only(
+                right: 18,
+                bottom: 12,
+              ),
               child: FloatingActionButton(
                 mini: true,
                 backgroundColor: Colors.transparent,
@@ -96,16 +110,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 0,
                 highlightElevation: 0,
                 hoverElevation: 0,
+
+                // ใช้ withOpacity เพื่อรองรับ Flutter SDK ที่เก่ากว่า
                 splashColor: _HomeColors.accent.withOpacity(0.18),
+
                 onPressed: _showAddSubjectDialog,
-                child: const Icon(Icons.add, size: 34),
+                child: const Icon(
+                  Icons.add,
+                  size: 34,
+                ),
               ),
             )
           : null,
+
+      /// Bottom Navigation
       bottomNavigationBar: _HomeBottomNavigation(
         currentIndex: currentIndex,
         onTap: _onNavigationTap,
       ),
+
+      /// Background Gradient
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
@@ -116,14 +140,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Color(0xFF171329),
               _HomeColors.background,
             ],
-            stops: [0.0, 0.42, 1.0],
+            stops: [
+              0.0,
+              0.42,
+              1.0,
+            ],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(),
-              Expanded(child: _buildSubjectBody()),
+
+              Expanded(
+                child: _buildSubjectBody(),
+              ),
             ],
           ),
         ),
@@ -131,9 +162,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// =========================
+  /// Header
+  /// =========================
+
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 14, 30, 8),
+      padding: const EdgeInsets.fromLTRB(
+        30,
+        14,
+        30,
+        8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -144,22 +184,31 @@ class _HomeScreenState extends State<HomeScreen> {
               fontSize: 24,
               fontWeight: FontWeight.w500,
               letterSpacing: -0.48,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 2),
+
+          const SizedBox(height: 3),
+
           const Text(
             'ยินดีต้อนรับ, อ.สมชาย',
             style: TextStyle(
               color: _HomeColors.secondaryText,
               fontSize: 15,
+              height: 1.2,
             ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 11),
+
+          /// Search
           SizedBox(
             height: 47,
             child: TextField(
               onChanged: (value) {
-                setState(() => _searchQuery = value);
+                setState(() {
+                  _searchQuery = value;
+                });
               },
               style: const TextStyle(
                 color: _HomeColors.primaryText,
@@ -179,7 +228,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 filled: true,
                 fillColor: _HomeColors.searchBackground,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: const BorderSide(
@@ -207,7 +258,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// =========================
+  /// Subject Body
+  /// =========================
+
   Widget _buildSubjectBody() {
+    /// Loading
     if (_isLoadingSubjects) {
       return const Center(
         child: CircularProgressIndicator(
@@ -217,6 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    /// Error
     if (_loadError != null) {
       return Center(
         child: Column(
@@ -229,10 +286,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 15,
               ),
             ),
+
             const SizedBox(height: 12),
+
             TextButton.icon(
               onPressed: _loadSubjects,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(
+                Icons.refresh_rounded,
+              ),
               label: const Text('ลองใหม่'),
               style: TextButton.styleFrom(
                 foregroundColor: _HomeColors.accent,
@@ -244,25 +305,51 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final visibleSubjects = _filteredSubjects;
-    if (subjects.isEmpty) return const _EmptySubjects();
-    if (visibleSubjects.isEmpty) return const _NoSearchResults();
 
+    /// ไม่มีรายวิชา
+    if (subjects.isEmpty) {
+      return const _EmptySubjects();
+    }
+
+    /// ค้นหาแล้วไม่พบ
+    if (visibleSubjects.isEmpty) {
+      return const _NoSearchResults();
+    }
+
+    /// รายการรายวิชา
     return RefreshIndicator(
       color: _HomeColors.accent,
       onRefresh: _loadSubjects,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(32, 32, 32, 100),
+
+        // ใช้ spacing ตามไฟล์ 2
+        padding: const EdgeInsets.fromLTRB(
+          30,
+          25,
+          30,
+          110,
+        ),
+
         itemCount: visibleSubjects.length,
+
         itemBuilder: (context, index) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: SubjectCard(subject: visibleSubjects[index]),
+            padding: const EdgeInsets.only(
+              bottom: 14,
+            ),
+            child: SubjectCard(
+              subject: visibleSubjects[index],
+            ),
           );
         },
       ),
     );
   }
+
+  /// =========================
+  /// Navigation
+  /// =========================
 
   void _onNavigationTap(int index) {
     if (index == 2) {
@@ -272,6 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context) => const ChatScreen(),
         ),
       );
+
       return;
     }
 
@@ -280,15 +368,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// =========================
+  /// Add Subject Dialog
+  /// =========================
+
   void _showAddSubjectDialog() {
     showDialog<void>(
       context: context,
       barrierDismissible: true,
+
+      // ใช้ withOpacity แทน withValues
       barrierColor: Colors.black.withOpacity(0.34),
+
       builder: (context) {
         return AddSubjectDialog(
           onAdd: (subject) {
             if (!mounted) return;
+
             setState(() {
               subjects.insert(0, subject);
             });
@@ -298,6 +394,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+/// ======================================================
+/// Bottom Navigation
+/// ======================================================
 
 class _HomeBottomNavigation extends StatelessWidget {
   final int currentIndex;
@@ -309,100 +409,147 @@ class _HomeBottomNavigation extends StatelessWidget {
   });
 
   static const _items = [
-    _NavigationData(Icons.home_outlined, Icons.home_rounded, 'หน้าหลัก'),
-    _NavigationData(Icons.grid_view_outlined, Icons.grid_view_rounded, 'วิชา'),
+    _NavigationData(
+      Icons.home_outlined,
+      Icons.home_rounded,
+      'หน้าหลัก',
+    ),
+    _NavigationData(
+      Icons.grid_view_outlined,
+      Icons.grid_view_rounded,
+      'วิชา',
+    ),
     _NavigationData(
       Icons.chat_bubble_outline,
       Icons.chat_bubble_rounded,
       'แชทบอท',
     ),
-    _NavigationData(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'กราฟ'),
-    _NavigationData(Icons.person_outline, Icons.person_rounded, 'บัญชี'),
+    _NavigationData(
+      Icons.bar_chart_outlined,
+      Icons.bar_chart_rounded,
+      'กราฟ',
+    ),
+    _NavigationData(
+      Icons.person_outline,
+      Icons.person_rounded,
+      'บัญชี',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 96,
-      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
+      padding: const EdgeInsets.fromLTRB(
+        7,
+        8,
+        7,
+        14,
+      ),
       decoration: const BoxDecoration(
         color: _HomeColors.navigation,
         border: Border(
-          top: BorderSide(color: _HomeColors.navigationBorder),
+          top: BorderSide(
+            color: _HomeColors.navigationBorder,
+          ),
         ),
       ),
       child: Row(
-        children: List.generate(_items.length, (index) {
-          final item = _items[index];
-          final selected = currentIndex == index;
+        children: List.generate(
+          _items.length,
+          (index) {
+            final item = _items[index];
+            final selected = currentIndex == index;
 
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: index == _items.length - 1 ? 0 : 7,
-              ),
-              child: InkWell(
-                onTap: () => onTap(index),
-                borderRadius: BorderRadius.circular(10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  height: 66,
-                  decoration: BoxDecoration(
-                    color: const Color(0x40191820),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected
-                          ? _HomeColors.searchBorder
-                          : const Color(0x1A928B8B),
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: index == _items.length - 1
+                      ? 0
+                      : 7,
+                ),
+                child: InkWell(
+                  onTap: () => onTap(index),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(
+                      milliseconds: 160,
                     ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x40000000),
-                        offset: Offset(0, 4),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        selected ? item.activeIcon : item.icon,
-                        size: 24,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      color: const Color(0x40191820),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
                         color: selected
-                            ? _HomeColors.primaryText
-                            : _HomeColors.secondaryText,
+                            ? _HomeColors.searchBorder
+                            : const Color(0x1A928B8B),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        style: TextStyle(
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x40000000),
+                          offset: Offset(0, 4),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          selected
+                              ? item.activeIcon
+                              : item.icon,
+                          size: 24,
                           color: selected
                               ? _HomeColors.primaryText
                               : _HomeColors.secondaryText,
-                          fontSize: 11,
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(height: 5),
+
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: selected
+                                ? _HomeColors.primaryText
+                                : _HomeColors.secondaryText,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }
 }
+
+/// ======================================================
+/// Navigation Data
+/// ======================================================
 
 class _NavigationData {
   final IconData icon;
   final IconData activeIcon;
   final String label;
 
-  const _NavigationData(this.icon, this.activeIcon, this.label);
+  const _NavigationData(
+    this.icon,
+    this.activeIcon,
+    this.label,
+  );
 }
+
+/// ======================================================
+/// Empty Subjects
+/// ======================================================
 
 class _EmptySubjects extends StatelessWidget {
   const _EmptySubjects();
@@ -422,7 +569,9 @@ class _EmptySubjects extends StatelessWidget {
               letterSpacing: -0.48,
             ),
           ),
-          SizedBox(height: 2),
+
+          SizedBox(height: 3),
+
           Text(
             'กดปุ่ม + เพื่อเพิ่มรายวิชา',
             style: TextStyle(
@@ -435,6 +584,10 @@ class _EmptySubjects extends StatelessWidget {
     );
   }
 }
+
+/// ======================================================
+/// No Search Results
+/// ======================================================
 
 class _NoSearchResults extends StatelessWidget {
   const _NoSearchResults();
@@ -450,7 +603,9 @@ class _NoSearchResults extends StatelessWidget {
             color: _HomeColors.faintText,
             size: 34,
           ),
+
           SizedBox(height: 10),
+
           Text(
             'ไม่พบรายวิชาที่ค้นหา',
             style: TextStyle(
@@ -464,21 +619,32 @@ class _NoSearchResults extends StatelessWidget {
   }
 }
 
+/// ======================================================
+/// Add Subject Dialog
+/// ======================================================
+
 class AddSubjectDialog extends StatefulWidget {
   final ValueChanged<Subject> onAdd;
 
-  const AddSubjectDialog({super.key, required this.onAdd});
+  const AddSubjectDialog({
+    super.key,
+    required this.onAdd,
+  });
 
   @override
-  State<AddSubjectDialog> createState() => _AddSubjectDialogState();
+  State<AddSubjectDialog> createState() =>
+      _AddSubjectDialogState();
 }
 
-class _AddSubjectDialogState extends State<AddSubjectDialog> {
+class _AddSubjectDialogState
+    extends State<AddSubjectDialog> {
   final nameController = TextEditingController();
   final yearController = TextEditingController();
   final semesterController = TextEditingController();
   final codeController = TextEditingController();
-  final SubjectService _subjectService = SubjectService();
+
+  final SubjectService _subjectService =
+      SubjectService();
 
   bool _isSaving = false;
 
@@ -495,7 +661,9 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       alignment: Alignment.bottomCenter,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 2),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 2,
+      ),
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
@@ -504,18 +672,26 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
           maxWidth: 420,
           minHeight: 461,
         ),
-        padding: const EdgeInsets.fromLTRB(28, 22, 28, 30),
+        padding: const EdgeInsets.fromLTRB(
+          28,
+          22,
+          28,
+          30,
+        ),
         decoration: BoxDecoration(
           color: _HomeColors.dialogBackground,
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(15),
           ),
-          border: Border.all(color: _HomeColors.dialogBorder),
+          border: Border.all(
+            color: _HomeColors.dialogBorder,
+          ),
         ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               const Text(
                 'เพิ่มรายวิชาใหม่',
@@ -525,7 +701,9 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
+
               const SizedBox(height: 3),
+
               const Text(
                 'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
                 style: TextStyle(
@@ -533,70 +711,115 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
                   fontSize: 15,
                 ),
               ),
+
               const SizedBox(height: 18),
+
               const _FieldLabel('ชื่อวิชา*'),
+
               const SizedBox(height: 6),
-              _SubjectTextField(controller: nameController),
+
+              _SubjectTextField(
+                controller: nameController,
+              ),
+
               const SizedBox(height: 12),
+
               Row(
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
-                        const _FieldLabel('ปีการศึกษา*'),
+                        const _FieldLabel(
+                          'ปีการศึกษา*',
+                        ),
                         const SizedBox(height: 6),
-                        _SubjectTextField(controller: yearController),
+                        _SubjectTextField(
+                          controller: yearController,
+                        ),
                       ],
                     ),
                   ),
+
                   const SizedBox(width: 9),
+
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
                         const _FieldLabel('เทอม*'),
                         const SizedBox(height: 6),
-                        _SubjectTextField(controller: semesterController),
+                        _SubjectTextField(
+                          controller:
+                              semesterController,
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 12),
+
               const _FieldLabel('รหัสวิชา*'),
+
               const SizedBox(height: 6),
-              _SubjectTextField(controller: codeController),
+
+              _SubjectTextField(
+                controller: codeController,
+              ),
+
               const SizedBox(height: 24),
+
               SizedBox(
                 width: double.infinity,
                 height: 38,
                 child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _addSubject,
+                  onPressed:
+                      _isSaving ? null : _addSubject,
+
                   icon: _isSaving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(
+                          child:
+                              CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.black,
                           ),
                         )
-                      : const Icon(Icons.add, color: Colors.black, size: 25),
+                      : const Icon(
+                          Icons.add,
+                          color: Colors.black,
+                          size: 25,
+                        ),
+
                   label: Text(
-                    _isSaving ? 'กำลังบันทึก...' : 'เพิ่มรายวิชา',
+                    _isSaving
+                        ? 'กำลังบันทึก...'
+                        : 'เพิ่มรายวิชา',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
+
+                  style:
+                      ElevatedButton.styleFrom(
                     elevation: 0,
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
+                    disabledBackgroundColor:
+                        Colors.white,
+                    disabledForegroundColor:
+                        Colors.black,
+                    shape:
+                        RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(5),
                     ),
                   ),
                 ),
@@ -608,19 +831,33 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
     );
   }
 
+  /// เพิ่มรายวิชา
+  /// ยึดระบบจากไฟล์ 1
   Future<void> _addSubject() async {
-    final subjectName = nameController.text.trim();
-    final year = yearController.text.trim();
-    final semester = semesterController.text.trim();
-    final subjectCode = codeController.text.trim();
+    final subjectName =
+        nameController.text.trim();
+
+    final year =
+        yearController.text.trim();
+
+    final semester =
+        semesterController.text.trim();
+
+    final subjectCode =
+        codeController.text.trim();
 
     if (subjectName.isEmpty ||
         year.isEmpty ||
         semester.isEmpty ||
         subjectCode.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง')),
+        const SnackBar(
+          content: Text(
+            'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+          ),
+        ),
       );
+
       return;
     }
 
@@ -631,25 +868,45 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
       subjectCode: subjectCode,
     );
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
-      await _subjectService.createSubject(subject);
+      await _subjectService.createSubject(
+        subject,
+      );
+
       if (!mounted) return;
 
       widget.onAdd(subject);
+
       Navigator.pop(context);
     } catch (error) {
-      debugPrint('เกิดข้อผิดพลาดในการบันทึกวิชา: $error');
+      debugPrint(
+        'เกิดข้อผิดพลาดในการบันทึกวิชา: $error',
+      );
+
       if (!mounted) return;
 
-      setState(() => _isSaving = false);
+      setState(() {
+        _isSaving = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่สามารถบันทึกรายวิชาได้')),
+        const SnackBar(
+          content: Text(
+            'ไม่สามารถบันทึกรายวิชาได้',
+          ),
+        ),
       );
     }
   }
 }
+
+/// ======================================================
+/// Field Label
+/// ======================================================
 
 class _FieldLabel extends StatelessWidget {
   final String text;
@@ -668,10 +925,17 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _SubjectTextField extends StatelessWidget {
+/// ======================================================
+/// Subject Text Field
+/// ======================================================
+
+class _SubjectTextField
+    extends StatelessWidget {
   final TextEditingController controller;
 
-  const _SubjectTextField({required this.controller});
+  const _SubjectTextField({
+    required this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -687,21 +951,29 @@ class _SubjectTextField extends StatelessWidget {
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding:
+              const EdgeInsets.symmetric(
             horizontal: 10,
             vertical: 8,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
+            borderRadius:
+                BorderRadius.circular(5),
+            borderSide:
+                BorderSide.none,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
+            borderRadius:
+                BorderRadius.circular(5),
+            borderSide:
+                BorderSide.none,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: const BorderSide(
+          focusedBorder:
+              OutlineInputBorder(
+            borderRadius:
+                BorderRadius.circular(5),
+            borderSide:
+                const BorderSide(
               color: _HomeColors.accent,
               width: 1.4,
             ),
