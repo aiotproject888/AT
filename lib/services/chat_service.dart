@@ -1,22 +1,23 @@
-import 'package:firebase_ai/firebase_ai.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ChatService {
-  final GenerativeModel _model =
-      FirebaseAI.googleAI().generativeModel(
-    model: 'gemini-3.5-flash',
-  );
+  Future<String> sendMessage(String message) async {
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:3000/chat'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'message': message,
+      }),
+    );
 
-  Future<String> sendMessage(String prompt) async {
-    try {
-      final response = await _model.generateContent(
-        [
-          Content.text(prompt),
-        ],
-      );
-
-      return response.text ?? "AI ไม่ได้ตอบกลับ";
-    } catch (e) {
-      throw Exception("Gemini Error: $e");
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['reply'];
     }
+
+    throw Exception('ไม่สามารถเชื่อมต่อ AI ได้');
   }
 }
