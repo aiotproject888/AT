@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/login.dart';
-import 'package:firebase_ai/firebase_ai.dart';
-// import 'package:firebase_app_check/firebase_app_check.dart';
-
+ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
@@ -15,9 +13,9 @@ Future<void> main() async {
   );
 
   // ปิด App Check ชั่วคราว
-  // await FirebaseAppCheck.instance.activate(
-  //   androidProvider: AndroidProvider.debug,
-  // );
+   await FirebaseAppCheck.instance.activate(
+     androidProvider: AndroidProvider.debug,
+   );
 
   runApp(const MyApp());
 }
