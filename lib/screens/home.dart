@@ -35,7 +35,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int currentIndex = 1;
+  int currentIndex = 0;
 
   List<Subject> subjects = [];
 
@@ -352,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// =========================
 
   void _onNavigationTap(int index) {
-    if (index == 2) {
+    if (index == 1) {
       Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -410,11 +410,6 @@ class _HomeBottomNavigation extends StatelessWidget {
 
   static const _items = [
     _NavigationData(
-      Icons.home_outlined,
-      Icons.home_rounded,
-      'หน้าหลัก',
-    ),
-    _NavigationData(
       Icons.grid_view_outlined,
       Icons.grid_view_rounded,
       'วิชา',
@@ -423,11 +418,6 @@ class _HomeBottomNavigation extends StatelessWidget {
       Icons.chat_bubble_outline,
       Icons.chat_bubble_rounded,
       'แชทบอท',
-    ),
-    _NavigationData(
-      Icons.bar_chart_outlined,
-      Icons.bar_chart_rounded,
-      'กราฟ',
     ),
     _NavigationData(
       Icons.person_outline,

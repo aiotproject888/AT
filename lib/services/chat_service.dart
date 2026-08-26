@@ -1,23 +1,39 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ChatService {
-  final GenerativeModel _model;
+  final String _backendUrl =
+      'https://groq-backend-yzr8.onrender.com';
 
-  ChatService()
-      : _model = GenerativeModel(
-          model: 'gemini-3.6-flash',
-          apiKey: 'AQ.Ab8RN6L6ILwQOVtGFNxXB7FJa7t3wE7APs6P5zYi2DK5ZT61IA',
-        );
-
-  Future<String> sendMessage(String message) async {
+  Future<String> sendMessage({
+    required String message,
+    List<Map<String, dynamic>>? history,
+    Map<String, dynamic>? emotionData,
+  }) async {
     try {
-      final response = await _model.generateContent([
-        Content.text(message),
-      ]);
+      final response = await http.post(
+        Uri.parse('$_backendUrl/api/chat'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message,
+          'history': history ?? [],
+          'emotionData': emotionData,
+        }),
+      );
 
-      return response.text ?? 'Gemini ไม่ได้ส่งข้อความกลับมา';
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        return data['reply'] ?? 'ไม่สามารถรับคำตอบได้';
+      } else {
+        throw Exception(
+          'Backend Error: ${response.statusCode}\n${response.body}',
+        );
+      }
     } catch (e) {
-      return 'เกิดข้อผิดพลาด: $e';
+      throw Exception('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e');
     }
   }
 }

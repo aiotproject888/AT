@@ -151,22 +151,8 @@ class SubjectCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.groups_2_outlined,
-                    size: 17,
-                    color: _SubjectCardColors.faintText,
-                  ),
 
                   const SizedBox(width: 5),
-
-                  const Text(
-                    '32/32 คนตอนนี้',
-                    style: TextStyle(
-                      color: _SubjectCardColors.faintText,
-                      fontSize: 10,
-                      height: 1.2,
-                    ),
-                  ),
 
                   const Spacer(),
 

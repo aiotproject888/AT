@@ -1183,49 +1183,71 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // build...
 
   Future<void> openChatbot() async {
-    Map<String, dynamic>? emotionData;
+  Map<String, dynamic>? emotionData;
 
-    try {
-      // กรณีเลือกวันที่ย้อนหลัง
+  String? sessionId;
+  String? type;
 
-      final selectedDate = _selectedDate ?? DateTime.now();
+  try {
+    // กรณีเลือกวันที่ย้อนหลัง
+    final selectedDate = _selectedDate ?? DateTime.now();
 
-      // อ่าน Current Session
-      final currentSession = await _sessionService.getCurrentSession();
+    // อ่าน Current Session
+    final currentSession =
+        await _sessionService.getCurrentSession();
 
-      String? type;
+    if (currentSession != null) {
+      // ดึง type
+      type = currentSession['type']?.toString();
 
-      if (currentSession != null) {
-        type = currentSession['type']?.toString();
-      }
-
-      // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
-      type ??= 'before_class';
-
-      // ดึงข้อมูล Emotion
-      emotionData = await _emotionService.getEmotionSummaryForAI(
-        subjectCode: widget.subject.subjectCode,
-        date: selectedDate,
-        type: type,
-      );
-
-      debugPrint('========== EMOTION DATA FOR AI ==========');
-      debugPrint(emotionData.toString());
-      debugPrint('=========================================');
-    } catch (e) {
-      debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e');
+      // ดึง sessionId
+      sessionId = currentSession['sessionId']?.toString();
     }
 
-    if (!mounted) return;
+    // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
+    type ??= 'before_class';
 
-    // เข้า Chatbot ได้เสมอ
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(emotionData: emotionData),
-      ),
+    // ดึงข้อมูล Emotion
+    emotionData =
+        await _emotionService.getEmotionSummaryForAI(
+      subjectCode: widget.subject.subjectCode,
+      date: selectedDate,
+      type: type,
+    );
+
+    debugPrint(
+      '========== EMOTION DATA FOR AI ==========',
+    );
+    debugPrint(emotionData.toString());
+
+    debugPrint('========== CHAT CONTEXT ==========');
+    debugPrint(
+      'subjectCode: ${widget.subject.subjectCode}',
+    );
+    debugPrint('sessionId: $sessionId');
+    debugPrint('type: $type');
+    debugPrint('==================================');
+
+  } catch (e) {
+    debugPrint(
+      'ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e',
     );
   }
+
+  if (!mounted) return;
+
+  // เข้า Chatbot ได้เสมอ
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ChatScreen(
+        emotionData: emotionData,
+        subjectCode: widget.subject.subjectCode,
+        sessionId: sessionId,
+      ),
+    ),
+  );
+}
 
   Widget _emotionTrendChart() {
     // คะแนนที่คำนวณจริง
