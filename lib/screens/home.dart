@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: _HomeColors.background,
 
       /// ปุ่ม +
-      floatingActionButton: currentIndex == 1
+      floatingActionButton: currentIndex == 0
           ? Padding(
               padding: const EdgeInsets.only(
                 right: 18,
@@ -418,11 +418,6 @@ class _HomeBottomNavigation extends StatelessWidget {
       Icons.chat_bubble_outline,
       Icons.chat_bubble_rounded,
       'แชทบอท',
-    ),
-    _NavigationData(
-      Icons.person_outline,
-      Icons.person_rounded,
-      'บัญชี',
     ),
   ];
 

@@ -125,13 +125,12 @@ class _NoDataWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Column(
       children: [
-        Text("🙂", style: TextStyle(fontSize: 45)),
 
         SizedBox(height: 5),
 
         Text(
           "ยังไม่มีข้อมูล",
-          style: TextStyle(color: Colors.white, fontSize: 18),
+          style: TextStyle(color: Colors.white, fontSize: 25),
         ),
 
         Text("รอการประเมิน", style: TextStyle(color: Colors.white54)),
