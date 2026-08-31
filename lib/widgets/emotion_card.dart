@@ -126,7 +126,7 @@ class _NoDataWidget extends StatelessWidget {
     return const Column(
       children: [
 
-        SizedBox(height: 5),
+        SizedBox(height: 20),
 
         Text(
           "ยังไม่มีข้อมูล",
@@ -134,6 +134,8 @@ class _NoDataWidget extends StatelessWidget {
         ),
 
         Text("รอการประเมิน", style: TextStyle(color: Colors.white54)),
+
+        SizedBox(height: 20),
       ],
     );
   }

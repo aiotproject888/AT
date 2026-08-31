@@ -17,10 +17,14 @@ class _SubjectCardColors {
 
 class SubjectCard extends StatelessWidget {
   final Subject subject;
+  final bool isActive;
+  final Future<void> Function()? onReturn;
 
   const SubjectCard({
     super.key,
     required this.subject,
+    required this.isActive,
+    this.onReturn,
   });
 
   @override
@@ -33,24 +37,24 @@ class SubjectCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: _SubjectCardColors.card,
           borderRadius: BorderRadius.circular(19),
-          border: Border.all(
-            color: _SubjectCardColors.cardBorder,
-          ),
+          border: Border.all(color: _SubjectCardColors.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// ส่วนบนของ Card
             InkWell(
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => SubjectDashboard(
-                      subject: subject,
-                    ),
+                    builder: (_) => SubjectDashboard(subject: subject),
                   ),
                 );
+
+                if (context.mounted) {
+                  await onReturn?.call();
+                }
               },
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(19),
@@ -100,26 +104,25 @@ class SubjectCard extends StatelessWidget {
                         const SizedBox(width: 10),
 
                         /// สถานะ
-                        Container(
-                          height: 20,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                          ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: _SubjectCardColors.statusBackground,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: const Text(
-                            'กำลังสอน',
-                            style: TextStyle(
-                              color: _SubjectCardColors.statusText,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w400,
-                              height: 1,
+                        if (isActive)
+                          Container(
+                            height: 20,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: _SubjectCardColors.statusBackground,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: const Text(
+                              '🟢 กำลังสอน',
+                              style: TextStyle(
+                                color: _SubjectCardColors.statusText,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w400,
+                                height: 1,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
 
@@ -128,9 +131,7 @@ class SubjectCard extends StatelessWidget {
                     /// ส่วนแสดงอารมณ์
                     Container(
                       width: double.infinity,
-                      constraints: const BoxConstraints(
-                        minHeight: 82,
-                      ),
+                      constraints: const BoxConstraints(minHeight: 82),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 10,
@@ -151,28 +152,26 @@ class SubjectCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
               child: Row(
                 children: [
-
                   const SizedBox(width: 5),
 
                   const Spacer(),
 
                   InkWell(
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => SubjectDashboard(
-                            subject: subject,
-                          ),
+                          builder: (_) => SubjectDashboard(subject: subject),
                         ),
                       );
+
+                      if (context.mounted) {
+                        await onReturn?.call();
+                      }
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 3,
-                        vertical: 3,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 3, vertical: 3),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

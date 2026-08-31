@@ -4,9 +4,7 @@ class EmotionService {
   final DatabaseReference _emotionRef =
       FirebaseDatabase.instance.ref('emotion_data');
 
-  // =====================================================
   // ดึงข้อมูล Emotion ตามวันที่ + วิชา + Type
-  // =====================================================
 
   Future<List<Map<String, dynamic>>> getEmotionRecordsByDate({
   required String subjectCode,

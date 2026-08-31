@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
 
 import '../models/subject.dart';
 import '../services/emotion_service.dart';
@@ -61,8 +63,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       // อารมณ์ด้านบวก
       if (emotion == 'รู้สึกสนใจ' ||
           emotion == 'รู้สึกตื่นเต้น' ||
-          emotion == 'รู้สึกสนุกสนาน' ||
-          emotion == 'รู้สึกเฉยๆ') {
+          emotion == 'รู้สึกสนุกสนาน') {
         positive += count;
       }
       // อารมณ์ด้านลบ
@@ -96,6 +97,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   }
 
   ////
+  StreamSubscription<DatabaseEvent>? _emotionSubscription;
 
   final EmotionService _emotionService = EmotionService();
 
@@ -125,8 +127,16 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     super.initState();
 
     _loadActiveSession();
+    _startEmotionRealtimeListener();
     _loadEmotionData(date: DateTime.now());
   }
+
+  @override
+void dispose() {
+  _emotionSubscription?.cancel();
+
+  super.dispose();
+}
 
   static const Color backgroundColor = Color(0xff0F0D1A);
   static const Color cardColor = Color(0xff19162A);
@@ -244,6 +254,18 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         afterPositivePercentage = 0;
       });
     }
+  }
+
+  void _startEmotionRealtimeListener() {
+    _emotionSubscription = FirebaseDatabase.instance
+        .ref('emotionData')
+        .onValue
+        .listen((event) {
+          debugPrint('มีการเปลี่ยนแปลงข้อมูล Emotion');
+
+          // เรียกฟังก์ชันเดิมของคุณใหม่
+          _loadEmotionData();
+        });
   }
 
   Future<void> _startClassroom() async {
@@ -1183,71 +1205,62 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // build...
 
   Future<void> openChatbot() async {
-  Map<String, dynamic>? emotionData;
+    Map<String, dynamic>? emotionData;
 
-  String? sessionId;
-  String? type;
+    String? sessionId;
+    String? type;
 
-  try {
-    // กรณีเลือกวันที่ย้อนหลัง
-    final selectedDate = _selectedDate ?? DateTime.now();
+    try {
+      // กรณีเลือกวันที่ย้อนหลัง
+      final selectedDate = _selectedDate ?? DateTime.now();
 
-    // อ่าน Current Session
-    final currentSession =
-        await _sessionService.getCurrentSession();
+      // อ่าน Current Session
+      final currentSession = await _sessionService.getCurrentSession();
 
-    if (currentSession != null) {
-      // ดึง type
-      type = currentSession['type']?.toString();
+      if (currentSession != null) {
+        // ดึง type
+        type = currentSession['type']?.toString();
 
-      // ดึง sessionId
-      sessionId = currentSession['sessionId']?.toString();
+        // ดึง sessionId
+        sessionId = currentSession['sessionId']?.toString();
+      }
+
+      // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
+      type ??= 'before_class';
+
+      // ดึงข้อมูล Emotion
+      emotionData = await _emotionService.getEmotionSummaryForAI(
+        subjectCode: widget.subject.subjectCode,
+        date: selectedDate,
+        type: type,
+      );
+
+      debugPrint('========== EMOTION DATA FOR AI ==========');
+      debugPrint(emotionData.toString());
+
+      debugPrint('========== CHAT CONTEXT ==========');
+      debugPrint('subjectCode: ${widget.subject.subjectCode}');
+      debugPrint('sessionId: $sessionId');
+      debugPrint('type: $type');
+      debugPrint('==================================');
+    } catch (e) {
+      debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e');
     }
 
-    // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
-    type ??= 'before_class';
+    if (!mounted) return;
 
-    // ดึงข้อมูล Emotion
-    emotionData =
-        await _emotionService.getEmotionSummaryForAI(
-      subjectCode: widget.subject.subjectCode,
-      date: selectedDate,
-      type: type,
-    );
-
-    debugPrint(
-      '========== EMOTION DATA FOR AI ==========',
-    );
-    debugPrint(emotionData.toString());
-
-    debugPrint('========== CHAT CONTEXT ==========');
-    debugPrint(
-      'subjectCode: ${widget.subject.subjectCode}',
-    );
-    debugPrint('sessionId: $sessionId');
-    debugPrint('type: $type');
-    debugPrint('==================================');
-
-  } catch (e) {
-    debugPrint(
-      'ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e',
+    // เข้า Chatbot ได้เสมอ
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          emotionData: emotionData,
+          subjectCode: widget.subject.subjectCode,
+          sessionId: sessionId,
+        ),
+      ),
     );
   }
-
-  if (!mounted) return;
-
-  // เข้า Chatbot ได้เสมอ
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ChatScreen(
-        emotionData: emotionData,
-        subjectCode: widget.subject.subjectCode,
-        sessionId: sessionId,
-      ),
-    ),
-  );
-}
 
   Widget _emotionTrendChart() {
     // คะแนนที่คำนวณจริง

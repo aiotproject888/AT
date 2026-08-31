@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/subject.dart';
 import '../services/subject_service.dart';
 import '../widgets/subjects_card.dart';
+import '../services/session_service.dart';
 import 'chat.dart';
 
 class _HomeColors {
@@ -40,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Subject> subjects = [];
 
   final SubjectService _subjectService = SubjectService();
+  final SessionService _sessionService = SessionService();
 
+  String? _activeSubjectCode;
   bool _isLoadingSubjects = true;
   String? _loadError;
   String _searchQuery = '';
@@ -61,7 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
     _loadSubjects();
+    _loadCurrentSession();
   }
 
   Future<void> _loadSubjects() async {
@@ -99,10 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       /// ปุ่ม +
       floatingActionButton: currentIndex == 0
           ? Padding(
-              padding: const EdgeInsets.only(
-                right: 18,
-                bottom: 12,
-              ),
+              padding: const EdgeInsets.only(right: 18, bottom: 12),
               child: FloatingActionButton(
                 mini: true,
                 backgroundColor: Colors.transparent,
@@ -115,10 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 splashColor: _HomeColors.accent.withOpacity(0.18),
 
                 onPressed: _showAddSubjectDialog,
-                child: const Icon(
-                  Icons.add,
-                  size: 34,
-                ),
+                child: const Icon(Icons.add, size: 34),
               ),
             )
           : null,
@@ -140,11 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Color(0xFF171329),
               _HomeColors.background,
             ],
-            stops: [
-              0.0,
-              0.42,
-              1.0,
-            ],
+            stops: [0.0, 0.42, 1.0],
           ),
         ),
         child: SafeArea(
@@ -152,9 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(),
 
-              Expanded(
-                child: _buildSubjectBody(),
-              ),
+              Expanded(child: _buildSubjectBody()),
             ],
           ),
         ),
@@ -168,12 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        30,
-        14,
-        30,
-        8,
-      ),
+      padding: const EdgeInsets.fromLTRB(30, 14, 30, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -228,20 +216,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 filled: true,
                 fillColor: _HomeColors.searchBackground,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(
-                    color: _HomeColors.searchBorder,
-                  ),
+                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(
-                    color: _HomeColors.searchBorder,
-                  ),
+                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -291,13 +273,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             TextButton.icon(
               onPressed: _loadSubjects,
-              icon: const Icon(
-                Icons.refresh_rounded,
-              ),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('ลองใหม่'),
-              style: TextButton.styleFrom(
-                foregroundColor: _HomeColors.accent,
-              ),
+              style: TextButton.styleFrom(foregroundColor: _HomeColors.accent),
             ),
           ],
         ),
@@ -319,32 +297,70 @@ class _HomeScreenState extends State<HomeScreen> {
     /// รายการรายวิชา
     return RefreshIndicator(
       color: _HomeColors.accent,
-      onRefresh: _loadSubjects,
+      onRefresh: () async {
+        await Future.wait([_loadSubjects(), _loadCurrentSession()]);
+      },
+
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
 
         // ใช้ spacing ตามไฟล์ 2
-        padding: const EdgeInsets.fromLTRB(
-          30,
-          25,
-          30,
-          110,
-        ),
+        padding: const EdgeInsets.fromLTRB(30, 25, 30, 110),
 
         itemCount: visibleSubjects.length,
 
         itemBuilder: (context, index) {
+          final subject = visibleSubjects[index];
+
           return Padding(
-            padding: const EdgeInsets.only(
-              bottom: 14,
-            ),
+            padding: const EdgeInsets.only(bottom: 14),
             child: SubjectCard(
-              subject: visibleSubjects[index],
+              subject: subject,
+              isActive: _activeSubjectCode == subject.subjectCode,
+              onReturn: _loadCurrentSession,
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _loadCurrentSession() async {
+    try {
+      final session = await _sessionService.getCurrentSession();
+
+      debugPrint('CURRENT SESSION: $session');
+
+      if (!mounted) return;
+
+      if (session == null) {
+        setState(() {
+          _activeSubjectCode = null;
+        });
+        return;
+      }
+
+      final status = session['status']?.toString();
+      final subjectCode = session['subjectCode']?.toString();
+
+      if (status == 'active' && subjectCode != null) {
+        setState(() {
+          _activeSubjectCode = subjectCode.trim();
+        });
+      } else {
+        setState(() {
+          _activeSubjectCode = null;
+        });
+      }
+    } catch (e) {
+      debugPrint('โหลดสถานะห้องไม่สำเร็จ: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _activeSubjectCode = null;
+      });
+    }
   }
 
   /// =========================
@@ -355,9 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1) {
       Navigator.push(
         context,
-        MaterialPageRoute<void>(
-          builder: (context) => const ChatScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (context) => const ChatScreen()),
       );
 
       return;
@@ -409,11 +423,7 @@ class _HomeBottomNavigation extends StatelessWidget {
   });
 
   static const _items = [
-    _NavigationData(
-      Icons.grid_view_outlined,
-      Icons.grid_view_rounded,
-      'วิชา',
-    ),
+    _NavigationData(Icons.grid_view_outlined, Icons.grid_view_rounded, 'วิชา'),
     _NavigationData(
       Icons.chat_bubble_outline,
       Icons.chat_bubble_rounded,
@@ -425,92 +435,73 @@ class _HomeBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 96,
-      padding: const EdgeInsets.fromLTRB(
-        7,
-        8,
-        7,
-        14,
-      ),
+      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
       decoration: const BoxDecoration(
         color: _HomeColors.navigation,
-        border: Border(
-          top: BorderSide(
-            color: _HomeColors.navigationBorder,
-          ),
-        ),
+        border: Border(top: BorderSide(color: _HomeColors.navigationBorder)),
       ),
       child: Row(
-        children: List.generate(
-          _items.length,
-          (index) {
-            final item = _items[index];
-            final selected = currentIndex == index;
+        children: List.generate(_items.length, (index) {
+          final item = _items[index];
+          final selected = currentIndex == index;
 
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: index == _items.length - 1
-                      ? 0
-                      : 7,
-                ),
-                child: InkWell(
-                  onTap: () => onTap(index),
-                  borderRadius: BorderRadius.circular(10),
-                  child: AnimatedContainer(
-                    duration: const Duration(
-                      milliseconds: 160,
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index == _items.length - 1 ? 0 : 7,
+              ),
+              child: InkWell(
+                onTap: () => onTap(index),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: const Color(0x40191820),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? _HomeColors.searchBorder
+                          : const Color(0x1A928B8B),
                     ),
-                    height: 66,
-                    decoration: BoxDecoration(
-                      color: const Color(0x40191820),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected
-                            ? _HomeColors.searchBorder
-                            : const Color(0x1A928B8B),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x40000000),
+                        offset: Offset(0, 4),
+                        blurRadius: 4,
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x40000000),
-                          offset: Offset(0, 4),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          selected
-                              ? item.activeIcon
-                              : item.icon,
-                          size: 24,
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? item.activeIcon : item.icon,
+                        size: 24,
+                        color: selected
+                            ? _HomeColors.primaryText
+                            : _HomeColors.secondaryText,
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      Text(
+                        item.label,
+                        maxLines: 1,
+                        style: TextStyle(
                           color: selected
                               ? _HomeColors.primaryText
                               : _HomeColors.secondaryText,
+                          fontSize: 11,
                         ),
-
-                        const SizedBox(height: 5),
-
-                        Text(
-                          item.label,
-                          maxLines: 1,
-                          style: TextStyle(
-                            color: selected
-                                ? _HomeColors.primaryText
-                                : _HomeColors.secondaryText,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -525,11 +516,7 @@ class _NavigationData {
   final IconData activeIcon;
   final String label;
 
-  const _NavigationData(
-    this.icon,
-    this.activeIcon,
-    this.label,
-  );
+  const _NavigationData(this.icon, this.activeIcon, this.label);
 }
 
 /// ======================================================
@@ -559,10 +546,7 @@ class _EmptySubjects extends StatelessWidget {
 
           Text(
             'กดปุ่ม + เพื่อเพิ่มรายวิชา',
-            style: TextStyle(
-              color: _HomeColors.faintText,
-              fontSize: 15,
-            ),
+            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
           ),
         ],
       ),
@@ -593,10 +577,7 @@ class _NoSearchResults extends StatelessWidget {
 
           Text(
             'ไม่พบรายวิชาที่ค้นหา',
-            style: TextStyle(
-              color: _HomeColors.faintText,
-              fontSize: 15,
-            ),
+            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
           ),
         ],
       ),
@@ -611,25 +592,19 @@ class _NoSearchResults extends StatelessWidget {
 class AddSubjectDialog extends StatefulWidget {
   final ValueChanged<Subject> onAdd;
 
-  const AddSubjectDialog({
-    super.key,
-    required this.onAdd,
-  });
+  const AddSubjectDialog({super.key, required this.onAdd});
 
   @override
-  State<AddSubjectDialog> createState() =>
-      _AddSubjectDialogState();
+  State<AddSubjectDialog> createState() => _AddSubjectDialogState();
 }
 
-class _AddSubjectDialogState
-    extends State<AddSubjectDialog> {
+class _AddSubjectDialogState extends State<AddSubjectDialog> {
   final nameController = TextEditingController();
   final yearController = TextEditingController();
   final semesterController = TextEditingController();
   final codeController = TextEditingController();
 
-  final SubjectService _subjectService =
-      SubjectService();
+  final SubjectService _subjectService = SubjectService();
 
   bool _isSaving = false;
 
@@ -646,37 +621,22 @@ class _AddSubjectDialogState
   Widget build(BuildContext context) {
     return Dialog(
       alignment: Alignment.bottomCenter,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 2,
-      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 2),
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(
-          maxWidth: 420,
-          minHeight: 461,
-        ),
-        padding: const EdgeInsets.fromLTRB(
-          28,
-          22,
-          28,
-          30,
-        ),
+        constraints: const BoxConstraints(maxWidth: 420, minHeight: 461),
+        padding: const EdgeInsets.fromLTRB(28, 22, 28, 30),
         decoration: BoxDecoration(
           color: _HomeColors.dialogBackground,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(15),
-          ),
-          border: Border.all(
-            color: _HomeColors.dialogBorder,
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+          border: Border.all(color: _HomeColors.dialogBorder),
         ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'เพิ่มรายวิชาใหม่',
@@ -703,9 +663,7 @@ class _AddSubjectDialogState
 
               const SizedBox(height: 6),
 
-              _SubjectTextField(
-                controller: nameController,
-              ),
+              _SubjectTextField(controller: nameController),
 
               const SizedBox(height: 12),
 
@@ -713,16 +671,11 @@ class _AddSubjectDialogState
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _FieldLabel(
-                          'ปีการศึกษา*',
-                        ),
+                        const _FieldLabel('ปีการศึกษา*'),
                         const SizedBox(height: 6),
-                        _SubjectTextField(
-                          controller: yearController,
-                        ),
+                        _SubjectTextField(controller: yearController),
                       ],
                     ),
                   ),
@@ -731,15 +684,11 @@ class _AddSubjectDialogState
 
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const _FieldLabel('เทอม*'),
                         const SizedBox(height: 6),
-                        _SubjectTextField(
-                          controller:
-                              semesterController,
-                        ),
+                        _SubjectTextField(controller: semesterController),
                       ],
                     ),
                   ),
@@ -752,9 +701,7 @@ class _AddSubjectDialogState
 
               const SizedBox(height: 6),
 
-              _SubjectTextField(
-                controller: codeController,
-              ),
+              _SubjectTextField(controller: codeController),
 
               const SizedBox(height: 24),
 
@@ -762,29 +709,21 @@ class _AddSubjectDialogState
                 width: double.infinity,
                 height: 38,
                 child: ElevatedButton.icon(
-                  onPressed:
-                      _isSaving ? null : _addSubject,
+                  onPressed: _isSaving ? null : _addSubject,
 
                   icon: _isSaving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child:
-                              CircularProgressIndicator(
+                          child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.black,
                           ),
                         )
-                      : const Icon(
-                          Icons.add,
-                          color: Colors.black,
-                          size: 25,
-                        ),
+                      : const Icon(Icons.add, color: Colors.black, size: 25),
 
                   label: Text(
-                    _isSaving
-                        ? 'กำลังบันทึก...'
-                        : 'เพิ่มรายวิชา',
+                    _isSaving ? 'กำลังบันทึก...' : 'เพิ่มรายวิชา',
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 16,
@@ -792,19 +731,14 @@ class _AddSubjectDialogState
                     ),
                   ),
 
-                  style:
-                      ElevatedButton.styleFrom(
+                  style: ElevatedButton.styleFrom(
                     elevation: 0,
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    disabledBackgroundColor:
-                        Colors.white,
-                    disabledForegroundColor:
-                        Colors.black,
-                    shape:
-                        RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(5),
+                    disabledBackgroundColor: Colors.white,
+                    disabledForegroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
                     ),
                   ),
                 ),
@@ -819,28 +753,20 @@ class _AddSubjectDialogState
   /// เพิ่มรายวิชา
   /// ยึดระบบจากไฟล์ 1
   Future<void> _addSubject() async {
-    final subjectName =
-        nameController.text.trim();
+    final subjectName = nameController.text.trim();
 
-    final year =
-        yearController.text.trim();
+    final year = yearController.text.trim();
 
-    final semester =
-        semesterController.text.trim();
+    final semester = semesterController.text.trim();
 
-    final subjectCode =
-        codeController.text.trim();
+    final subjectCode = codeController.text.trim();
 
     if (subjectName.isEmpty ||
         year.isEmpty ||
         semester.isEmpty ||
         subjectCode.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'กรุณากรอกข้อมูลให้ครบทุกช่อง',
-          ),
-        ),
+        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง')),
       );
 
       return;
@@ -858,9 +784,7 @@ class _AddSubjectDialogState
     });
 
     try {
-      await _subjectService.createSubject(
-        subject,
-      );
+      await _subjectService.createSubject(subject);
 
       if (!mounted) return;
 
@@ -868,9 +792,7 @@ class _AddSubjectDialogState
 
       Navigator.pop(context);
     } catch (error) {
-      debugPrint(
-        'เกิดข้อผิดพลาดในการบันทึกวิชา: $error',
-      );
+      debugPrint('เกิดข้อผิดพลาดในการบันทึกวิชา: $error');
 
       if (!mounted) return;
 
@@ -879,11 +801,7 @@ class _AddSubjectDialogState
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'ไม่สามารถบันทึกรายวิชาได้',
-          ),
-        ),
+        const SnackBar(content: Text('ไม่สามารถบันทึกรายวิชาได้')),
       );
     }
   }
@@ -902,10 +820,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: _HomeColors.secondaryText,
-        fontSize: 15,
-      ),
+      style: const TextStyle(color: _HomeColors.secondaryText, fontSize: 15),
     );
   }
 }
@@ -914,13 +829,10 @@ class _FieldLabel extends StatelessWidget {
 /// Subject Text Field
 /// ======================================================
 
-class _SubjectTextField
-    extends StatelessWidget {
+class _SubjectTextField extends StatelessWidget {
   final TextEditingController controller;
 
-  const _SubjectTextField({
-    required this.controller,
-  });
+  const _SubjectTextField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -928,40 +840,26 @@ class _SubjectTextField
       height: 38,
       child: TextField(
         controller: controller,
-        style: const TextStyle(
-          color: Color(0xFF24222B),
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Color(0xFF24222B), fontSize: 14),
         cursorColor: _HomeColors.accent,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(
+          contentPadding: const EdgeInsets.symmetric(
             horizontal: 10,
             vertical: 8,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius:
-                BorderRadius.circular(5),
-            borderSide:
-                BorderSide.none,
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
           ),
           border: OutlineInputBorder(
-            borderRadius:
-                BorderRadius.circular(5),
-            borderSide:
-                BorderSide.none,
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
           ),
-          focusedBorder:
-              OutlineInputBorder(
-            borderRadius:
-                BorderRadius.circular(5),
-            borderSide:
-                const BorderSide(
-              color: _HomeColors.accent,
-              width: 1.4,
-            ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: _HomeColors.accent, width: 1.4),
           ),
         ),
       ),
