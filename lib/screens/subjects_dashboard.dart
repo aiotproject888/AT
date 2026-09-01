@@ -1,57 +1,136 @@
-import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'dart:async';
+
 import 'package:firebase_database/firebase_database.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 
 import '../models/subject.dart';
 import '../services/emotion_service.dart';
-import '../widgets/emotion_card.dart';
 import '../services/session_service.dart';
-import '../screens/chat.dart';
+import '../widgets/emotion_card.dart';
+import 'chat.dart';
+
+// ============================================================
+// Dashboard Colors
+// ============================================================
+
+class _DashboardColors {
+  static const background = Color(0xFF0E0D18);
+
+  static const accent = Color(0xFF6C52E5);
+  static const cyan = Color(0xFF22D3EE);
+  static const green = Color(0xFF1BAF7A);
+
+  static const surface = Color(0x0AFFFFFF);
+  static const surfaceBorder = Color(0x12FFFFFF);
+  static const innerSurface = Color(0x08FFFFFF);
+
+  static const buttonSurface = Color(0x0DFFFFFF);
+  static const buttonBorder = Color(0x1AFFFFFF);
+
+  static const accentSurface = Color(0x266C52E5);
+  static const greenSurface = Color(0x261BAF7A);
+
+  static const primaryText = Color(0xFFFFFFFF);
+  static const secondaryText = Color(0x99FFFFFF);
+  static const mutedText = Color(0x73FFFFFF);
+  static const faintText = Color(0x4DFFFFFF);
+
+  static const danger = Color(0xFFFF7777);
+  static const dangerButton = Color(0xFFD94848);
+}
+
+enum _SubjectManagementAction {
+  edit,
+  delete,
+}
+
+// ============================================================
+// Subject Dashboard
+// ============================================================
 
 class SubjectDashboard extends StatefulWidget {
   final Subject subject;
 
-  const SubjectDashboard({super.key, required this.subject});
+  final ValueChanged<Subject>? onSubjectUpdated;
+  final VoidCallback? onSubjectDeleted;
+
+  const SubjectDashboard({
+    super.key,
+    required this.subject,
+    this.onSubjectUpdated,
+    this.onSubjectDeleted,
+  });
 
   @override
   State<SubjectDashboard> createState() => _SubjectDashboardState();
 }
 
 class _SubjectDashboardState extends State<SubjectDashboard> {
-  ////
-  double _getEmotionScore(String emotion) {
-    switch (emotion) {
-      case 'รู้สึกสนุกสนาน':
-        return 1;
+  // ==========================================================
+  // Services
+  // ==========================================================
 
-      case 'รู้สึกตื่นเต้น':
-        return 1;
+  final EmotionService _emotionService = EmotionService();
+  final SessionService _sessionService = SessionService();
 
-      case 'รู้สึกสนใจ':
-        return 1;
+  // ==========================================================
+  // Realtime Emotion
+  // ==========================================================
 
-      case 'รู้สึกเฉยๆ':
-        return 0;
+  StreamSubscription<DatabaseEvent>? _emotionSubscription;
 
-      case 'รู้สึกวิตกกังวล':
-        return -1;
+  // ==========================================================
+  // Subject
+  // ==========================================================
 
-      case 'รู้สึกเบื่อหน่าย':
-        return -1;
+  late Subject _subject;
 
-      case 'รู้สึกเครียด':
-        return -1;
+  // ==========================================================
+  // Emotion Data
+  // ==========================================================
 
-      case 'รู้สึกกลัว':
-        return -1;
+  int beforeStudentCount = 0;
+  int beforePositivePercentage = 0;
 
-      default:
-        return 0;
-    }
-  }
+  int afterStudentCount = 0;
+  int afterPositivePercentage = 0;
 
-  double _calculateEmotionScore(Map<String, int> distribution) {
+  Map<String, int> beforeEmotionDistribution = {};
+  Map<String, int> afterEmotionDistribution = {};
+
+  // ==========================================================
+  // Session
+  // ==========================================================
+
+  String? _sessionId;
+  bool _isClassActive = false;
+  bool _isLoading = false;
+
+  // ==========================================================
+  // History
+  // ==========================================================
+
+  DateTime? _selectedDate;
+
+  List<Map<String, dynamic>> _selectedSessions = [];
+
+  bool _isLoadingHistory = false;
+
+  // ==========================================================
+  // Score
+  //
+  // ใช้หลักการของโค้ด 1
+  //
+  // +1 = อารมณ์ด้านบวกมากกว่า
+  //  0 = เท่ากัน / ไม่มีข้อมูล
+  // -1 = อารมณ์ด้านลบมากกว่า
+  // ==========================================================
+
+  double _calculateEmotionScore(
+    Map<String, int> distribution,
+  ) {
     if (distribution.isEmpty) {
       return 0;
     }
@@ -60,14 +139,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     int negative = 0;
 
     distribution.forEach((emotion, count) {
-      // อารมณ์ด้านบวก
       if (emotion == 'รู้สึกสนใจ' ||
           emotion == 'รู้สึกตื่นเต้น' ||
           emotion == 'รู้สึกสนุกสนาน') {
         positive += count;
-      }
-      // อารมณ์ด้านลบ
-      else if (emotion == 'รู้สึกวิตกกังวล' ||
+      } else if (emotion == 'รู้สึกวิตกกังวล' ||
           emotion == 'รู้สึกเครียด' ||
           emotion == 'รู้สึกเบื่อหน่าย' ||
           emotion == 'รู้สึกกลัว') {
@@ -84,7 +160,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     final positiveRatio = positive / total;
     final negativeRatio = negative / total;
 
-    // หลักการ A
     if (positiveRatio > negativeRatio) {
       return 1;
     }
@@ -96,259 +171,287 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     return 0;
   }
 
-  ////
-  StreamSubscription<DatabaseEvent>? _emotionSubscription;
+  // ==========================================================
+  // Score getters
+  // ==========================================================
 
-  final EmotionService _emotionService = EmotionService();
+  double? get _beforeScore {
+    if (beforeStudentCount == 0) {
+      return null;
+    }
 
-  final SessionService _sessionService = SessionService();
+    return _calculateEmotionScore(
+      beforeEmotionDistribution,
+    );
+  }
 
-  int beforeStudentCount = 0;
-  int beforePositivePercentage = 0;
+  double? get _afterScore {
+    if (afterStudentCount == 0) {
+      return null;
+    }
 
-  int afterStudentCount = 0;
-  int afterPositivePercentage = 0;
+    return _calculateEmotionScore(
+      afterEmotionDistribution,
+    );
+  }
 
-  Map<String, dynamic> beforeEmotionData = {};
-  Map<String, dynamic> afterEmotionData = {};
-  Map<String, int> beforeEmotionDistribution = {};
-  Map<String, int> afterEmotionDistribution = {};
+  // ==========================================================
+  // Engagement
+  //
+  // นักศึกษาที่กดครบ = จำนวนที่กดก่อนและหลังก็มี
+  // ==========================================================
 
-  String? _sessionId;
-  bool _isClassActive = false;
-  bool _isLoading = false;
+  int get _totalStudents {
+    if (beforeStudentCount > afterStudentCount) {
+      return beforeStudentCount;
+    }
 
-  DateTime? _selectedDate;
-  List<Map<String, dynamic>> _selectedSessions = [];
-  bool _isLoadingHistory = false;
+    return afterStudentCount;
+  }
+
+  int get _completedStudents {
+    if (beforeStudentCount < afterStudentCount) {
+      return beforeStudentCount;
+    }
+
+    return afterStudentCount;
+  }
+
+  int get _engagementPercentage {
+    if (_totalStudents == 0) {
+      return 0;
+    }
+
+    return ((_completedStudents / _totalStudents) * 100).round();
+  }
+
+  // ==========================================================
+  // Init
+  // ==========================================================
 
   @override
   void initState() {
     super.initState();
 
+    _subject = widget.subject;
+
     _loadActiveSession();
+
+    // โหลดข้อมูลครั้งแรก
+    _loadEmotionData(
+      date: DateTime.now(),
+    );
+
+    // Realtime Emotion
     _startEmotionRealtimeListener();
-    _loadEmotionData(date: DateTime.now());
   }
 
+  // ==========================================================
+  // Dispose
+  // ==========================================================
+
   @override
-void dispose() {
-  _emotionSubscription?.cancel();
+  void dispose() {
+    _emotionSubscription?.cancel();
 
-  super.dispose();
-}
+    super.dispose();
+  }
 
-  static const Color backgroundColor = Color(0xff0F0D1A);
-  static const Color cardColor = Color(0xff19162A);
-  static const Color chartColor = Color(0xff211D35);
-  static const Color purple = Color(0xff7C5CFC);
-  static const Color blue = Color(0xff4F8CFF);
-  static const Color pink = Color(0xffD66BFF);
+  // ==========================================================
+  // Positive Emotion
+  // ==========================================================
 
-  Future<void> _loadEmotionData({DateTime? date}) async {
+  bool _isPositiveEmotion(String? emotion) {
+    return emotion == 'รู้สึกสนใจ' ||
+        emotion == 'รู้สึกตื่นเต้น' ||
+        emotion == 'รู้สึกสนุกสนาน' ||
+        emotion == 'รู้สึกเฉยๆ';
+  }
+
+  // ==========================================================
+  // Load Emotion Data
+  //
+  // ใช้ระบบโหลดข้อมูลของโค้ด 1
+  // แต่แก้การนับให้ใช้ counter แบบโค้ด 2
+  // ==========================================================
+
+  Future<void> _loadEmotionData({
+    DateTime? date,
+  }) async {
     final selectedDate = date ?? DateTime.now();
 
     try {
-      final beforeRecords = await _emotionService.getEmotionRecordsByDate(
-        subjectCode: widget.subject.subjectCode,
+      // --------------------------------------------------------
+      // Records
+      // --------------------------------------------------------
+
+      final beforeRecords =
+          await _emotionService.getEmotionRecordsByDate(
+        subjectCode: _subject.subjectCode,
         date: selectedDate,
         type: 'before_class',
       );
 
-      final afterRecords = await _emotionService.getEmotionRecordsByDate(
-        subjectCode: widget.subject.subjectCode,
+      final afterRecords =
+          await _emotionService.getEmotionRecordsByDate(
+        subjectCode: _subject.subjectCode,
         date: selectedDate,
         type: 'after_class',
       );
 
-      final beforeDistribution = await _emotionService
-          .getEmotionDistributionByDate(
-            subjectCode: widget.subject.subjectCode,
-            date: selectedDate,
-            type: 'before_class',
-          );
+      // --------------------------------------------------------
+      // Distribution
+      // --------------------------------------------------------
 
-      final afterDistribution = await _emotionService
-          .getEmotionDistributionByDate(
-            subjectCode: widget.subject.subjectCode,
-            date: selectedDate,
-            type: 'after_class',
-          );
+      final beforeDistribution =
+          await _emotionService.getEmotionDistributionByDate(
+        subjectCode: _subject.subjectCode,
+        date: selectedDate,
+        type: 'before_class',
+      );
 
-      // คำนวณก่อนเรียน
+      final afterDistribution =
+          await _emotionService.getEmotionDistributionByDate(
+        subjectCode: _subject.subjectCode,
+        date: selectedDate,
+        type: 'after_class',
+      );
 
-      int beforeStudentTotal = 0;
+      // --------------------------------------------------------
+      // ก่อนเรียน
+      // --------------------------------------------------------
+
+      int beforeTotal = 0;
       int beforePositive = 0;
 
       for (final record in beforeRecords) {
-        final count = (record['counter'] ?? 1) as num;
+        final count =
+            ((record['counter'] ?? 1) as num).toInt();
 
-        beforeStudentTotal += count.toInt();
+        beforeTotal += count;
 
-        final emotion = record['emotion'];
-
-        if (emotion == 'รู้สึกสนใจ' ||
-            emotion == 'รู้สึกตื่นเต้น' ||
-            emotion == 'รู้สึกสนุกสนาน' ||
-            emotion == 'รู้สึกเฉยๆ') {
-          beforePositive += count.toInt();
+        if (_isPositiveEmotion(
+          record['emotion']?.toString(),
+        )) {
+          beforePositive += count;
         }
       }
 
-      // =====================================================
-      // คำนวณหลังเรียน
-      // =====================================================
+      // --------------------------------------------------------
+      // หลังเรียน
+      // --------------------------------------------------------
 
-      int afterStudentTotal = 0;
+      int afterTotal = 0;
       int afterPositive = 0;
 
       for (final record in afterRecords) {
-        final count = (record['counter'] ?? 1) as num;
+        final count =
+            ((record['counter'] ?? 1) as num).toInt();
 
-        afterStudentTotal += count.toInt();
+        afterTotal += count;
 
-        final emotion = record['emotion'];
-
-        if (emotion == 'รู้สึกสนใจ' ||
-            emotion == 'รู้สึกตื่นเต้น' ||
-            emotion == 'รู้สึกสนุกสนาน' ||
-            emotion == 'รู้สึกเฉยๆ') {
-          afterPositive += count.toInt();
+        if (_isPositiveEmotion(
+          record['emotion']?.toString(),
+        )) {
+          afterPositive += count;
         }
       }
 
-      // =====================================================
-      // อัปเดตหน้าจอ
-      // =====================================================
+      // --------------------------------------------------------
+      // Update UI
+      // --------------------------------------------------------
 
       if (!mounted) return;
 
       setState(() {
-        beforeStudentCount = beforeRecords.length;
-        afterStudentCount = afterRecords.length;
+        beforeStudentCount = beforeTotal;
+        afterStudentCount = afterTotal;
 
-        beforePositivePercentage = beforeRecords.isEmpty
+        beforePositivePercentage = beforeTotal == 0
             ? 0
-            : ((beforePositive / beforeRecords.length) * 100).round();
+            : ((beforePositive / beforeTotal) * 100).round();
 
-        afterPositivePercentage = afterRecords.isEmpty
+        afterPositivePercentage = afterTotal == 0
             ? 0
-            : ((afterPositive / afterRecords.length) * 100).round();
+            : ((afterPositive / afterTotal) * 100).round();
 
         beforeEmotionDistribution = beforeDistribution;
+
         afterEmotionDistribution = afterDistribution;
       });
 
-      debugPrint('ก่อนเรียน: $beforeStudentTotal คน');
+      debugPrint(
+        'ก่อนเรียน: $beforeTotal คน',
+      );
 
-      debugPrint('หลังเรียน: $afterStudentTotal คน');
-    } catch (e) {
-      debugPrint('โหลด Emotion ไม่สำเร็จ: $e');
+      debugPrint(
+        'หลังเรียน: $afterTotal คน',
+      );
+
+      debugPrint(
+        'ก่อนเรียน Positive: $beforePositivePercentage%',
+      );
+
+      debugPrint(
+        'หลังเรียน Positive: $afterPositivePercentage%',
+      );
+    } catch (error) {
+      debugPrint(
+        'โหลด Emotion ไม่สำเร็จ: $error',
+      );
 
       if (!mounted) return;
 
       setState(() {
         beforeStudentCount = 0;
         afterStudentCount = 0;
+
         beforePositivePercentage = 0;
         afterPositivePercentage = 0;
+
+        beforeEmotionDistribution = {};
+        afterEmotionDistribution = {};
       });
     }
   }
+
+  // ==========================================================
+  // Realtime Emotion Listener
+  // ==========================================================
 
   void _startEmotionRealtimeListener() {
     _emotionSubscription = FirebaseDatabase.instance
         .ref('emotionData')
         .onValue
         .listen((event) {
-          debugPrint('มีการเปลี่ยนแปลงข้อมูล Emotion');
+      debugPrint(
+        'มีการเปลี่ยนแปลงข้อมูล Emotion',
+      );
 
-          // เรียกฟังก์ชันเดิมของคุณใหม่
-          _loadEmotionData();
-        });
-  }
-
-  Future<void> _startClassroom() async {
-    setState(() {
-      _isLoading = true;
+      // โหลดข้อมูลของวันที่กำลังดูอยู่
+      _loadEmotionData(
+        date: _selectedDate ?? DateTime.now(),
+      );
     });
-
-    try {
-      final sessionId = await _sessionService.startSession(
-        subjectCode: widget.subject.subjectCode,
-      );
-
-      setState(() {
-        _sessionId = sessionId;
-        _isClassActive = true;
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เปิดห้องเรียนเรียบร้อยแล้ว')),
-      );
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('ไม่สามารถเปิดห้องเรียนได้: $e')));
-    }
   }
 
-  Future<void> _endClassroom() async {
-    if (_sessionId == null) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _sessionService.endSession(_sessionId!);
-
-      setState(() {
-        _isClassActive = false;
-        _sessionId = null;
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ปิดห้องเรียนเรียบร้อยแล้ว')),
-      );
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('ไม่สามารถปิดห้องเรียนได้: $e')));
-    }
-  }
+  // ==========================================================
+  // Load Active Session
+  // ==========================================================
 
   Future<void> _loadActiveSession() async {
     try {
-      final session = await _sessionService.getActiveSession(
-        widget.subject.subjectCode,
+      final session =
+          await _sessionService.getActiveSession(
+        _subject.subjectCode,
       );
 
       if (!mounted) return;
 
       if (session != null) {
         setState(() {
-          _sessionId = session['sessionId'];
+          _sessionId =
+              session['sessionId']?.toString();
 
           _isClassActive = true;
         });
@@ -360,14 +463,135 @@ void dispose() {
           _isClassActive = false;
         });
       }
-    } catch (e) {
-      debugPrint('ไม่สามารถโหลด Session ได้: $e');
+    } catch (error) {
+      debugPrint(
+        'ไม่สามารถโหลด Session ได้: $error',
+      );
     }
   }
 
-  //ฟังก์ชันวันที่
+  // ==========================================================
+  // Start Classroom
+  // ==========================================================
+
+  Future<void> _startClassroom() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final sessionId =
+          await _sessionService.startSession(
+        subjectCode: _subject.subjectCode,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _sessionId = sessionId;
+        _isClassActive = true;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'เปิดห้องเรียนเรียบร้อยแล้ว',
+          ),
+        ),
+      );
+
+      await _loadEmotionData();
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'ไม่สามารถเปิดห้องเรียนได้: $error',
+          ),
+        ),
+      );
+    }
+  }
+
+  // ==========================================================
+  // End Classroom
+  // ==========================================================
+
+  Future<void> _endClassroom() async {
+    if (_sessionId == null) return;
+
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _sessionService.endSession(
+        _sessionId!,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isClassActive = false;
+        _sessionId = null;
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'ปิดห้องเรียนเรียบร้อยแล้ว',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'ไม่สามารถปิดห้องเรียนได้: $error',
+          ),
+        ),
+      );
+    }
+  }
+
+  // ==========================================================
+  // Toggle Classroom
+  // ==========================================================
+
+  Future<void> _toggleClassroom() async {
+    if (_isLoading) return;
+
+    if (_isClassActive) {
+      await _endClassroom();
+    } else {
+      await _startClassroom();
+    }
+  }
+
+  // ==========================================================
+  // Select Date
+  // ==========================================================
+
   Future<void> _selectDate() async {
-    final pickedDate = await showModalBottomSheet<DateTime>(
+    final pickedDate =
+        await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -376,28 +600,35 @@ void dispose() {
       },
     );
 
-    if (pickedDate == null) {
-      return;
-    }
+    if (pickedDate == null) return;
 
-    await _loadSessionsByDate(pickedDate);
+    await _loadSessionsByDate(
+      pickedDate,
+    );
   }
 
-  Future<void> _loadSessionsByDate(DateTime date) async {
+  // ==========================================================
+  // Load History
+  // ==========================================================
+
+  Future<void> _loadSessionsByDate(
+    DateTime date,
+  ) async {
     setState(() {
       _isLoadingHistory = true;
       _selectedDate = date;
     });
 
     try {
-      // โหลด Session ของวันที่เลือก
-      final sessions = await _sessionService.getSessionsByDate(
-        subjectCode: widget.subject.subjectCode,
+      final sessions =
+          await _sessionService.getSessionsByDate(
+        subjectCode: _subject.subjectCode,
         date: date,
       );
 
-      // โหลด Emotion ของวันที่เลือก
-      await _loadEmotionData(date: date);
+      await _loadEmotionData(
+        date: date,
+      );
 
       if (!mounted) return;
 
@@ -405,8 +636,10 @@ void dispose() {
         _selectedSessions = sessions;
         _isLoadingHistory = false;
       });
-    } catch (e) {
-      debugPrint('โหลดข้อมูลย้อนหลังไม่สำเร็จ: $e');
+    } catch (error) {
+      debugPrint(
+        'โหลดข้อมูลย้อนหลังไม่สำเร็จ: $error',
+      );
 
       if (!mounted) return;
 
@@ -419,534 +652,1261 @@ void dispose() {
 
         beforePositivePercentage = 0;
         afterPositivePercentage = 0;
+
+        beforeEmotionDistribution = {};
+        afterEmotionDistribution = {};
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ไม่มีข้อมูล'),
+          content: Text(
+            'ไม่มีข้อมูลในวันที่เลือก',
+          ),
           duration: Duration(seconds: 2),
         ),
       );
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
+  // ==========================================================
+  // Chatbot
+  //
+  // ใช้ระบบของโค้ด 1
+  // ห้ามตัด subjectCode / sessionId
+  // ==========================================================
 
-      // =========================
-      // App Bar
-      // =========================
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
+  Future<void> _openChatbot() async {
+    Map<String, dynamic>? emotionData;
 
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
+    String? sessionId;
+    String? type;
 
-        title: const Text(
-          "Dashboard",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+    try {
+      final selectedDate =
+          _selectedDate ?? DateTime.now();
 
-        actions: [
-          IconButton(
-            onPressed: _selectDate,
-            icon: const Icon(
-              Icons.calendar_today_outlined,
-              color: Colors.white70,
-            ),
-          ),
+      // ------------------------------------------------------
+      // Current Session
+      // ------------------------------------------------------
 
-          const SizedBox(width: 8),
-        ],
+      final currentSession =
+          await _sessionService.getCurrentSession();
+
+      if (currentSession != null) {
+        type =
+            currentSession['type']?.toString();
+
+        sessionId =
+            currentSession['sessionId']?.toString();
+      }
+
+      // ------------------------------------------------------
+      // Default type
+      // ------------------------------------------------------
+
+      type ??= 'before_class';
+
+      // ------------------------------------------------------
+      // Emotion Data
+      // ------------------------------------------------------
+
+      emotionData =
+          await _emotionService.getEmotionSummaryForAI(
+        subjectCode: _subject.subjectCode,
+        date: selectedDate,
+        type: type,
+      );
+
+      debugPrint(
+        '========== EMOTION DATA FOR AI ==========',
+      );
+
+      debugPrint(
+        emotionData.toString(),
+      );
+
+      debugPrint(
+        '========== CHAT CONTEXT ==========',
+      );
+
+      debugPrint(
+        'subjectCode: ${_subject.subjectCode}',
+      );
+
+      debugPrint(
+        'sessionId: $sessionId',
+      );
+
+      debugPrint(
+        'type: $type',
+      );
+
+      debugPrint(
+        '==================================',
+      );
+    } catch (error) {
+      debugPrint(
+        'ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $error',
+      );
+    }
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ChatScreen(
+            emotionData: emotionData,
+
+            // สำคัญ: เก็บไว้เหมือนโค้ด 1
+            subjectCode: _subject.subjectCode,
+
+            sessionId: sessionId,
+          );
+        },
       ),
+    );
+  }
 
-      // Body
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [Color(0xff21194A), Color(0xff141126), backgroundColor],
-          ),
-        ),
+  // ==========================================================
+  // Subject Management
+  // ==========================================================
 
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+  Future<void> _showSubjectManagement() async {
+    final action =
+        await showModalBottomSheet<
+            _SubjectManagementAction>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor:
+          Colors.black.withOpacity(0.50),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding:
+                const EdgeInsets.fromLTRB(
+              20,
+              11,
+              20,
+              24,
+            ),
+            decoration:
+                const BoxDecoration(
+              color: Color(0xFF19162A),
+              borderRadius:
+                  BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            child: Column(
+              mainAxisSize:
+                  MainAxisSize.min,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration:
+                        BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius:
+                          BorderRadius.circular(
+                        10,
+                      ),
+                    ),
+                  ),
+                ),
 
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Subject Header
-              _subjectCard(),
+                const SizedBox(height: 18),
 
-              const SizedBox(height: 20),
+                const Text(
+                  'จัดการรายวิชา',
+                  style: TextStyle(
+                    color: _DashboardColors
+                        .primaryText,
+                    fontSize: 18,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
 
-              // Dashboard Title
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "ภาพรวมอารมณ์ของนักศึกษา",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+
+                Text(
+                  '${_subject.subjectName} · ${_subject.subjectCode}',
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _DashboardColors
+                        .faintText,
+                    fontSize: 11,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                _managementActionTile(
+                  icon: Icons.edit_outlined,
+                  title:
+                      'แก้ไขข้อมูลรายวิชา',
+                  subtitle:
+                      'ชื่อวิชา รหัส ปีการศึกษา และภาคเรียน',
+                  onTap: () {
+                    Navigator.pop(
+                      sheetContext,
+                      _SubjectManagementAction
+                          .edit,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 10),
+
+                _managementActionTile(
+                  icon:
+                      Icons.delete_outline_rounded,
+                  title: 'ลบรายวิชา',
+                  subtitle:
+                      'นำรายวิชานี้ออกจากรายการของฉัน',
+                  destructive: true,
+                  onTap: () {
+                    Navigator.pop(
+                      sheetContext,
+                      _SubjectManagementAction
+                          .delete,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(
+                        sheetContext,
+                      );
+                    },
+                    style:
+                        OutlinedButton.styleFrom(
+                      foregroundColor:
+                          _DashboardColors
+                              .secondaryText,
+                      side:
+                          const BorderSide(
+                        color: _DashboardColors
+                            .buttonBorder,
+                      ),
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(
+                          13,
                         ),
                       ),
-
-                      SizedBox(height: 4),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 15),
-
-              // Emotion Dashboard
-              SizedBox(
-                height: 680,
-
-                child: PageView(
-                  children: [
-                    _emotionCard(
-                      "ก่อนเรียน",
-                      beforeStudentCount,
-                      beforePositivePercentage,
                     ),
-
-                    _emotionCard(
-                      "หลังเรียน",
-                      afterStudentCount,
-                      afterPositivePercentage,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // AI Recommendation
-              _aiRecommendation(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Subject Card
-
-  Widget _subjectCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xff30256B), Color(0xff1B1830)],
-        ),
-
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-
-        boxShadow: [
-          BoxShadow(
-            color: purple.withOpacity(0.12),
-            blurRadius: 25,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              // ไอคอนรายวิชา
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: purple.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Icon(
-                  Icons.school_outlined,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-
-              const SizedBox(width: 14),
-
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "ข้อมูลรายวิชา",
-                      style: TextStyle(color: Colors.white70, fontSize: 18),
-                    ),
-
-                    SizedBox(height: 3),
-                  ],
-                ),
-              ),
-
-              // ปุ่ม Active Classroom
-              GestureDetector(
-                onTap: _isLoading
-                    ? null
-                    : (_isClassActive ? _endClassroom : _startClassroom),
-
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-
-                  width: 58,
-                  height: 32,
-
-                  padding: const EdgeInsets.all(4),
-
-                  decoration: BoxDecoration(
-                    color: _isClassActive
-                        ? Colors.green
-                        : Colors.white.withOpacity(0.12),
-
-                    borderRadius: BorderRadius.circular(20),
-
-                    border: Border.all(
-                      color: _isClassActive
-                          ? Colors.greenAccent
-                          : Colors.white.withOpacity(0.1),
-                    ),
-                  ),
-
-                  child: AnimatedAlign(
-                    duration: const Duration(milliseconds: 250),
-
-                    alignment: _isClassActive
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-
-                    child: Container(
-                      width: 24,
-                      height: 24,
-
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-
-                      child: _isLoading
-                          ? const Padding(
-                              padding: EdgeInsets.all(6),
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              _isClassActive
-                                  ? Icons.play_arrow
-                                  : Icons.power_settings_new,
-                              size: 14,
-                              color: _isClassActive ? purple : Colors.black54,
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 22),
-
-          // Subject Name
-          Text(
-            widget.subject.subjectName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          // Information
-          Row(
-            children: [
-              _infoItem(Icons.tag, widget.subject.subjectCode),
-
-              const SizedBox(width: 20),
-
-              _infoItem(Icons.school_outlined, "ปี ${widget.subject.year}"),
-
-              const SizedBox(width: 20),
-
-              _infoItem(
-                Icons.calendar_month_outlined,
-                "เทอม ${widget.subject.semester}",
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // Info Item
-  // =====================================================
-
-  Widget _infoItem(IconData icon, String text) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white54, size: 16),
-
-          const SizedBox(width: 6),
-
-          Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // Emotion Card
-  // =====================================================
-
-  Widget _emotionCard(String title, int studentCount, int positivePercentage) {
-    return Container(
-      margin: const EdgeInsets.only(right: 5),
-
-      padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // =========================
-          // Header
-          // =========================
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Summary
-          Row(
-            children: [
-              _summaryItem(
-                "Students",
-                studentCount.toString(),
-                Icons.people_outline,
-              ),
-
-              const SizedBox(width: 10),
-
-              _summaryItem(
-                "Positive",
-                "$positivePercentage%",
-                Icons.sentiment_satisfied_alt_outlined,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 15),
-
-          // Doughnut Chart
-          Expanded(
-            child: Container(
-              width: double.infinity,
-
-              padding: const EdgeInsets.all(15),
-
-              decoration: BoxDecoration(
-                color: chartColor,
-                borderRadius: BorderRadius.circular(18),
-              ),
-
-              child: EmotionDonutChart(
-                emotionData: title == 'ก่อนเรียน'
-                    ? beforeEmotionDistribution
-                    : afterEmotionDistribution,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 15),
-
-          // =========================
-          // Bar Chart
-          // =========================
-          Expanded(
-            child: Container(
-              width: double.infinity,
-
-              padding: const EdgeInsets.all(15),
-
-              decoration: BoxDecoration(
-                color: chartColor,
-                borderRadius: BorderRadius.circular(18),
-              ),
-
-              child: _emotionTrendChart(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // Summary Item
-  // =====================================================
-
-  Widget _summaryItem(String title, String value, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-
-        decoration: BoxDecoration(
-          color: chartColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-
-        child: Row(
-          children: [
-            Icon(icon, color: purple, size: 22),
-
-            const SizedBox(width: 10),
-
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-
-                const SizedBox(height: 3),
-
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+                    child:
+                        const Text('ยกเลิก'),
                   ),
                 ),
               ],
             ),
-          ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) {
+      return;
+    }
+
+    switch (action) {
+      case _SubjectManagementAction.edit:
+        await _showEditSubjectSheet();
+        break;
+
+      case _SubjectManagementAction.delete:
+        await _confirmDeleteSubject();
+        break;
+    }
+  }
+
+  // ==========================================================
+  // Management Action Tile
+  // ==========================================================
+
+  Widget _managementActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool destructive = false,
+  }) {
+    final color = destructive
+        ? _DashboardColors.danger
+        : _DashboardColors.accent;
+
+    final background = destructive
+        ? const Color(0x1FFF5A5A)
+        : _DashboardColors.accentSurface;
+
+    return Material(
+      color: _DashboardColors.buttonSurface,
+      borderRadius:
+          BorderRadius.circular(15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius:
+            BorderRadius.circular(15),
+        child: Container(
+          constraints:
+              const BoxConstraints(
+            minHeight: 68,
+          ),
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 13,
+            vertical: 11,
+          ),
+          decoration:
+              BoxDecoration(
+            border: Border.all(
+              color: _DashboardColors
+                  .buttonBorder,
+            ),
+            borderRadius:
+                BorderRadius.circular(15),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment:
+                    Alignment.center,
+                decoration:
+                    BoxDecoration(
+                  color: background,
+                  borderRadius:
+                      BorderRadius.circular(
+                    12,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: destructive
+                            ? color
+                            : _DashboardColors
+                                .primaryText,
+                        fontSize: 14,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: destructive
+                            ? color.withOpacity(
+                                0.70,
+                              )
+                            : _DashboardColors
+                                .faintText,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                color: destructive
+                    ? color
+                    : _DashboardColors
+                        .mutedText,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // AI
-  Widget _aiRecommendation() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+  // ==========================================================
+  // Edit Subject
+  // ==========================================================
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Future<void> _showEditSubjectSheet() async {
+    final nameController =
+        TextEditingController(
+      text: _subject.subjectName,
+    );
 
-        children: [
-          Row(
-            children: [
-              const SizedBox(width: 14),
+    final codeController =
+        TextEditingController(
+      text: _subject.subjectCode,
+    );
 
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final yearController =
+        TextEditingController(
+      text: _subject.year,
+    );
 
-                children: [SizedBox(height: 3)],
-              ),
-            ],
-          ),
+    final semesterController =
+        TextEditingController(
+      text: _subject.semester,
+    );
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: 170,
-              height: 52,
+    String? errorMessage;
 
-              child: ElevatedButton.icon(
-                onPressed: openChatbot,
+    final updatedSubject =
+        await showModalBottomSheet<Subject>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor:
+          Colors.transparent,
+      barrierColor:
+          Colors.black.withOpacity(0.50),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (
+            context,
+            setSheetState,
+          ) {
+            void saveSubject() {
+              final name =
+                  nameController.text.trim();
 
-                icon: const Icon(Icons.auto_awesome, size: 20),
+              final code =
+                  codeController.text.trim();
 
-                label: const Text(
-                  "ไปยังแชทบอท",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              final year =
+                  yearController.text.trim();
+
+              final semester =
+                  semesterController.text.trim();
+
+              if (name.isEmpty ||
+                  code.isEmpty ||
+                  year.isEmpty ||
+                  semester.isEmpty) {
+                setSheetState(() {
+                  errorMessage =
+                      'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+                });
+
+                return;
+              }
+
+              Navigator.pop(
+                sheetContext,
+                Subject(
+                  subjectName: name,
+                  subjectCode: code,
+                  year: year,
+                  semester: semester,
                 ),
+              );
+            }
 
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: purple,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+            return Padding(
+              padding:
+                  EdgeInsets.only(
+                bottom: MediaQuery.of(
+                  sheetContext,
+                ).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  constraints:
+                      BoxConstraints(
+                    maxHeight:
+                        MediaQuery.of(
+                              sheetContext,
+                            ).size.height *
+                            0.92,
+                  ),
+                  padding:
+                      const EdgeInsets.fromLTRB(
+                    20,
+                    11,
+                    20,
+                    24,
+                  ),
+                  decoration:
+                      const BoxDecoration(
+                    color: Color(0xFF19162A),
+                    borderRadius:
+                        BorderRadius.vertical(
+                      top: Radius.circular(
+                        28,
+                      ),
+                    ),
+                  ),
+                  child:
+                      SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize:
+                          MainAxisSize.min,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 4,
+                            decoration:
+                                BoxDecoration(
+                              color:
+                                  Colors.white24,
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(
+                                10,
+                              ),
+                            ),
+                          ),
+                        ),
 
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                        const SizedBox(
+                          height: 18,
+                        ),
+
+                        const Text(
+                          'แก้ไขข้อมูลรายวิชา',
+                          style: TextStyle(
+                            color:
+                                _DashboardColors
+                                    .primaryText,
+                            fontSize: 18,
+                            fontWeight:
+                                FontWeight.w500,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 4,
+                        ),
+
+                        const Text(
+                          'แก้เฉพาะข้อมูลที่ต้องการเปลี่ยน',
+                          style: TextStyle(
+                            color:
+                                _DashboardColors
+                                    .faintText,
+                            fontSize: 11,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 18,
+                        ),
+
+                        _subjectTextField(
+                          label: 'ชื่อวิชา',
+                          controller:
+                              nameController,
+                        ),
+
+                        const SizedBox(
+                          height: 12,
+                        ),
+
+                        _subjectTextField(
+                          label: 'รหัสวิชา',
+                          controller:
+                              codeController,
+                        ),
+
+                        const SizedBox(
+                          height: 12,
+                        ),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child:
+                                  _subjectTextField(
+                                label:
+                                    'ปีการศึกษา',
+                                controller:
+                                    yearController,
+                              ),
+                            ),
+
+                            const SizedBox(
+                              width: 10,
+                            ),
+
+                            Expanded(
+                              child:
+                                  _subjectTextField(
+                                label:
+                                    'ภาคเรียน',
+                                controller:
+                                    semesterController,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        if (errorMessage !=
+                            null) ...[
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          Text(
+                            errorMessage!,
+                            style:
+                                const TextStyle(
+                              color:
+                                  _DashboardColors
+                                      .danger,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(
+                          height: 20,
+                        ),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 44,
+                                child:
+                                    OutlinedButton(
+                                  onPressed:
+                                      () {
+                                    Navigator.pop(
+                                      sheetContext,
+                                    );
+                                  },
+                                  style:
+                                      OutlinedButton
+                                          .styleFrom(
+                                    foregroundColor:
+                                        _DashboardColors
+                                            .secondaryText,
+                                    side:
+                                        const BorderSide(
+                                      color:
+                                          _DashboardColors
+                                              .buttonBorder,
+                                    ),
+                                    shape:
+                                        RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius
+                                              .circular(
+                                        13,
+                                      ),
+                                    ),
+                                  ),
+                                  child:
+                                      const Text(
+                                    'ยกเลิก',
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(
+                              width: 10,
+                            ),
+
+                            Expanded(
+                              flex: 2,
+                              child: SizedBox(
+                                height: 44,
+                                child:
+                                    ElevatedButton(
+                                  onPressed:
+                                      saveSubject,
+                                  style:
+                                      ElevatedButton
+                                          .styleFrom(
+                                    elevation: 0,
+                                    backgroundColor:
+                                        _DashboardColors
+                                            .accent,
+                                    foregroundColor:
+                                        _DashboardColors
+                                            .primaryText,
+                                    shape:
+                                        RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius
+                                              .circular(
+                                        13,
+                                      ),
+                                    ),
+                                  ),
+                                  child:
+                                      const Text(
+                                    'บันทึกการแก้ไข',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    codeController.dispose();
+    yearController.dispose();
+    semesterController.dispose();
+
+    if (!mounted ||
+        updatedSubject == null) {
+      return;
+    }
+
+    setState(() {
+      _subject = updatedSubject;
+    });
+
+    widget.onSubjectUpdated?.call(
+      updatedSubject,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'บันทึกข้อมูลรายวิชาแล้ว',
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Subject TextField
+  // ==========================================================
+
+  Widget _subjectTextField({
+    required String label,
+    required TextEditingController controller,
+  }) {
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color:
+                _DashboardColors.secondaryText,
+            fontSize: 11,
+          ),
+        ),
+
+        const SizedBox(height: 6),
+
+        SizedBox(
+          height: 44,
+          child: TextField(
+            controller: controller,
+            cursorColor:
+                _DashboardColors.accent,
+            style: const TextStyle(
+              color:
+                  _DashboardColors.primaryText,
+              fontSize: 13,
+            ),
+            decoration:
+                InputDecoration(
+              filled: true,
+              fillColor:
+                  _DashboardColors
+                      .buttonSurface,
+              contentPadding:
+                  const EdgeInsets.symmetric(
+                horizontal: 12,
+              ),
+              enabledBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(
+                  11,
+                ),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      _DashboardColors
+                          .buttonBorder,
+                ),
+              ),
+              border:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(
+                  11,
+                ),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      _DashboardColors
+                          .buttonBorder,
+                ),
+              ),
+              focusedBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(
+                  11,
+                ),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      _DashboardColors
+                          .accent,
+                  width: 1.3,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================================
+  // Delete Subject
+  // ==========================================================
+
+  Future<void> _confirmDeleteSubject() async {
+    final confirmed =
+        await showDialog<bool>(
+      context: context,
+      barrierColor:
+          Colors.black.withOpacity(0.58),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor:
+              const Color(0xFF211C32),
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(20),
+            side: const BorderSide(
+              color:
+                  _DashboardColors
+                      .buttonBorder,
+            ),
+          ),
+          icon: Container(
+            width: 48,
+            height: 48,
+            alignment:
+                Alignment.center,
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(0x1FFF5A5A),
+              borderRadius:
+                  BorderRadius.circular(
+                14,
+              ),
+            ),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              color:
+                  _DashboardColors.danger,
+            ),
+          ),
+          title: const Text(
+            'ลบรายวิชานี้?',
+            style: TextStyle(
+              color:
+                  _DashboardColors
+                      .primaryText,
+              fontSize: 18,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+          content: Text(
+            'รายวิชา “${_subject.subjectName}” จะถูกนำออกจากหน้ารายวิชาของฉัน และไม่สามารถย้อนกลับจากหน้านี้ได้',
+            textAlign:
+                TextAlign.center,
+            style: const TextStyle(
+              color:
+                  _DashboardColors
+                      .secondaryText,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          actionsAlignment:
+              MainAxisAlignment.center,
+          actions: [
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
+              },
+              style:
+                  OutlinedButton.styleFrom(
+                foregroundColor:
+                    _DashboardColors
+                        .secondaryText,
+                side:
+                    const BorderSide(
+                  color:
+                      _DashboardColors
+                          .buttonBorder,
+                ),
+              ),
+              child:
+                  const Text('ยกเลิก'),
+            ),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
+              },
+              style:
+                  ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor:
+                    _DashboardColors
+                        .dangerButton,
+                foregroundColor:
+                    Colors.white,
+              ),
+              child:
+                  const Text('ลบรายวิชา'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted ||
+        confirmed != true) {
+      return;
+    }
+
+    // ถ้ามีห้องเรียนเปิดอยู่
+    // ให้ปิด Session ก่อน
+    if (_isClassActive &&
+        _sessionId != null) {
+      try {
+        await _sessionService
+            .endSession(
+          _sessionId!,
+        );
+      } catch (error) {
+        debugPrint(
+          'ปิด Session ก่อนลบรายวิชาไม่สำเร็จ: $error',
+        );
+      }
+    }
+
+    if (!mounted) return;
+
+    widget.onSubjectDeleted?.call();
+
+    Navigator.pop(context);
+  }
+
+  // ==========================================================
+  // BUILD
+  // ==========================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor:
+          _DashboardColors.background,
+
+      body: DecoratedBox(
+        decoration:
+            const BoxDecoration(
+          gradient: RadialGradient(
+            center:
+                Alignment(0.55, -1.05),
+            radius: 1.15,
+            colors: [
+              Color(0xFF29344D),
+              Color(0xFF19142E),
+              _DashboardColors
+                  .background,
+            ],
+            stops: [
+              0,
+              0.35,
+              1,
+            ],
+          ),
+        ),
+
+        child: SafeArea(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding:
+                    const EdgeInsets.fromLTRB(
+                  20,
+                  0,
+                  20,
+                  30,
+                ),
+
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+
+                  children: [
+                    // Header
+                    _buildHeader(),
+
+                    const SizedBox(
+                      height: 6,
+                    ),
+
+                    // Course
+                    _buildCourseCard(),
+
+                    const SizedBox(
+                      height: 17,
+                    ),
+
+                    const _SectionLabel(
+                      'ภาพรวมอารมณ์',
+                    ),
+
+                    const SizedBox(
+                      height: 10,
+                    ),
+
+                    // ==================================================
+                    // สำคัญ:
+                    // ยังคงใช้ PageView แบบโค้ด 1
+                    // เพื่อสลับ ก่อนเรียน / หลังเรียน
+                    // ==================================================
+
+                    SizedBox(
+                      height: 680,
+
+                      child: PageView(
+                        children: [
+                          _emotionCard(
+                            title: 'ก่อนเรียน',
+                            studentCount:
+                                beforeStudentCount,
+                            positivePercentage:
+                                beforePositivePercentage,
+                            emotionData:
+                                beforeEmotionDistribution,
+                          ),
+
+                          _emotionCard(
+                            title: 'หลังเรียน',
+                            studentCount:
+                                afterStudentCount,
+                            positivePercentage:
+                                afterPositivePercentage,
+                            emotionData:
+                                afterEmotionDistribution,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 15,
+                    ),
+
+                    // Engagement
+                    const _SectionLabel(
+                      'การมีส่วนร่วม',
+                    ),
+
+                    const SizedBox(
+                      height: 9,
+                    ),
+
+                    _buildEngagementCard(),
+
+                    const SizedBox(
+                      height: 15,
+                    ),
+
+                    // Bottom
+                    _buildBottomActions(),
+                  ],
+                ),
+              ),
+
+              if (_isLoadingHistory)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child:
+                      LinearProgressIndicator(
+                    minHeight: 2,
+                    color:
+                        _DashboardColors
+                            .accent,
+                    backgroundColor:
+                        Colors.transparent,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Header
+  // ==========================================================
+
+  Widget _buildHeader() {
+    final history =
+        _selectedSessions.isEmpty
+            ? ''
+            : ' · ${_selectedSessions.length} คาบ';
+
+    return SizedBox(
+      height: 56,
+
+      child: Row(
+        children: [
+          SizedBox(
+            width: 75,
+
+            child: Align(
+              alignment:
+                  Alignment.centerLeft,
+
+              child: _SquareIconButton(
+                icon:
+                    Icons.arrow_back_ios_new_rounded,
+                onPressed: () {
+                  Navigator.pop(
+                    context,
+                  );
+                },
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment
+                      .center,
+
+              children: [
+                const Text(
+                  'อารมณ์คาบเรียนวันนี้',
+                  style: TextStyle(
+                    color:
+                        _DashboardColors
+                            .primaryText,
+                    fontSize: 16,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 3,
+                ),
+
+                Text(
+                  '${_formatThaiDate(_selectedDate ?? DateTime.now())}$history',
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .faintText,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(
+            width: 75,
+
+            child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.end,
+
+              children: [
+                _SquareIconButton(
+                  icon:
+                      Icons.calendar_month_outlined,
+                  accent: true,
+                  onPressed:
+                      _selectDate,
+                ),
+
+                const SizedBox(
+                  width: 7,
+                ),
+
+                _SquareIconButton(
+                  icon:
+                      Icons.more_vert_rounded,
+                  onPressed:
+                      _showSubjectManagement,
+                ),
+              ],
             ),
           ),
         ],
@@ -954,233 +1914,1434 @@ void dispose() {
     );
   }
 
-  // Selected Date Card
-  Widget _thaiCalendarBottomSheet() {
-    DateTime selectedDate = _selectedDate ?? DateTime.now();
+  // ==========================================================
+  // Course Card
+  // ==========================================================
 
-    return StatefulBuilder(
-      builder: (context, setModalState) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
+  Widget _buildCourseCard() {
+    return Container(
+      height: 64,
 
-          decoration: const BoxDecoration(
-            color: Color(0xff19162A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 14,
+      ),
+
+      decoration:
+          _cardDecoration(14),
+
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment:
+                Alignment.center,
+
+            decoration:
+                BoxDecoration(
+              color:
+                  _DashboardColors
+                      .accentSurface,
+              borderRadius:
+                  BorderRadius.circular(
+                10,
+              ),
+            ),
+
+            child: const Text(
+              '🧠',
+              style:
+                  TextStyle(fontSize: 16),
+            ),
           ),
 
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(
+            width: 10,
+          ),
+
+          Expanded(
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
+
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+
+              children: [
+                Text(
+                  _subject.subjectName,
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .primaryText,
+                    fontSize: 13,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 4,
+                ),
+
+                Text(
+                  '${_subject.subjectCode} · ชั้นปี ${_subject.year} · เทอม ${_subject.semester}',
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .faintText,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(
+            width: 8,
+          ),
+
+          // ==================================================
+          // ปุ่มเปิดห้องเรียนแบบโค้ด 2
+          // ==================================================
+
+          InkWell(
+            onTap:
+                _toggleClassroom,
+
+            borderRadius:
+                BorderRadius.circular(
+              10,
+            ),
+
+            child: Container(
+              height: 24,
+
+              padding:
+                  const EdgeInsets.symmetric(
+                horizontal: 10,
+              ),
+
+              decoration:
+                  BoxDecoration(
+                color: _isClassActive
+                    ? _DashboardColors
+                        .greenSurface
+                    : _DashboardColors
+                        .accentSurface,
+
+                borderRadius:
+                    BorderRadius.circular(
+                  10,
+                ),
+              ),
+
+              alignment:
+                  Alignment.center,
+
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child:
+                          CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color:
+                            _DashboardColors
+                                .primaryText,
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize:
+                          MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration:
+                              BoxDecoration(
+                            color:
+                                _isClassActive
+                                    ? _DashboardColors
+                                        .green
+                                    : _DashboardColors
+                                        .accent,
+                            shape:
+                                BoxShape.circle,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          width: 5,
+                        ),
+
+                        Text(
+                          _isClassActive
+                              ? 'กำลังสอน'
+                              : 'เปิดห้อง',
+                          style:
+                              TextStyle(
+                            color:
+                                _isClassActive
+                                    ? _DashboardColors
+                                        .green
+                                    : _DashboardColors
+                                        .accent,
+                            fontSize: 10,
+                            fontWeight:
+                                FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Emotion Card
+  //
+  // โครงสร้างยังเป็น PageView แบบโค้ด 1
+  // แต่ตกแต่งให้ใกล้โค้ด 2
+  // ==========================================================
+
+  Widget _emotionCard({
+    required String title,
+    required int studentCount,
+    required int positivePercentage,
+    required Map<String, int> emotionData,
+  }) {
+    return Container(
+      margin:
+          const EdgeInsets.only(
+        right: 5,
+      ),
+
+      padding:
+          const EdgeInsets.all(18),
+
+      decoration:
+          _cardDecoration(18),
+
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+
+        children: [
+          // ----------------------------------------------------
+          // Header
+          // ----------------------------------------------------
+
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment
+                    .spaceBetween,
+
             children: [
-              // =========================
-              // Drag Handle
-              // =========================
-              Container(
-                width: 45,
-                height: 5,
+              Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
 
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // =========================
-              // Header
-              // =========================
-              Row(
                 children: [
-                  Container(
-                    width: 45,
-                    height: 45,
-
-                    decoration: BoxDecoration(
-                      color: purple.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-
-                    child: const Icon(
-                      Icons.calendar_month_outlined,
-                      color: Colors.white,
+                  Text(
+                    title,
+                    style:
+                        const TextStyle(
+                      color:
+                          _DashboardColors
+                              .primaryText,
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.w500,
                     ),
                   ),
 
-                  const SizedBox(width: 12),
-
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-
-                    children: [
-                      Text(
-                        'เลือกวันที่',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      SizedBox(height: 3),
-
-                      Text(
-                        'ดูข้อมูลการเรียนย้อนหลัง',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    ],
-                  ),
                 ],
-              ),
+              )
+            ],
+          ),
 
-              const SizedBox(height: 25),
+          const SizedBox(
+            height: 16,
+          ),
 
-              // =========================
-              // Selected Date
-              // =========================
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
+          // ----------------------------------------------------
+          // Summary
+          // ----------------------------------------------------
 
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      purple.withOpacity(0.25),
-                      purple.withOpacity(0.08),
-                    ],
-                  ),
-
-                  borderRadius: BorderRadius.circular(16),
-
-                  border: Border.all(color: purple.withOpacity(0.25)),
-                ),
-
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.event_outlined,
-                      color: Colors.white70,
-                      size: 20,
-                    ),
-
-                    const SizedBox(width: 10),
-
-                    Text(
-                      _formatThaiDate(selectedDate),
-
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              Expanded(
+                child:
+                    _summaryItem(
+                  'Students',
+                  studentCount
+                      .toString(),
+                  Icons.people_outline,
                 ),
               ),
 
-              const SizedBox(height: 20),
-
-              // =========================
-              // Calendar
-              // =========================
-              Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.dark(
-                    primary: Color(0xff7C5CFC),
-                    surface: Color(0xff19162A),
-                  ),
-                ),
-
-                child: CalendarDatePicker(
-                  initialDate: selectedDate,
-
-                  firstDate: DateTime(2020),
-
-                  lastDate: DateTime.now(),
-
-                  onDateChanged: (date) {
-                    setModalState(() {
-                      selectedDate = date;
-                    });
-                  },
-                ),
+              const SizedBox(
+                width: 10,
               ),
 
-              const SizedBox(height: 10),
-
-              // =========================
-              // Buttons
-              // =========================
-              Row(
-                children: [
-                  // วันนี้
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setModalState(() {
-                          selectedDate = DateTime.now();
-                        });
-                      },
-
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-
-                        side: BorderSide(color: Colors.white.withOpacity(0.15)),
-
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-
-                      child: const Text('ยกเลิก'),
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  // เลือกวันที่
-                  Expanded(
-                    flex: 2,
-
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context, selectedDate);
-                      },
-
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: purple,
-
-                        foregroundColor: Colors.white,
-
-                        elevation: 0,
-
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-
-                      child: const Text(
-                        'ดูข้อมูล',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child:
+                    _summaryItem(
+                  'Positive',
+                  '$positivePercentage%',
+                  Icons
+                      .sentiment_satisfied_alt_outlined,
+                ),
               ),
             ],
+          ),
+
+          const SizedBox(
+            height: 14,
+          ),
+
+          // ----------------------------------------------------
+          // Doughnut Chart
+          // ----------------------------------------------------
+
+          Expanded(
+            child: Container(
+              width:
+                  double.infinity,
+
+              padding:
+                  const EdgeInsets.all(
+                14,
+              ),
+
+              decoration:
+                  BoxDecoration(
+                color:
+                    _DashboardColors
+                        .innerSurface,
+                borderRadius:
+                    BorderRadius.circular(
+                  16,
+                ),
+
+                border: Border.all(
+                  color:
+                      _DashboardColors
+                          .surfaceBorder,
+                ),
+              ),
+
+              child:
+                  EmotionDonutChart(
+                emotionData:
+                    emotionData,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height: 14,
+          ),
+
+          // ----------------------------------------------------
+          // Trend Chart
+          // ----------------------------------------------------
+
+          Expanded(
+            child: Container(
+              width:
+                  double.infinity,
+
+              padding:
+                  const EdgeInsets.all(
+                14,
+              ),
+
+              decoration:
+                  BoxDecoration(
+                color:
+                    _DashboardColors
+                        .innerSurface,
+                borderRadius:
+                    BorderRadius.circular(
+                  16,
+                ),
+
+                border: Border.all(
+                  color:
+                      _DashboardColors
+                          .surfaceBorder,
+                ),
+              ),
+
+              child:
+                  _emotionTrendChart(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Summary Item
+  // ==========================================================
+
+  Widget _summaryItem(
+    String title,
+    String value,
+    IconData icon,
+  ) {
+    return Container(
+      padding:
+          const EdgeInsets.all(
+        12,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            _DashboardColors
+                .innerSurface,
+        borderRadius:
+            BorderRadius.circular(
+          14,
+        ),
+        border: Border.all(
+          color:
+              _DashboardColors
+                  .surfaceBorder,
+        ),
+      ),
+
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment:
+                Alignment.center,
+
+            decoration:
+                BoxDecoration(
+              color:
+                  _DashboardColors
+                      .accentSurface,
+              borderRadius:
+                  BorderRadius.circular(
+                9,
+              ),
+            ),
+
+            child: Icon(
+              icon,
+              color:
+                  _DashboardColors
+                      .accent,
+              size: 18,
+            ),
+          ),
+
+          const SizedBox(
+            width: 9,
+          ),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+
+              children: [
+                Text(
+                  title,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .faintText,
+                    fontSize: 10,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 2,
+                ),
+
+                Text(
+                  value,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .primaryText,
+                    fontSize: 16,
+                    fontWeight:
+                        FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Emotion Trend Chart
+  //
+  // หลักการคำนวณ = โค้ด 1
+  // Score = -1 ถึง +1
+  //
+  // แต่หน้าตากราฟ = ปรับให้ใกล้โค้ด 2
+  // ==========================================================
+
+  Widget _emotionTrendChart() {
+    final beforeScore =
+        _calculateEmotionScore(
+      beforeEmotionDistribution,
+    );
+
+    final afterScore =
+        _calculateEmotionScore(
+      afterEmotionDistribution,
+    );
+
+    final hasBefore =
+        beforeEmotionDistribution
+            .isNotEmpty;
+
+    final hasAfter =
+        afterEmotionDistribution
+            .isNotEmpty;
+
+    if (!hasBefore) {
+      return const Center(
+        child: Text(
+          'ยังไม่มีข้อมูล',
+          style: TextStyle(
+            color:
+                _DashboardColors
+                    .faintText,
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
+    return LineChart(
+      LineChartData(
+        minY: -1,
+        maxY: 1,
+
+        // =====================================================
+        // Grid
+        // =====================================================
+
+        gridData: FlGridData(
+          show: true,
+          horizontalInterval: 0.5,
+          verticalInterval: 1,
+
+          getDrawingHorizontalLine:
+              (value) {
+            return FlLine(
+              color: Colors.white
+                  .withOpacity(0.06),
+              strokeWidth: 1,
+              dashArray: [5, 5],
+            );
+          },
+
+          getDrawingVerticalLine:
+              (value) {
+            return FlLine(
+              color: Colors.white
+                  .withOpacity(0.04),
+              strokeWidth: 1,
+              dashArray: [5, 5],
+            );
+          },
+        ),
+
+        // =====================================================
+        // Titles
+        // =====================================================
+
+        titlesData:
+            FlTitlesData(
+          leftTitles:
+              AxisTitles(
+            sideTitles:
+                SideTitles(
+              showTitles: true,
+              reservedSize: 42,
+              interval: 0.5,
+
+              getTitlesWidget:
+                  (value, meta) {
+                String text;
+
+                switch (
+                    value
+                        .toStringAsFixed(
+                      1,
+                    )) {
+                  case '1.0':
+                    text = 'ดีมาก';
+                    break;
+
+                  case '0.5':
+                    text = 'ดี';
+                    break;
+
+                  case '0.0':
+                    text = 'เฉยๆ';
+                    break;
+
+                  case '-0.5':
+                    text = 'แย่';
+                    break;
+
+                  case '-1.0':
+                    text = 'แย่มาก';
+                    break;
+
+                  default:
+                    return const SizedBox();
+                }
+
+                return Text(
+                  text,
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .mutedText,
+                    fontSize: 9,
+                  ),
+                );
+              },
+            ),
+          ),
+
+          bottomTitles:
+              AxisTitles(
+            sideTitles:
+                SideTitles(
+              showTitles: true,
+              reservedSize: 25,
+
+              getTitlesWidget:
+                  (value, meta) {
+                if (value == 0) {
+                  return const Text(
+                    'ก่อนเรียน',
+                    style:
+                        TextStyle(
+                      color:
+                          _DashboardColors
+                              .mutedText,
+                      fontSize: 9,
+                    ),
+                  );
+                }
+
+                if (value == 1) {
+                  return const Text(
+                    'หลังเรียน',
+                    style:
+                        TextStyle(
+                      color:
+                          _DashboardColors
+                              .mutedText,
+                      fontSize: 9,
+                    ),
+                  );
+                }
+
+                return const SizedBox();
+              },
+            ),
+          ),
+
+          topTitles:
+              const AxisTitles(
+            sideTitles:
+                SideTitles(
+              showTitles: false,
+            ),
+          ),
+
+          rightTitles:
+              const AxisTitles(
+            sideTitles:
+                SideTitles(
+              showTitles: false,
+            ),
+          ),
+        ),
+
+        // =====================================================
+        // Line
+        // =====================================================
+
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              FlSpot(
+                0,
+                beforeScore,
+              ),
+
+              if (hasAfter)
+                FlSpot(
+                  1,
+                  afterScore,
+                ),
+            ],
+
+            isCurved: true,
+
+            curveSmoothness:
+                0.25,
+
+            color:
+                _DashboardColors
+                    .primaryText,
+
+            barWidth: 2.5,
+
+            isStrokeCapRound: true,
+
+            dotData:
+                FlDotData(
+              show: true,
+
+              getDotPainter:
+                  (
+                spot,
+                percent,
+                barData,
+                index,
+              ) {
+                return FlDotCirclePainter(
+                  radius: 5,
+
+                  color:
+                      index == 0
+                          ? _DashboardColors
+                              .accent
+                          : _DashboardColors
+                              .green,
+
+                  strokeWidth: 2,
+
+                  strokeColor:
+                      Colors.white,
+                );
+              },
+            ),
+
+            belowBarData:
+                BarAreaData(
+              show: true,
+              color:
+                  _DashboardColors
+                      .accent
+                      .withOpacity(
+                0.07,
+              ),
+            ),
+          ),
+        ],
+
+        // =====================================================
+        // Border
+        // =====================================================
+
+        borderData:
+            FlBorderData(
+          show: true,
+          border: Border(
+            left: BorderSide(
+              color: Colors.white
+                  .withOpacity(0.10),
+            ),
+            bottom: BorderSide(
+              color: Colors.white
+                  .withOpacity(0.10),
+            ),
+          ),
+        ),
+
+        // =====================================================
+        // Tooltip
+        // =====================================================
+
+        lineTouchData:
+            LineTouchData(
+          enabled: true,
+
+          touchTooltipData:
+              LineTouchTooltipData(
+            getTooltipItems:
+                (touchedSpots) {
+              return touchedSpots
+                  .map(
+                (spot) {
+                  String label;
+
+                  if (spot.y > 0) {
+                    label =
+                        'อารมณ์ด้านบวก';
+                  } else if (spot.y ==
+                      0) {
+                    label =
+                        'อารมณ์สมดุล';
+                  } else {
+                    label =
+                        'อารมณ์ด้านลบ';
+                  }
+
+                  return LineTooltipItem(
+                    '$label\nคะแนน ${spot.y.toStringAsFixed(1)}',
+                    const TextStyle(
+                      color:
+                          Colors.white,
+                      fontWeight:
+                          FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  );
+                },
+              ).toList();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Engagement Card
+  // ==========================================================
+
+  Widget _buildEngagementCard() {
+    final pending =
+        _totalStudents -
+            _completedStudents;
+
+    return Container(
+      height: 84,
+
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 16,
+      ),
+
+      decoration:
+          _cardDecoration(16),
+
+      child: Row(
+        children: [
+          SizedBox(
+            width: 54,
+            height: 54,
+
+            child: Stack(
+              fit: StackFit.expand,
+
+              children: [
+                CircularProgressIndicator(
+                  value:
+                      _engagementPercentage /
+                          100,
+
+                  strokeWidth: 5,
+
+                  backgroundColor:
+                      _DashboardColors
+                          .buttonBorder,
+
+                  color:
+                      _DashboardColors
+                          .accent,
+                ),
+
+                Center(
+                  child: Text(
+                    '$_engagementPercentage%',
+                    style:
+                        const TextStyle(
+                      color:
+                          _DashboardColors
+                              .primaryText,
+                      fontSize: 12,
+                      fontWeight:
+                          FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(
+            width: 16,
+          ),
+
+          Expanded(
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment
+                      .center,
+
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+
+              children: [
+                Text(
+                  _totalStudents == 0
+                      ? 'ยังไม่มีข้อมูลการมีส่วนร่วม'
+                      : '$_completedStudents จาก $_totalStudents คนกดครบ',
+
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .primaryText,
+                    fontSize: 12,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 5,
+                ),
+
+                Text(
+                  _totalStudents == 0
+                      ? 'ข้อมูลจะแสดงเมื่อนักเรียนบันทึกอารมณ์'
+                      : pending == 0
+                          ? 'นักเรียนกดบันทึกครบแล้ว'
+                          : '$pending คนยังบันทึกข้อมูลไม่ครบ',
+
+                  style:
+                      const TextStyle(
+                    color:
+                        _DashboardColors
+                            .faintText,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const _MiniBars(),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Bottom Actions
+  // ==========================================================
+
+  Widget _buildBottomActions() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+
+          child: SizedBox(
+            height: 46,
+
+            child:
+                OutlinedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'ระบบส่งออก PDF ยังไม่ได้เชื่อมต่อ',
+                    ),
+                  ),
+                );
+              },
+
+              icon: const Icon(
+                Icons
+                    .insert_drive_file_outlined,
+                size: 17,
+              ),
+
+              label:
+                  const Text('PDF'),
+
+              style:
+                  OutlinedButton.styleFrom(
+                foregroundColor:
+                    _DashboardColors
+                        .secondaryText,
+
+                backgroundColor:
+                    _DashboardColors
+                        .buttonSurface,
+
+                side:
+                    const BorderSide(
+                  color:
+                      _DashboardColors
+                          .buttonBorder,
+                ),
+
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(
+          width: 12,
+        ),
+
+        Expanded(
+          flex: 4,
+
+          child: SizedBox(
+            height: 46,
+
+            child:
+                ElevatedButton.icon(
+              onPressed:
+                  _openChatbot,
+
+              icon: const Icon(
+                Icons.layers_outlined,
+                size: 17,
+              ),
+
+              label:
+                  const Text('Analyze'),
+
+              style:
+                  ElevatedButton.styleFrom(
+                elevation: 0,
+
+                backgroundColor:
+                    _DashboardColors
+                        .accent,
+
+                foregroundColor:
+                    _DashboardColors
+                        .primaryText,
+
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================================
+  // Calendar
+  // ==========================================================
+
+  Widget _thaiCalendarBottomSheet() {
+    DateTime selectedDate =
+        _selectedDate ??
+            DateTime.now();
+
+    return StatefulBuilder(
+      builder: (
+        context,
+        setModalState,
+      ) {
+        return SafeArea(
+          top: false,
+
+          child: Container(
+            constraints:
+                BoxConstraints(
+              maxHeight:
+                  MediaQuery.of(
+                        context,
+                      ).size.height *
+                      0.88,
+            ),
+
+            padding:
+                const EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              25,
+            ),
+
+            decoration:
+                const BoxDecoration(
+              color:
+                  Color(0xFF19162A),
+
+              borderRadius:
+                  BorderRadius.vertical(
+                top:
+                    Radius.circular(30),
+              ),
+            ),
+
+            child:
+                SingleChildScrollView(
+              child: Column(
+                mainAxisSize:
+                    MainAxisSize.min,
+
+                children: [
+                  // Handle
+                  Container(
+                    width: 45,
+                    height: 5,
+
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          Colors.white24,
+
+                      borderRadius:
+                          BorderRadius.circular(
+                        10,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+
+                  // Header
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons
+                            .calendar_month_outlined,
+                        color:
+                            _DashboardColors
+                                .accent,
+                      ),
+
+                      SizedBox(
+                        width: 12,
+                      ),
+
+                      Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment
+                                .start,
+                        children: [
+                          Text(
+                            'เลือกวันที่',
+                            style:
+                                TextStyle(
+                              color:
+                                  _DashboardColors
+                                      .primaryText,
+                              fontSize: 20,
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
+                            ),
+                          ),
+
+                          Text(
+                            'ดูข้อมูลการเรียนย้อนหลัง',
+                            style:
+                                TextStyle(
+                              color:
+                                  _DashboardColors
+                                      .faintText,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+
+                  // Selected date
+                  Container(
+                    width:
+                        double.infinity,
+
+                    padding:
+                        const EdgeInsets.all(
+                      14,
+                    ),
+
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          _DashboardColors
+                              .accentSurface,
+
+                      borderRadius:
+                          BorderRadius.circular(
+                        16,
+                      ),
+
+                      border:
+                          Border.all(
+                        color:
+                            _DashboardColors
+                                .accent
+                                .withOpacity(
+                          0.25,
+                        ),
+                      ),
+                    ),
+
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons
+                              .event_outlined,
+                          color:
+                              _DashboardColors
+                                  .secondaryText,
+                          size: 20,
+                        ),
+
+                        const SizedBox(
+                          width: 10,
+                        ),
+
+                        Text(
+                          _formatThaiDate(
+                            selectedDate,
+                          ),
+
+                          style:
+                              const TextStyle(
+                            color:
+                                _DashboardColors
+                                    .primaryText,
+                            fontWeight:
+                                FontWeight
+                                    .w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 10,
+                  ),
+
+                  // Calendar
+                  Theme(
+                    data:
+                        Theme.of(
+                      context,
+                    ).copyWith(
+                      colorScheme:
+                          const ColorScheme
+                              .dark(
+                        primary:
+                            _DashboardColors
+                                .accent,
+                        surface:
+                            Color(
+                          0xFF19162A,
+                        ),
+                      ),
+                    ),
+
+                    child:
+                        CalendarDatePicker(
+                      initialDate:
+                          selectedDate,
+
+                      firstDate:
+                          DateTime(
+                        2020,
+                      ),
+
+                      lastDate:
+                          DateTime.now(),
+
+                      onDateChanged:
+                          (date) {
+                        setModalState(
+                          () {
+                            selectedDate =
+                                date;
+                          },
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 8,
+                  ),
+
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child:
+                            OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(
+                              context,
+                            );
+                          },
+
+                          style:
+                              OutlinedButton
+                                  .styleFrom(
+                            foregroundColor:
+                                _DashboardColors
+                                    .primaryText,
+
+                            side:
+                                const BorderSide(
+                              color:
+                                  _DashboardColors
+                                      .buttonBorder,
+                            ),
+
+                            padding:
+                                const EdgeInsets
+                                    .symmetric(
+                              vertical: 14,
+                            ),
+
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(
+                                14,
+                              ),
+                            ),
+                          ),
+
+                          child:
+                              const Text(
+                            'ยกเลิก',
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: 10,
+                      ),
+
+                      Expanded(
+                        flex: 2,
+
+                        child:
+                            ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(
+                              context,
+                              selectedDate,
+                            );
+                          },
+
+                          style:
+                              ElevatedButton
+                                  .styleFrom(
+                            elevation: 0,
+
+                            backgroundColor:
+                                _DashboardColors
+                                    .accent,
+
+                            foregroundColor:
+                                _DashboardColors
+                                    .primaryText,
+
+                            padding:
+                                const EdgeInsets
+                                    .symmetric(
+                              vertical: 14,
+                            ),
+
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(
+                                14,
+                              ),
+                            ),
+                          ),
+
+                          child:
+                              const Text(
+                            'ดูข้อมูล',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
 
-  String _formatThaiDate(DateTime date) {
+  // ==========================================================
+  // Thai Date
+  // ==========================================================
+
+  String _formatThaiDate(
+    DateTime date,
+  ) {
     const months = [
       'มกราคม',
       'กุมภาพันธ์',
@@ -1196,289 +3357,203 @@ void dispose() {
       'ธันวาคม',
     ];
 
-    final thaiYear = date.year + 543;
-
     return '${date.day} '
         '${months[date.month - 1]} '
-        '$thaiYear';
+        '${date.year + 543}';
   }
-  // build...
 
-  Future<void> openChatbot() async {
-    Map<String, dynamic>? emotionData;
+  // ==========================================================
+  // Card Decoration
+  // ==========================================================
 
-    String? sessionId;
-    String? type;
+  BoxDecoration _cardDecoration(
+    double radius,
+  ) {
+    return BoxDecoration(
+      color:
+          _DashboardColors.surface,
 
-    try {
-      // กรณีเลือกวันที่ย้อนหลัง
-      final selectedDate = _selectedDate ?? DateTime.now();
+      borderRadius:
+          BorderRadius.circular(
+        radius,
+      ),
 
-      // อ่าน Current Session
-      final currentSession = await _sessionService.getCurrentSession();
-
-      if (currentSession != null) {
-        // ดึง type
-        type = currentSession['type']?.toString();
-
-        // ดึง sessionId
-        sessionId = currentSession['sessionId']?.toString();
-      }
-
-      // ถ้าไม่มี type ให้ใช้ before_class เป็นค่าเริ่มต้น
-      type ??= 'before_class';
-
-      // ดึงข้อมูล Emotion
-      emotionData = await _emotionService.getEmotionSummaryForAI(
-        subjectCode: widget.subject.subjectCode,
-        date: selectedDate,
-        type: type,
-      );
-
-      debugPrint('========== EMOTION DATA FOR AI ==========');
-      debugPrint(emotionData.toString());
-
-      debugPrint('========== CHAT CONTEXT ==========');
-      debugPrint('subjectCode: ${widget.subject.subjectCode}');
-      debugPrint('sessionId: $sessionId');
-      debugPrint('type: $type');
-      debugPrint('==================================');
-    } catch (e) {
-      debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $e');
-    }
-
-    if (!mounted) return;
-
-    // เข้า Chatbot ได้เสมอ
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatScreen(
-          emotionData: emotionData,
-          subjectCode: widget.subject.subjectCode,
-          sessionId: sessionId,
-        ),
+      border: Border.all(
+        color:
+            _DashboardColors
+                .surfaceBorder,
       ),
     );
   }
+}
 
-  Widget _emotionTrendChart() {
-    // คะแนนที่คำนวณจริง
-    final beforeScore = _calculateEmotionScore(beforeEmotionDistribution);
+// ============================================================
+// Section Label
+// ============================================================
 
-    final afterScore = _calculateEmotionScore(afterEmotionDistribution);
+class _SectionLabel
+    extends StatelessWidget {
+  final String text;
 
-    final hasBefore = beforeEmotionDistribution.isNotEmpty;
-    final hasAfter = afterEmotionDistribution.isNotEmpty;
+  const _SectionLabel(
+    this.text,
+  );
 
-    // ถ้ายังไม่มีข้อมูลก่อนเรียน
-    if (!hasBefore) {
-      return const Center(
-        child: Text(
-          'ยังไม่มีข้อมูล',
-          style: TextStyle(color: Colors.white54, fontSize: 14),
-        ),
-      );
-    }
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Padding(
+      padding:
+          const EdgeInsets.only(
+        left: 5,
+      ),
 
-    return LineChart(
-      LineChartData(
-        minY: -1,
-        maxY: 1,
-
-        // =========================
-        // Grid
-        // =========================
-        gridData: FlGridData(
-          show: true,
-
-          horizontalInterval: 0.5,
-
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.white.withOpacity(0.12),
-              strokeWidth: 1,
-              dashArray: [5, 5],
-            );
-          },
-
-          verticalInterval: 1,
-
-          getDrawingVerticalLine: (value) {
-            return FlLine(
-              color: Colors.white.withOpacity(0.10),
-              strokeWidth: 1,
-              dashArray: [5, 5],
-            );
-          },
-        ),
-
-        // =========================
-        // แกน X / Y
-        // =========================
-        titlesData: FlTitlesData(
-          // -------------------------
-          // แกน Y
-          // -------------------------
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 65,
-
-              interval: 0.5,
-
-              getTitlesWidget: (value, meta) {
-                String text;
-
-                switch (value.toStringAsFixed(1)) {
-                  case '1.0':
-                    text = 'ดีมาก';
-
-                  case '0.5':
-                    text = 'ดี';
-
-                  case '0.0':
-                    text = 'เฉยๆ';
-
-                  case '-0.5':
-                    text = 'แย่';
-
-                  case '-1.0':
-                    text = 'แย่มาก';
-
-                  default:
-                    return const SizedBox();
-                }
-
-                return Text(
-                  text,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
-                );
-              },
-            ),
-          ),
-
-          // -------------------------
-          // แกน X
-          // -------------------------
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 35,
-
-              getTitlesWidget: (value, meta) {
-                if (value == 0) {
-                  return const Text(
-                    'ก่อนเรียน',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  );
-                }
-
-                if (value == 1) {
-                  return const Text(
-                    'หลังเรียน',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  );
-                }
-
-                return const SizedBox();
-              },
-            ),
-          ),
-
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-
-        // =========================
-        // เส้นกราฟ
-        // =========================
-        lineBarsData: [
-          LineChartBarData(
-            spots: [
-              FlSpot(0, beforeScore),
-
-              // มีเส้นไปหลังเรียนเฉพาะเมื่อมีข้อมูล
-              if (hasAfter) FlSpot(1, afterScore),
-            ],
-
-            isCurved: true,
-
-            curveSmoothness: 0.25,
-
-            color: Colors.white,
-
-            barWidth: 3,
-
-            isStrokeCapRound: true,
-
-            dotData: FlDotData(
-              show: true,
-
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 6,
-                  color: index == 0 ? purple : Colors.green,
-                  strokeWidth: 3,
-                  strokeColor: Colors.white,
-                );
-              },
-            ),
-
-            belowBarData: BarAreaData(
-              show: true,
-              color: purple.withOpacity(0.08),
-            ),
-          ),
-        ],
-
-        // =========================
-        // เส้นกรอบ
-        // =========================
-        borderData: FlBorderData(
-          show: true,
-          border: Border(
-            left: BorderSide(color: Colors.white.withOpacity(0.18)),
-            bottom: BorderSide(color: Colors.white.withOpacity(0.18)),
-          ),
-        ),
-
-        // =========================
-        // จุดสัมผัสกราฟ
-        // =========================
-        lineTouchData: LineTouchData(
-          enabled: true,
-
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((spot) {
-                String label;
-
-                if (spot.y == 1) {
-                  label = 'ดีขึ้นมาก';
-                } else if (spot.y == 0) {
-                  label = 'ไม่เปลี่ยนแปลง';
-                } else {
-                  label = 'แย่ลง';
-                }
-
-                return LineTooltipItem(
-                  label,
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
+      child: Text(
+        text,
+        style:
+            const TextStyle(
+          color:
+              _DashboardColors
+                  .mutedText,
+          fontSize: 10,
+          fontWeight:
+              FontWeight.w500,
+          letterSpacing: 0.7,
         ),
       ),
     );
   }
 }
+
+// ============================================================
+// Square Icon Button
+// ============================================================
+
+class _SquareIconButton
+    extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool accent;
+
+  const _SquareIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.accent = false,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+
+      child: IconButton(
+        padding:
+            EdgeInsets.zero,
+
+        onPressed:
+            onPressed,
+
+        style:
+            IconButton.styleFrom(
+          backgroundColor:
+              accent
+                  ? _DashboardColors
+                      .accentSurface
+                  : _DashboardColors
+                      .buttonSurface,
+
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(
+              10,
+            ),
+          ),
+        ),
+
+        icon: Icon(
+          icon,
+          size: 16,
+          color: accent
+              ? _DashboardColors
+                  .accent
+              : _DashboardColors
+                  .secondaryText,
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// Mini Bars
+// ============================================================
+
+class _MiniBars
+    extends StatelessWidget {
+  const _MiniBars();
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SizedBox(
+      width: 25,
+      height: 30,
+
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .end,
+
+        mainAxisAlignment:
+            MainAxisAlignment
+                .spaceBetween,
+
+        children: [
+          _bar(
+            15,
+            _DashboardColors
+                .accent,
+          ),
+
+          _bar(
+            24,
+            _DashboardColors
+                .cyan,
+          ),
+
+          _bar(
+            20,
+            _DashboardColors
+                .green,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(
+    double height,
+    Color color,
+  ) {
+    return Container(
+      width: 5,
+      height: height,
+
+      decoration:
+          BoxDecoration(
+        color: color,
+        borderRadius:
+            BorderRadius.circular(
+          3,
+        ),
+      ),
+    );
+  }
+}
+

@@ -36,7 +36,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+ 
   int currentIndex = 0;
+
+  // ============================================================
+  // Subjects
+  // ============================================================
 
   List<Subject> subjects = [];
 
@@ -44,9 +49,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final SessionService _sessionService = SessionService();
 
   String? _activeSubjectCode;
+
   bool _isLoadingSubjects = true;
+
   String? _loadError;
+
   String _searchQuery = '';
+
+  // ============================================================
+  // Search
+  // ============================================================
 
   List<Subject> get _filteredSubjects {
     final query = _searchQuery.trim().toLowerCase();
@@ -61,6 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  // ============================================================
+  // Init
+  // ============================================================
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadSubjects();
     _loadCurrentSession();
   }
+
+  // ============================================================
+  // Load Subjects
+  // ============================================================
 
   Future<void> _loadSubjects() async {
     setState(() {
@@ -96,15 +116,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ============================================================
+  // Build
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _HomeColors.background,
 
-      /// ปุ่ม +
+      // ========================================================
+      // Floating Action Button
+      // ========================================================
+
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.endFloat,
+
       floatingActionButton: currentIndex == 0
           ? Padding(
-              padding: const EdgeInsets.only(right: 18, bottom: 12),
+              padding: const EdgeInsets.only(
+                right: 18,
+                bottom: 12,
+              ),
               child: FloatingActionButton(
                 mini: true,
                 backgroundColor: Colors.transparent,
@@ -113,41 +146,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 highlightElevation: 0,
                 hoverElevation: 0,
 
-                // ใช้ withOpacity เพื่อรองรับ Flutter SDK ที่เก่ากว่า
-                splashColor: _HomeColors.accent.withOpacity(0.18),
+                splashColor:
+                    _HomeColors.accent.withOpacity(0.18),
 
                 onPressed: _showAddSubjectDialog,
-                child: const Icon(Icons.add, size: 34),
+
+                child: const Icon(
+                  Icons.add,
+                  size: 34,
+                ),
               ),
             )
           : null,
 
-      /// Bottom Navigation
+      // ========================================================
+      // Bottom Navigation
+      // ========================================================
+
       bottomNavigationBar: _HomeBottomNavigation(
         currentIndex: currentIndex,
         onTap: _onNavigationTap,
       ),
 
-      /// Background Gradient
+      // ========================================================
+      // Background Gradient
+      // ========================================================
+
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment(-0.18, -1.18),
             radius: 1.05,
             colors: [
-              Color(0xFF33265F),
-              Color(0xFF171329),
+              // ใช้สีจากข้อ 2
+              Color(0xFF45337C),
+              Color(0xFF20183A),
               _HomeColors.background,
             ],
-            stops: [0.0, 0.42, 1.0],
+            stops: [
+              0.0,
+              0.42,
+              1.0,
+            ],
           ),
         ),
+
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(),
 
-              Expanded(child: _buildSubjectBody()),
+              Expanded(
+                child: _buildSubjectBody(),
+              ),
             ],
           ),
         ),
@@ -155,13 +206,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// =========================
-  /// Header
-  /// =========================
+  // ============================================================
+  // Header
+  // ============================================================
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 14, 30, 8),
+      padding: const EdgeInsets.fromLTRB(
+        30,
+        14,
+        30,
+        8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -189,7 +245,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 11),
 
-          /// Search
+          // ====================================================
+          // Search
+          // ====================================================
+
           SizedBox(
             height: 47,
             child: TextField(
@@ -198,37 +257,70 @@ class _HomeScreenState extends State<HomeScreen> {
                   _searchQuery = value;
                 });
               },
+
               style: const TextStyle(
                 color: _HomeColors.primaryText,
                 fontSize: 15,
               ),
+
               cursorColor: _HomeColors.accent,
+
               decoration: InputDecoration(
                 hintText: 'ค้นหารายวิชา',
+
                 hintStyle: const TextStyle(
                   color: _HomeColors.mutedText,
                   fontSize: 15,
                 ),
+
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: _HomeColors.secondaryText,
                   size: 22,
                 ),
+
                 filled: true,
-                fillColor: _HomeColors.searchBackground,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
+
+                fillColor:
+                    _HomeColors.searchBackground,
+
+                contentPadding:
+                    const EdgeInsets.symmetric(
+                  vertical: 12,
                 ),
+
+                enabledBorder:
+                    OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(15),
+
+                  borderSide:
+                      const BorderSide(
+                    color:
+                        _HomeColors.searchBorder,
+                  ),
+                ),
+
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
+                  borderRadius:
+                      BorderRadius.circular(15),
+
+                  borderSide:
+                      const BorderSide(
+                    color:
+                        _HomeColors.searchBorder,
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(
-                    color: _HomeColors.accent,
+
+                focusedBorder:
+                    OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(15),
+
+                  borderSide:
+                      const BorderSide(
+                    color:
+                        _HomeColors.accent,
                     width: 1.4,
                   ),
                 ),
@@ -240,12 +332,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// =========================
-  /// Subject Body
-  /// =========================
+  // ============================================================
+  // Subject Body
+  // ============================================================
 
   Widget _buildSubjectBody() {
-    /// Loading
+    // ==========================================================
+    // Loading
+    // ==========================================================
+
     if (_isLoadingSubjects) {
       return const Center(
         child: CircularProgressIndicator(
@@ -255,7 +350,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    /// Error
+    // ==========================================================
+    // Error
+    // ==========================================================
+
     if (_loadError != null) {
       return Center(
         child: Column(
@@ -273,9 +371,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
             TextButton.icon(
               onPressed: _loadSubjects,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('ลองใหม่'),
-              style: TextButton.styleFrom(foregroundColor: _HomeColors.accent),
+
+              icon: const Icon(
+                Icons.refresh_rounded,
+              ),
+
+              label: const Text(
+                'ลองใหม่',
+              ),
+
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    _HomeColors.accent,
+              ),
             ),
           ],
         ),
@@ -284,40 +392,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final visibleSubjects = _filteredSubjects;
 
-    /// ไม่มีรายวิชา
+    // ==========================================================
+    // ไม่มีรายวิชา
+    // ==========================================================
+
     if (subjects.isEmpty) {
       return const _EmptySubjects();
     }
 
-    /// ค้นหาแล้วไม่พบ
+    // ==========================================================
+    // Search ไม่พบ
+    // ==========================================================
+
     if (visibleSubjects.isEmpty) {
       return const _NoSearchResults();
     }
 
-    /// รายการรายวิชา
+    // ==========================================================
+    // รายการรายวิชา
+    // ==========================================================
+
     return RefreshIndicator(
       color: _HomeColors.accent,
+
       onRefresh: () async {
-        await Future.wait([_loadSubjects(), _loadCurrentSession()]);
+        await Future.wait([
+          _loadSubjects(),
+          _loadCurrentSession(),
+        ]);
       },
 
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics:
+            const AlwaysScrollableScrollPhysics(),
 
-        // ใช้ spacing ตามไฟล์ 2
-        padding: const EdgeInsets.fromLTRB(30, 25, 30, 110),
+        padding: const EdgeInsets.fromLTRB(
+          30,
+          25,
+          30,
+          110,
+        ),
 
         itemCount: visibleSubjects.length,
 
         itemBuilder: (context, index) {
-          final subject = visibleSubjects[index];
+          final subject =
+              visibleSubjects[index];
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+            padding:
+                const EdgeInsets.only(
+              bottom: 14,
+            ),
+
             child: SubjectCard(
               subject: subject,
-              isActive: _activeSubjectCode == subject.subjectCode,
-              onReturn: _loadCurrentSession,
+
+              // ==================================================
+              // ยังคง logic จากข้อ 1
+              // ==================================================
+
+              isActive:
+                  _activeSubjectCode ==
+                      subject.subjectCode,
+
+              onReturn:
+                  _loadCurrentSession,
             ),
           );
         },
@@ -325,11 +465,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ============================================================
+  // Current Session
+  // ============================================================
+
   Future<void> _loadCurrentSession() async {
     try {
-      final session = await _sessionService.getCurrentSession();
+      final session =
+          await _sessionService.getCurrentSession();
 
-      debugPrint('CURRENT SESSION: $session');
+      debugPrint(
+        'CURRENT SESSION: $session',
+      );
 
       if (!mounted) return;
 
@@ -337,15 +484,21 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _activeSubjectCode = null;
         });
+
         return;
       }
 
-      final status = session['status']?.toString();
-      final subjectCode = session['subjectCode']?.toString();
+      final status =
+          session['status']?.toString();
 
-      if (status == 'active' && subjectCode != null) {
+      final subjectCode =
+          session['subjectCode']?.toString();
+
+      if (status == 'active' &&
+          subjectCode != null) {
         setState(() {
-          _activeSubjectCode = subjectCode.trim();
+          _activeSubjectCode =
+              subjectCode.trim();
         });
       } else {
         setState(() {
@@ -353,7 +506,9 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('โหลดสถานะห้องไม่สำเร็จ: $e');
+      debugPrint(
+        'โหลดสถานะห้องไม่สำเร็จ: $e',
+      );
 
       if (!mounted) return;
 
@@ -363,15 +518,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// =========================
-  /// Navigation
-  /// =========================
+  // ============================================================
+  // Navigation
+  // ============================================================
 
   void _onNavigationTap(int index) {
+    // ==========================================================
+    // แชทบอท
+    // ==========================================================
+
     if (index == 1) {
       Navigator.push(
         context,
-        MaterialPageRoute<void>(builder: (context) => const ChatScreen()),
+        MaterialPageRoute<void>(
+          builder: (context) =>
+              const ChatScreen(),
+        ),
       );
 
       return;
@@ -382,17 +544,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// =========================
-  /// Add Subject Dialog
-  /// =========================
-
+  // Add Subject Dialog
   void _showAddSubjectDialog() {
     showDialog<void>(
       context: context,
+
       barrierDismissible: true,
 
-      // ใช้ withOpacity แทน withValues
-      barrierColor: Colors.black.withOpacity(0.34),
+      barrierColor:
+          Colors.black.withOpacity(0.34),
 
       builder: (context) {
         return AddSubjectDialog(
@@ -400,7 +560,10 @@ class _HomeScreenState extends State<HomeScreen> {
             if (!mounted) return;
 
             setState(() {
-              subjects.insert(0, subject);
+              subjects.insert(
+                0,
+                subject,
+              );
             });
           },
         );
@@ -409,12 +572,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// ======================================================
-/// Bottom Navigation
-/// ======================================================
-
-class _HomeBottomNavigation extends StatelessWidget {
+// Bottom Navigation
+class _HomeBottomNavigation
+    extends StatelessWidget {
   final int currentIndex;
+
   final ValueChanged<int> onTap;
 
   const _HomeBottomNavigation({
@@ -423,130 +585,228 @@ class _HomeBottomNavigation extends StatelessWidget {
   });
 
   static const _items = [
-    _NavigationData(Icons.grid_view_outlined, Icons.grid_view_rounded, 'วิชา'),
+    
+    _NavigationData(
+      Icons.grid_view_outlined,
+      Icons.grid_view_rounded,
+      'วิชา',
+    ),
+
     _NavigationData(
       Icons.chat_bubble_outline,
       Icons.chat_bubble_rounded,
       'แชทบอท',
     ),
+
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 96,
-      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
+
+      padding: const EdgeInsets.fromLTRB(
+        7,
+        8,
+        7,
+        14,
+      ),
+
       decoration: const BoxDecoration(
         color: _HomeColors.navigation,
-        border: Border(top: BorderSide(color: _HomeColors.navigationBorder)),
+
+        border: Border(
+          top: BorderSide(
+            color:
+                _HomeColors.navigationBorder,
+          ),
+        ),
       ),
+
       child: Row(
-        children: List.generate(_items.length, (index) {
-          final item = _items[index];
-          final selected = currentIndex == index;
+        children: List.generate(
+          _items.length,
+          (index) {
+            final item =
+                _items[index];
 
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: index == _items.length - 1 ? 0 : 7,
-              ),
-              child: InkWell(
-                onTap: () => onTap(index),
-                borderRadius: BorderRadius.circular(10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  height: 66,
-                  decoration: BoxDecoration(
-                    color: const Color(0x40191820),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected
-                          ? _HomeColors.searchBorder
-                          : const Color(0x1A928B8B),
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x40000000),
-                        offset: Offset(0, 4),
-                        blurRadius: 4,
-                      ),
-                    ],
+            final selected =
+                currentIndex == index;
+
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right:
+                      index ==
+                              _items.length - 1
+                          ? 0
+                          : 7,
+                ),
+
+                child: InkWell(
+                  onTap: () =>
+                      onTap(index),
+
+                  borderRadius:
+                      BorderRadius.circular(
+                    10,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        selected ? item.activeIcon : item.icon,
-                        size: 24,
+
+                  child: AnimatedContainer(
+                    duration:
+                        const Duration(
+                      milliseconds: 160,
+                    ),
+
+                    height: 66,
+
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          const Color(
+                        0x40191820,
+                      ),
+
+                      borderRadius:
+                          BorderRadius.circular(
+                        10,
+                      ),
+
+                      border: Border.all(
                         color: selected
-                            ? _HomeColors.primaryText
-                            : _HomeColors.secondaryText,
+                            ? _HomeColors
+                                .searchBorder
+                            : const Color(
+                                0x1A928B8B,
+                              ),
                       ),
 
-                      const SizedBox(height: 5),
+                      boxShadow: const [
+                        BoxShadow(
+                          color:
+                              Color(
+                            0x40000000,
+                          ),
 
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: selected
-                              ? _HomeColors.primaryText
-                              : _HomeColors.secondaryText,
-                          fontSize: 11,
+                          offset:
+                              Offset(0, 4),
+
+                          blurRadius: 4,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+
+                    child: Column(
+                      mainAxisAlignment:
+                          MainAxisAlignment
+                              .center,
+
+                      children: [
+                        Icon(
+                          selected
+                              ? item.activeIcon
+                              : item.icon,
+
+                          size: 24,
+
+                          color: selected
+                              ? _HomeColors
+                                  .primaryText
+                              : _HomeColors
+                                  .secondaryText,
+                        ),
+
+                        const SizedBox(
+                          height: 5,
+                        ),
+
+                        Text(
+                          item.label,
+
+                          maxLines: 1,
+
+                          style: TextStyle(
+                            color: selected
+                                ? _HomeColors
+                                    .primaryText
+                                : _HomeColors
+                                    .secondaryText,
+
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }
 }
-
-/// ======================================================
-/// Navigation Data
-/// ======================================================
-
+// Navigation Data
 class _NavigationData {
   final IconData icon;
+
   final IconData activeIcon;
+
   final String label;
 
-  const _NavigationData(this.icon, this.activeIcon, this.label);
+  const _NavigationData(
+    this.icon,
+    this.activeIcon,
+    this.label,
+  );
 }
 
-/// ======================================================
-/// Empty Subjects
-/// ======================================================
 
-class _EmptySubjects extends StatelessWidget {
+// Empty Subjects
+
+
+class _EmptySubjects
+    extends StatelessWidget {
   const _EmptySubjects();
 
   @override
   Widget build(BuildContext context) {
     return const Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize:
+            MainAxisSize.min,
+
         children: [
           Text(
             'ยังไม่มีรายวิชา',
+
             style: TextStyle(
-              color: _HomeColors.faintText,
+              color:
+                  _HomeColors.faintText,
+
               fontSize: 24,
-              fontWeight: FontWeight.w500,
+
+              fontWeight:
+                  FontWeight.w500,
+
               letterSpacing: -0.48,
             ),
           ),
 
-          SizedBox(height: 3),
+          SizedBox(
+            height: 3,
+          ),
 
           Text(
             'กดปุ่ม + เพื่อเพิ่มรายวิชา',
-            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
+
+            style: TextStyle(
+              color:
+                  _HomeColors.faintText,
+
+              fontSize: 15,
+            ),
           ),
         ],
       ),
@@ -554,30 +814,44 @@ class _EmptySubjects extends StatelessWidget {
   }
 }
 
-/// ======================================================
-/// No Search Results
-/// ======================================================
+// ================================================================
+// No Search Results
+// ================================================================
 
-class _NoSearchResults extends StatelessWidget {
+class _NoSearchResults
+    extends StatelessWidget {
   const _NoSearchResults();
 
   @override
   Widget build(BuildContext context) {
     return const Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize:
+            MainAxisSize.min,
+
         children: [
           Icon(
             Icons.search_off_rounded,
-            color: _HomeColors.faintText,
+
+            color:
+                _HomeColors.faintText,
+
             size: 34,
           ),
 
-          SizedBox(height: 10),
+          SizedBox(
+            height: 10,
+          ),
 
           Text(
             'ไม่พบรายวิชาที่ค้นหา',
-            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
+
+            style: TextStyle(
+              color:
+                  _HomeColors.faintText,
+
+              fontSize: 15,
+            ),
           ),
         ],
       ),
@@ -585,26 +859,40 @@ class _NoSearchResults extends StatelessWidget {
   }
 }
 
-/// ======================================================
-/// Add Subject Dialog
-/// ======================================================
+// ================================================================
+// Add Subject Dialog
+// ================================================================
 
-class AddSubjectDialog extends StatefulWidget {
+class AddSubjectDialog
+    extends StatefulWidget {
   final ValueChanged<Subject> onAdd;
 
-  const AddSubjectDialog({super.key, required this.onAdd});
+  const AddSubjectDialog({
+    super.key,
+    required this.onAdd,
+  });
 
   @override
-  State<AddSubjectDialog> createState() => _AddSubjectDialogState();
+  State<AddSubjectDialog> createState() =>
+      _AddSubjectDialogState();
 }
 
-class _AddSubjectDialogState extends State<AddSubjectDialog> {
-  final nameController = TextEditingController();
-  final yearController = TextEditingController();
-  final semesterController = TextEditingController();
-  final codeController = TextEditingController();
+class _AddSubjectDialogState
+    extends State<AddSubjectDialog> {
+  final nameController =
+      TextEditingController();
 
-  final SubjectService _subjectService = SubjectService();
+  final yearController =
+      TextEditingController();
+
+  final semesterController =
+      TextEditingController();
+
+  final codeController =
+      TextEditingController();
+
+  final SubjectService _subjectService =
+      SubjectService();
 
   bool _isSaving = false;
 
@@ -614,131 +902,260 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
     yearController.dispose();
     semesterController.dispose();
     codeController.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      alignment: Alignment.bottomCenter,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 2),
-      backgroundColor: Colors.transparent,
+      alignment:
+          Alignment.bottomCenter,
+
+      insetPadding:
+          const EdgeInsets.symmetric(
+        horizontal: 2,
+      ),
+
+      backgroundColor:
+          Colors.transparent,
+
       elevation: 0,
+
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 420, minHeight: 461),
-        padding: const EdgeInsets.fromLTRB(28, 22, 28, 30),
-        decoration: BoxDecoration(
-          color: _HomeColors.dialogBackground,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-          border: Border.all(color: _HomeColors.dialogBorder),
+
+        constraints:
+            const BoxConstraints(
+          maxWidth: 420,
+          minHeight: 461,
         ),
+
+        padding:
+            const EdgeInsets.fromLTRB(
+          28,
+          22,
+          28,
+          30,
+        ),
+
+        decoration: BoxDecoration(
+          color:
+              _HomeColors.dialogBackground,
+
+          borderRadius:
+              const BorderRadius.vertical(
+            top: Radius.circular(15),
+          ),
+
+          border: Border.all(
+            color:
+                _HomeColors.dialogBorder,
+          ),
+        ),
+
         child: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize:
+                MainAxisSize.min,
+
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+
             children: [
               const Text(
                 'เพิ่มรายวิชาใหม่',
+
                 style: TextStyle(
-                  color: _HomeColors.primaryText,
+                  color:
+                      _HomeColors.primaryText,
+
                   fontSize: 20,
-                  fontWeight: FontWeight.w400,
+
+                  fontWeight:
+                      FontWeight.w400,
                 ),
               ),
 
-              const SizedBox(height: 3),
+              const SizedBox(
+                height: 3,
+              ),
 
               const Text(
                 'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
+
                 style: TextStyle(
-                  color: _HomeColors.secondaryText,
+                  color:
+                      _HomeColors.secondaryText,
+
                   fontSize: 15,
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(
+                height: 18,
+              ),
 
-              const _FieldLabel('ชื่อวิชา*'),
+              const _FieldLabel(
+                'ชื่อวิชา*',
+              ),
 
-              const SizedBox(height: 6),
+              const SizedBox(
+                height: 6,
+              ),
 
-              _SubjectTextField(controller: nameController),
+              _SubjectTextField(
+                controller:
+                    nameController,
+              ),
 
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
 
               Row(
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+
                       children: [
-                        const _FieldLabel('ปีการศึกษา*'),
-                        const SizedBox(height: 6),
-                        _SubjectTextField(controller: yearController),
+                        const _FieldLabel(
+                          'ปีการศึกษา*',
+                        ),
+
+                        const SizedBox(
+                          height: 6,
+                        ),
+
+                        _SubjectTextField(
+                          controller:
+                              yearController,
+                        ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(width: 9),
+                  const SizedBox(
+                    width: 9,
+                  ),
 
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+
                       children: [
-                        const _FieldLabel('เทอม*'),
-                        const SizedBox(height: 6),
-                        _SubjectTextField(controller: semesterController),
+                        const _FieldLabel(
+                          'เทอม*',
+                        ),
+
+                        const SizedBox(
+                          height: 6,
+                        ),
+
+                        _SubjectTextField(
+                          controller:
+                              semesterController,
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
 
-              const _FieldLabel('รหัสวิชา*'),
+              const _FieldLabel(
+                'รหัสวิชา*',
+              ),
 
-              const SizedBox(height: 6),
+              const SizedBox(
+                height: 6,
+              ),
 
-              _SubjectTextField(controller: codeController),
+              _SubjectTextField(
+                controller:
+                    codeController,
+              ),
 
-              const SizedBox(height: 24),
+              const SizedBox(
+                height: 24,
+              ),
 
               SizedBox(
                 width: double.infinity,
+
                 height: 38,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _addSubject,
+
+                child:
+                    ElevatedButton.icon(
+                  onPressed: _isSaving
+                      ? null
+                      : _addSubject,
 
                   icon: _isSaving
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(
+
+                          child:
+                              CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Colors.black,
                           ),
                         )
-                      : const Icon(Icons.add, color: Colors.black, size: 25),
+                      : const Icon(
+                          Icons.add,
+                          color:
+                              Colors.black,
+                          size: 25,
+                        ),
 
                   label: Text(
-                    _isSaving ? 'กำลังบันทึก...' : 'เพิ่มรายวิชา',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    _isSaving
+                        ? 'กำลังบันทึก...'
+                        : 'เพิ่มรายวิชา',
+
+                    style:
+                        const TextStyle(
+                      color:
+                          Colors.black,
+
                       fontSize: 16,
-                      fontWeight: FontWeight.w400,
+
+                      fontWeight:
+                          FontWeight.w400,
                     ),
                   ),
 
-                  style: ElevatedButton.styleFrom(
+                  style:
+                      ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.white,
-                    disabledForegroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
+
+                    backgroundColor:
+                        Colors.white,
+
+                    foregroundColor:
+                        Colors.black,
+
+                    disabledBackgroundColor:
+                        Colors.white,
+
+                    disabledForegroundColor:
+                        Colors.black,
+
+                    shape:
+                        RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(
+                        5,
+                      ),
                     ),
                   ),
                 ),
@@ -750,27 +1167,47 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
     );
   }
 
-  /// เพิ่มรายวิชา
-  /// ยึดระบบจากไฟล์ 1
+  // ============================================================
+  // Add Subject
+  // ============================================================
+
   Future<void> _addSubject() async {
-    final subjectName = nameController.text.trim();
+    final subjectName =
+        nameController.text.trim();
 
-    final year = yearController.text.trim();
+    final year =
+        yearController.text.trim();
 
-    final semester = semesterController.text.trim();
+    final semester =
+        semesterController.text.trim();
 
-    final subjectCode = codeController.text.trim();
+    final subjectCode =
+        codeController.text.trim();
+
+    // ==========================================================
+    // Validation
+    // ==========================================================
 
     if (subjectName.isEmpty ||
         year.isEmpty ||
         semester.isEmpty ||
         subjectCode.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง')),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+          ),
+        ),
       );
 
       return;
     }
+
+    // ==========================================================
+    // สร้าง Subject
+    // ==========================================================
 
     final subject = Subject(
       subjectName: subjectName,
@@ -783,8 +1220,13 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
       _isSaving = true;
     });
 
+    // ==========================================================
+    // บันทึกผ่าน SubjectService
+    // ==========================================================
+
     try {
-      await _subjectService.createSubject(subject);
+      await _subjectService
+          .createSubject(subject);
 
       if (!mounted) return;
 
@@ -792,7 +1234,9 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
       Navigator.pop(context);
     } catch (error) {
-      debugPrint('เกิดข้อผิดพลาดในการบันทึกวิชา: $error');
+      debugPrint(
+        'เกิดข้อผิดพลาดในการบันทึกวิชา: $error',
+      );
 
       if (!mounted) return;
 
@@ -800,18 +1244,25 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่สามารถบันทึกรายวิชาได้')),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'ไม่สามารถบันทึกรายวิชาได้',
+          ),
+        ),
       );
     }
   }
 }
 
-/// ======================================================
-/// Field Label
-/// ======================================================
+// ================================================================
+// Field Label
+// ================================================================
 
-class _FieldLabel extends StatelessWidget {
+class _FieldLabel
+    extends StatelessWidget {
   final String text;
 
   const _FieldLabel(this.text);
@@ -820,46 +1271,86 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(color: _HomeColors.secondaryText, fontSize: 15),
+
+      style: const TextStyle(
+        color:
+            _HomeColors.secondaryText,
+
+        fontSize: 15,
+      ),
     );
   }
 }
 
-/// ======================================================
-/// Subject Text Field
-/// ======================================================
+// ================================================================
+// Subject Text Field
+// ================================================================
 
-class _SubjectTextField extends StatelessWidget {
+class _SubjectTextField
+    extends StatelessWidget {
   final TextEditingController controller;
 
-  const _SubjectTextField({required this.controller});
+  const _SubjectTextField({
+    required this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 38,
+
       child: TextField(
         controller: controller,
-        style: const TextStyle(color: Color(0xFF24222B), fontSize: 14),
-        cursorColor: _HomeColors.accent,
-        decoration: InputDecoration(
+
+        style: const TextStyle(
+          color: Color(0xFF24222B),
+          fontSize: 14,
+        ),
+
+        cursorColor:
+            _HomeColors.accent,
+
+        decoration:
+            InputDecoration(
           filled: true,
+
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
+
+          contentPadding:
+              const EdgeInsets.symmetric(
             horizontal: 10,
             vertical: 8,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
+
+          enabledBorder:
+              OutlineInputBorder(
+            borderRadius:
+                BorderRadius.circular(5),
+
+            borderSide:
+                BorderSide.none,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
+
+          border:
+              OutlineInputBorder(
+            borderRadius:
+                BorderRadius.circular(5),
+
+            borderSide:
+                BorderSide.none,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: const BorderSide(color: _HomeColors.accent, width: 1.4),
+
+          focusedBorder:
+              OutlineInputBorder(
+            borderRadius:
+                BorderRadius.circular(5),
+
+            borderSide:
+                const BorderSide(
+              color:
+                  _HomeColors.accent,
+              width: 1.4,
+            ),
           ),
         ),
       ),
