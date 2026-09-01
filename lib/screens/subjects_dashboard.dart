@@ -1849,7 +1849,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
               children: [
                 const Text(
-                  'อารมณ์คาบเรียนวันนี้',
+                  'แดชบอร์ด',
                   style: TextStyle(
                     color:
                         _DashboardColors
@@ -2188,7 +2188,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               Expanded(
                 child:
                     _summaryItem(
-                  'Students',
+                  'จำนวนนักศึกษา',
                   studentCount
                       .toString(),
                   Icons.people_outline,
@@ -2202,7 +2202,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               Expanded(
                 child:
                     _summaryItem(
-                  'Positive',
+                  'อารมณ์เชิงบวก',
                   '$positivePercentage%',
                   Icons
                       .sentiment_satisfied_alt_outlined,
@@ -2434,12 +2434,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     if (!hasBefore) {
       return const Center(
         child: Text(
-          'ยังไม่มีข้อมูล',
+          'รอการประเมิน',
           style: TextStyle(
             color:
                 _DashboardColors
                     .faintText,
-            fontSize: 12,
+            fontSize: 14,
           ),
         ),
       );
@@ -2949,7 +2949,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               ),
 
               label:
-                  const Text('Analyze'),
+                  const Text('วิเคราะห์ข้อมูล'),
 
               style:
                   ElevatedButton.styleFrom(

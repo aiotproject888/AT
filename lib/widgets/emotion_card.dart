@@ -155,8 +155,8 @@ class EmotionDonutChart extends StatelessWidget {
     if (emotionData.isEmpty) {
       return const Center(
         child: Text(
-          'ไม่มีข้อมูล',
-          style: TextStyle(color: Colors.white54, fontSize: 14),
+          'รอการประเมิน',
+          style: TextStyle(color: Color(0x4DFFFFFF), fontSize: 14),
         ),
       );
     }
