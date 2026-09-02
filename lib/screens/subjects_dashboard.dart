@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/subject.dart';
+import '../screens/files.dart';
 import '../services/emotion_service.dart';
 import '../services/session_service.dart';
 import '../services/subject_service.dart';
@@ -1347,17 +1348,15 @@ Future<void> _saveSubject(
         return;
 
       case 1:
-        // หน้าสื่อการสอนจะเชื่อมต่อในขั้นตอนถัดไป
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('สื่อการสอน'),
-            duration: Duration(seconds: 1),
+         Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => MaterialScreen(subjectName: _subject.subjectName,),
           ),
         );
         return;
 
       case 2:
-        // เปิด ChatScreen จากหน้า Dashboard
         Navigator.push(
           context,
           MaterialPageRoute<void>(
