@@ -1352,7 +1352,7 @@ Future<void> _saveSubject(
          Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (context) => MaterialScreen(subjectName: _subject.subjectName,),
+            builder: (context) => MaterialScreen(subjectName: _subject.subjectName,subjectCode: _subject.subjectCode),
           ),
         );
         return;
