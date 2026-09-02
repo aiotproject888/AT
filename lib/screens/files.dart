@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class _MaterialColors {
   static const background = Color(0xFF0E0D18);
@@ -19,24 +24,37 @@ class _MaterialColors {
 }
 
 class MaterialScreen extends StatefulWidget {
-  
   final String subjectName;
 
-  const MaterialScreen({
-    super.key,
-    required this.subjectName,
-  });
+  const MaterialScreen({super.key, required this.subjectName});
 
   @override
   State<MaterialScreen> createState() => _MaterialScreenState();
 }
 
 class _MaterialScreenState extends State<MaterialScreen> {
+  // ============================================================
+  // BACKEND
+  // ============================================================
+
+  static const String _backendBaseUrl =
+      'https://groq-backend-yzr8.onrender.com';
+
+  // ============================================================
+  // STATE
+  // ============================================================
+
   int _selectedCategory = 0;
 
   final TextEditingController _searchController = TextEditingController();
 
   String _searchText = '';
+
+  bool _isUploading = false;
+
+  double _uploadProgress = 0;
+
+  String _uploadFileName = '';
 
   final List<String> _categories = [
     'ทั้งหมด',
@@ -100,11 +118,19 @@ class _MaterialScreenState extends State<MaterialScreen> {
     ),
   ];
 
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
+
+  // ============================================================
+  // FILTER
+  // ============================================================
 
   List<_MaterialFile> get _filteredFiles {
     return _files.where((file) {
@@ -119,6 +145,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
       return matchesCategory && matchesSearch;
     }).toList();
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -209,9 +239,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
         ),
         const SizedBox(width: 10),
-        _UploadButton(
-          onPressed: _showUploadDialog,
-        ),
+        _UploadButton(onPressed: _showUploadDialog),
       ],
     );
   }
@@ -228,9 +256,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       decoration: BoxDecoration(
         color: _MaterialColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _MaterialColors.surfaceBorder,
-        ),
+        border: Border.all(color: _MaterialColors.surfaceBorder),
       ),
       child: Column(
         children: [
@@ -317,9 +343,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
             decoration: BoxDecoration(
               color: _MaterialColors.innerSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: _MaterialColors.surfaceBorder,
-              ),
+              border: Border.all(color: _MaterialColors.surfaceBorder),
             ),
             child: TextField(
               controller: _searchController,
@@ -328,10 +352,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   _searchText = value;
                 });
               },
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
               cursorColor: _MaterialColors.accent,
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -345,9 +366,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   color: _MaterialColors.faintText,
                   fontSize: 13,
                 ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 14,
-                ),
+                contentPadding: EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -388,9 +407,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: selected
                     ? _MaterialColors.accent.withValues(alpha: 0.25)
@@ -410,8 +427,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                         ? Colors.white
                         : _MaterialColors.secondaryText,
                     fontSize: 11,
-                    fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -439,10 +455,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         ),
         const SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 3,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(8),
@@ -457,12 +470,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
         ),
         const Spacer(),
-        Text(
+        const Text(
           'เรียงตามล่าสุด',
-          style: const TextStyle(
-            color: _MaterialColors.mutedText,
-            fontSize: 10,
-          ),
+          style: TextStyle(color: _MaterialColors.mutedText, fontSize: 10),
         ),
       ],
     );
@@ -481,8 +491,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       children: [
         for (int i = 0; i < _filteredFiles.length; i++) ...[
           _buildFileCard(_filteredFiles[i]),
-          if (i != _filteredFiles.length - 1)
-            const SizedBox(height: 10),
+          if (i != _filteredFiles.length - 1) const SizedBox(height: 10),
         ],
       ],
     );
@@ -494,16 +503,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
       decoration: BoxDecoration(
         color: _MaterialColors.surface,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: _MaterialColors.surfaceBorder,
-        ),
+        border: Border.all(color: _MaterialColors.surfaceBorder),
       ),
       child: Row(
         children: [
-          _FileIcon(
-            icon: file.icon,
-            extension: file.extension,
-          ),
+          _FileIcon(icon: file.icon, extension: file.extension),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -584,10 +588,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       padding: EdgeInsets.symmetric(horizontal: 5),
       child: Text(
         '•',
-        style: TextStyle(
-          color: _MaterialColors.faintText,
-          fontSize: 8,
-        ),
+        style: TextStyle(color: _MaterialColors.faintText, fontSize: 8),
       ),
     );
   }
@@ -595,16 +596,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        vertical: 45,
-        horizontal: 20,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 45, horizontal: 20),
       decoration: BoxDecoration(
         color: _MaterialColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _MaterialColors.surfaceBorder,
-        ),
+        border: Border.all(color: _MaterialColors.surfaceBorder),
       ),
       child: const Column(
         children: [
@@ -625,10 +621,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           SizedBox(height: 5),
           Text(
             'ลองค้นหาด้วยชื่อไฟล์อื่น',
-            style: TextStyle(
-              color: _MaterialColors.mutedText,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: _MaterialColors.mutedText, fontSize: 11),
           ),
         ],
       ),
@@ -646,9 +639,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF171522),
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.06),
-          ),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
         ),
       ),
       child: Row(
@@ -688,7 +679,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   }
 
   // ============================================================
-  // ACTIONS
+  // UPLOAD DIALOG
   // ============================================================
 
   void _showUploadDialog() {
@@ -696,19 +687,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
       context: context,
       backgroundColor: const Color(0xFF1A1729),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              18,
-              22,
-              25,
-            ),
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 25),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -744,16 +728,29 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                // ------------------------------------------
+                // UPLOAD FILE
+                // ------------------------------------------
                 _UploadOption(
                   icon: Icons.upload_file_rounded,
                   title: 'อัปโหลดไฟล์',
                   subtitle: 'PDF, PPTX, DOCX, MP4, MP3 และอื่น ๆ',
                   onTap: () {
                     Navigator.pop(context);
-                    _showComingSoon('ระบบเลือกไฟล์');
+
+                    Future.delayed(
+                      const Duration(milliseconds: 200),
+                      _pickAndUploadFile,
+                    );
                   },
                 ),
+
                 const SizedBox(height: 10),
+
+                // ------------------------------------------
+                // LINK
+                // ------------------------------------------
                 _UploadOption(
                   icon: Icons.link_rounded,
                   title: 'เพิ่มจากลิงก์',
@@ -771,24 +768,422 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  // ============================================================
+  // PICK FILE
+  // ============================================================
+
+  Future<void> _pickAndUploadFile() async {
+    if (_isUploading) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        withData: true,
+        allowMultiple: false,
+        type: FileType.custom,
+        allowedExtensions: [
+          'pdf',
+          'ppt',
+          'pptx',
+          'doc',
+          'docx',
+          'mp4',
+          'mp3',
+          'wav',
+          'txt',
+        ],
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+
+      final Uint8List? bytes = file.bytes;
+
+      if (bytes == null) {
+        _showError('ไม่สามารถอ่านไฟล์ได้');
+        return;
+      }
+
+      if (bytes.isEmpty) {
+        _showError('ไฟล์ว่างเปล่า');
+        return;
+      }
+
+      await _uploadFile(fileName: file.name, bytes: bytes);
+    } catch (error) {
+      debugPrint('File Picker Error: $error');
+
+      _showError('ไม่สามารถเลือกไฟล์ได้');
+    }
+  }
+
+  // ============================================================
+  // UPLOAD FILE
+  // ============================================================
+
+  Future<void> _uploadFile({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    if (_isUploading) return;
+
+    setState(() {
+      _isUploading = true;
+      _uploadProgress = 0;
+      _uploadFileName = fileName;
+    });
+
+    try {
+      // ========================================================
+      // 1. หา Content-Type
+      // ========================================================
+
+      final contentType = _getContentType(fileName);
+
+      // ========================================================
+      // 2. ขอ Presigned URL
+      // ========================================================
+
+      final urlResponse = await http.post(
+        Uri.parse('$_backendBaseUrl/api/materials/upload-url'),
+        headers: {'Content-Type': 'application/json'},
+        body:
+            '{"fileName":${_jsonString(fileName)},'
+            '"contentType":${_jsonString(contentType)}}',
+      );
+
+      if (urlResponse.statusCode != 200) {
+        throw Exception(
+          'ไม่สามารถสร้าง Upload URL ได้ '
+          '(${urlResponse.statusCode})',
+        );
+      }
+
+      final responseBody = urlResponse.body;
+
+      debugPrint('Upload URL Response: $responseBody');
+
+      // ========================================================
+      // 3. อ่าน uploadUrl
+      // ========================================================
+
+      final Map<String, dynamic> data = jsonDecode(responseBody);
+
+      final uploadUrl = data['uploadUrl'] as String?;
+
+      if (uploadUrl == null || uploadUrl.isEmpty) {
+        throw Exception('Backend ไม่ได้ส่ง uploadUrl กลับมา');
+      }
+
+      // ========================================================
+      // 4. Upload เข้า B2
+      // ========================================================
+
+      final uploadResponse = await http.put(
+        Uri.parse(uploadUrl),
+        headers: {'Content-Type': contentType},
+        body: bytes,
+      );
+
+      // ========================================================
+      // 5. ตรวจผล
+      // ========================================================
+
+      if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
+        throw Exception(
+          'อัปโหลดไม่สำเร็จ '
+          '(${uploadResponse.statusCode})\n'
+          '${uploadResponse.body}',
+        );
+      }
+
+      // ========================================================
+      // 6. เพิ่มไฟล์ลงหน้าจอ
+      // ========================================================
+
+      final materialFile = _createMaterialFile(
+        fileName: fileName,
+        fileSize: bytes.length,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _files.insert(0, materialFile);
+        _uploadProgress = 1;
+      });
+
+      _showSuccess('อัปโหลด "$fileName" สำเร็จ');
+    } catch (error) {
+      debugPrint('Upload Error: $error');
+
+      if (mounted) {
+        _showError('อัปโหลดไฟล์ไม่สำเร็จ\n$error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadFileName = '';
+          _uploadProgress = 0;
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // CREATE MATERIAL FILE
+  // ============================================================
+
+  _MaterialFile _createMaterialFile({
+    required String fileName,
+    required int fileSize,
+  }) {
+    final extension = _getExtension(fileName);
+
+    final type = _getFileType(extension);
+
+    final category = _getCategory(extension);
+
+    final icon = _getFileIcon(extension);
+
+    return _MaterialFile(
+      name: fileName,
+      type: type,
+      extension: extension.toUpperCase(),
+      size: _formatFileSize(fileSize),
+      date: _formatDate(DateTime.now()),
+      category: category,
+      status: 'อัปโหลดแล้ว',
+      icon: icon,
+    );
+  }
+
+  // ============================================================
+  // FILE TYPE
+  // ============================================================
+
+  String _getExtension(String fileName) {
+    final index = fileName.lastIndexOf('.');
+
+    if (index == -1) {
+      return '';
+    }
+
+    return fileName.substring(index + 1).toLowerCase();
+  }
+
+  String _getFileType(String extension) {
+    switch (extension) {
+      case 'pdf':
+      case 'doc':
+      case 'docx':
+      case 'txt':
+        return 'เอกสาร';
+
+      case 'ppt':
+      case 'pptx':
+        return 'สไลด์';
+
+      case 'mp4':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+        return 'วิดีโอ';
+
+      case 'mp3':
+      case 'wav':
+      case 'm4a':
+        return 'ไฟล์เสียง';
+
+      default:
+        return 'อื่นๆ';
+    }
+  }
+
+  String _getCategory(String extension) {
+    return _getFileType(extension);
+  }
+
+  // ============================================================
+  // CONTENT TYPE
+  // ============================================================
+
+  String _getContentType(String fileName) {
+    final extension = _getExtension(fileName);
+
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+      case 'doc':
+        return 'application/msword';
+
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      case 'mp4':
+        return 'video/mp4';
+
+      case 'mp3':
+        return 'audio/mpeg';
+
+      case 'wav':
+        return 'audio/wav';
+
+      case 'm4a':
+        return 'audio/mp4';
+
+      case 'txt':
+        return 'text/plain';
+
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  // ============================================================
+  // FILE ICON
+  // ============================================================
+
+  IconData _getFileIcon(String extension) {
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf_rounded;
+
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow_rounded;
+
+      case 'doc':
+      case 'docx':
+      case 'txt':
+        return Icons.description_rounded;
+
+      case 'mp4':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+        return Icons.video_file_rounded;
+
+      case 'mp3':
+      case 'wav':
+      case 'm4a':
+        return Icons.audio_file_rounded;
+
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  // ============================================================
+  // FILE SIZE
+  // ============================================================
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    }
+
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+
+  // ============================================================
+  // DATE
+  // ============================================================
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'ม.ค.',
+      'ก.พ.',
+      'มี.ค.',
+      'เม.ย.',
+      'พ.ค.',
+      'มิ.ย.',
+      'ก.ค.',
+      'ส.ค.',
+      'ก.ย.',
+      'ต.ค.',
+      'พ.ย.',
+      'ธ.ค.',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  // ============================================================
+  // SIMPLE JSON HELPERS
+  // ============================================================
+
+  String _jsonString(String value) {
+    return '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
+  }
+
+  // ============================================================
+  // UPLOAD STATUS UI
+  // ============================================================
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF1B6E55),
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF6E2929),
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showComingSoon(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 1)),
+    );
+  }
+
+  // ============================================================
+  // FILTER DIALOG
+  // ============================================================
+
   void _showFilterDialog() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1A1729),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              20,
-              22,
-              25,
-            ),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 25),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,35 +1197,31 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                ...List.generate(
-                  _categories.length,
-                  (index) {
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        _categories[index],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
-                      trailing: Radio<int>(
-                        value: index,
-                        groupValue: _selectedCategory,
-                        activeColor: _MaterialColors.accent,
-                        onChanged: (value) {
-                          if (value == null) return;
+                ...List.generate(_categories.length, (index) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      _categories[index],
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                    trailing: Radio<int>(
+                      value: index,
+                      groupValue: _selectedCategory,
+                      activeColor: _MaterialColors.accent,
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
 
-                          setState(() {
-                            _selectedCategory = value;
-                          });
+                        setState(() {
+                          _selectedCategory = value;
+                        });
 
-                          Navigator.pop(context);
-                        },
-                      ),
-                    );
-                  },
-                ),
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -839,24 +1230,21 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  // ============================================================
+  // SORT DIALOG
+  // ============================================================
+
   void _showSortDialog() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1A1729),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              20,
-              22,
-              25,
-            ),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 25),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -906,24 +1294,21 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  // ============================================================
+  // FILE MENU
+  // ============================================================
+
   void _showFileMenu(_MaterialFile file) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1A1729),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              22,
-              20,
-              22,
-              20,
-            ),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -950,9 +1335,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ],
                 ),
                 const SizedBox(height: 15),
-                const Divider(
-                  color: Color(0x12FFFFFF),
-                ),
+                const Divider(color: Color(0x12FFFFFF)),
                 ListTile(
                   leading: const Icon(
                     Icons.visibility_rounded,
@@ -960,10 +1343,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                   title: const Text(
                     'ดูรายละเอียด',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -977,10 +1357,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                   title: const Text(
                     'ดาวน์โหลด',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1012,6 +1389,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  // ============================================================
+  // FILE DETAILS
+  // ============================================================
+
   void _showFileDetails(_MaterialFile file) {
     showDialog<void>(
       context: context,
@@ -1023,39 +1404,18 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
           title: const Text(
             'รายละเอียดไฟล์',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DetailRow(
-                title: 'ชื่อไฟล์',
-                value: file.name,
-              ),
-              _DetailRow(
-                title: 'ประเภท',
-                value: file.extension,
-              ),
-              _DetailRow(
-                title: 'ขนาด',
-                value: file.size,
-              ),
-              _DetailRow(
-                title: 'หมวดหมู่',
-                value: file.category,
-              ),
-              _DetailRow(
-                title: 'สถานะ AI',
-                value: file.status,
-              ),
-              _DetailRow(
-                title: 'วันที่เพิ่ม',
-                value: file.date,
-              ),
+              _DetailRow(title: 'ชื่อไฟล์', value: file.name),
+              _DetailRow(title: 'ประเภท', value: file.extension),
+              _DetailRow(title: 'ขนาด', value: file.size),
+              _DetailRow(title: 'หมวดหมู่', value: file.category),
+              _DetailRow(title: 'สถานะ AI', value: file.status),
+              _DetailRow(title: 'วันที่เพิ่ม', value: file.date),
             ],
           ),
           actions: [
@@ -1065,9 +1425,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ปิด',
-                style: TextStyle(
-                  color: _MaterialColors.accent,
-                ),
+                style: TextStyle(color: _MaterialColors.accent),
               ),
             ),
           ],
@@ -1075,6 +1433,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
       },
     );
   }
+
+  // ============================================================
+  // DELETE
+  // ============================================================
 
   void _confirmDelete(_MaterialFile file) {
     showDialog<void>(
@@ -1087,10 +1449,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
           title: const Text(
             'ลบไฟล์?',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
           ),
           content: Text(
             'ต้องการลบ "${file.name}" หรือไม่',
@@ -1106,9 +1465,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ยกเลิก',
-                style: TextStyle(
-                  color: _MaterialColors.secondaryText,
-                ),
+                style: TextStyle(color: _MaterialColors.secondaryText),
               ),
             ),
             TextButton(
@@ -1123,9 +1480,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ลบ',
-                style: TextStyle(
-                  color: _MaterialColors.danger,
-                ),
+                style: TextStyle(color: _MaterialColors.danger),
               ),
             ),
           ],
@@ -1134,24 +1489,23 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  // ============================================================
+  // DOWNLOAD
+  // ============================================================
+
   void _downloadFile(_MaterialFile file) {
     _showComingSoon('ระบบดาวน์โหลดไฟล์');
   }
+
+  // ============================================================
+  // CHATBOT
+  // ============================================================
 
   void _openChatbot() {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
         builder: (context) => const _PlaceholderChatScreen(),
-      ),
-    );
-  }
-
-  void _showComingSoon(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(text),
-        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -1204,11 +1558,7 @@ class _OverviewItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(
-          icon,
-          size: 19,
-          color: _MaterialColors.accent,
-        ),
+        Icon(icon, size: 19, color: _MaterialColors.accent),
         const SizedBox(height: 7),
         Text(
           value,
@@ -1265,11 +1615,7 @@ class _FileIcon extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: _MaterialColors.accent,
-            size: size * 0.42,
-          ),
+          Icon(icon, color: _MaterialColors.accent, size: size * 0.42),
           const SizedBox(height: 1),
           Text(
             extension,
@@ -1292,47 +1638,37 @@ class _FileIcon extends StatelessWidget {
 class _StatusChip extends StatelessWidget {
   final String status;
 
-  const _StatusChip({
-    required this.status,
-  });
+  const _StatusChip({required this.status});
 
   @override
   Widget build(BuildContext context) {
     final bool ready = status == 'พร้อมใช้กับ AI';
+
     final bool reading = status == 'กำลังวิเคราะห์เนื้อหา';
 
     final Color color = ready
         ? _MaterialColors.green
         : reading
-            ? _MaterialColors.cyan
-            : _MaterialColors.mutedText;
+        ? _MaterialColors.cyan
+        : _MaterialColors.mutedText;
 
     final IconData icon = ready
         ? Icons.check_circle_rounded
         : reading
-            ? Icons.sync_rounded
-            : Icons.cloud_done_rounded;
+        ? Icons.sync_rounded
+        : Icons.cloud_done_rounded;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: color.withValues(alpha: 0.20),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 10,
-            color: color,
-          ),
+          Icon(icon, size: 10, color: color),
           const SizedBox(width: 4),
           Text(
             status,
@@ -1355,9 +1691,7 @@ class _StatusChip extends StatelessWidget {
 class _UploadButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _UploadButton({
-    required this.onPressed,
-  });
+  const _UploadButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -1368,18 +1702,11 @@ class _UploadButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onPressed,
         child: const Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 11,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+              Icon(Icons.add_rounded, color: Colors.white, size: 18),
               SizedBox(width: 5),
               Text(
                 'อัปโหลดไฟล์',
@@ -1405,10 +1732,7 @@ class _SmallActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const _SmallActionButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _SmallActionButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -1423,15 +1747,9 @@ class _SmallActionButton extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: _MaterialColors.surfaceBorder,
-            ),
+            border: Border.all(color: _MaterialColors.surfaceBorder),
           ),
-          child: Icon(
-            icon,
-            color: _MaterialColors.secondaryText,
-            size: 20,
-          ),
+          child: Icon(icon, color: _MaterialColors.secondaryText, size: 20),
         ),
       ),
     );
@@ -1446,10 +1764,7 @@ class _FileActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const _FileActionButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _FileActionButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -1462,11 +1777,7 @@ class _FileActionButton extends StatelessWidget {
         child: SizedBox(
           width: 32,
           height: 32,
-          child: Icon(
-            icon,
-            color: _MaterialColors.secondaryText,
-            size: 16,
-          ),
+          child: Icon(icon, color: _MaterialColors.secondaryText, size: 16),
         ),
       ),
     );
@@ -1510,9 +1821,7 @@ class _NavigationItem extends StatelessWidget {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border: selected
-                  ? Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                    )
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.06))
                   : null,
             ),
             child: Column(
@@ -1529,12 +1838,9 @@ class _NavigationItem extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: selected
-                        ? Colors.white
-                        : _MaterialColors.mutedText,
+                    color: selected ? Colors.white : _MaterialColors.mutedText,
                     fontSize: 10.5,
-                    fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ],
@@ -1575,9 +1881,7 @@ class _UploadOption extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: _MaterialColors.surfaceBorder,
-            ),
+            border: Border.all(color: _MaterialColors.surfaceBorder),
           ),
           child: Row(
             children: [
@@ -1588,10 +1892,7 @@ class _UploadOption extends StatelessWidget {
                   color: _MaterialColors.accent.withValues(alpha: 0.13),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: _MaterialColors.accent,
-                ),
+                child: Icon(icon, color: _MaterialColors.accent),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1648,16 +1949,10 @@ class _SortOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        icon,
-        color: _MaterialColors.secondaryText,
-      ),
+      leading: Icon(icon, color: _MaterialColors.secondaryText),
       title: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 13),
       ),
       trailing: const Icon(
         Icons.chevron_right_rounded,
@@ -1676,10 +1971,7 @@ class _DetailRow extends StatelessWidget {
   final String title;
   final String value;
 
-  const _DetailRow({
-    required this.title,
-    required this.value,
-  });
+  const _DetailRow({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1722,10 +2014,7 @@ class _SquareIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const _SquareIconButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _SquareIconButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -1740,15 +2029,9 @@ class _SquareIconButton extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _MaterialColors.surfaceBorder,
-            ),
+            border: Border.all(color: _MaterialColors.surfaceBorder),
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 17,
-          ),
+          child: Icon(icon, color: Colors.white, size: 17),
         ),
       ),
     );
@@ -1757,12 +2040,6 @@ class _SquareIconButton extends StatelessWidget {
 
 // ================================================================
 // PLACEHOLDER CHAT SCREEN
-// ================================================================
-//
-// ตรงนี้มีไว้เพื่อให้ไฟล์นี้ compile ได้โดยไม่ต้องรู้โครงสร้าง
-// ChatScreen ปัจจุบันของโปรเจกต์
-//
-// เมื่อนำเข้า chat.dart แล้ว สามารถเปลี่ยนเป็น ChatScreen ได้
 // ================================================================
 
 class _PlaceholderChatScreen extends StatelessWidget {
@@ -1778,12 +2055,7 @@ class _PlaceholderChatScreen extends StatelessWidget {
         title: const Text('แชทบอท'),
       ),
       body: const Center(
-        child: Text(
-          'ChatScreen',
-          style: TextStyle(
-            color: Colors.white,
-          ),
-        ),
+        child: Text('ChatScreen', style: TextStyle(color: Colors.white)),
       ),
     );
   }
