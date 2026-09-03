@@ -407,12 +407,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   void _startEmotionRealtimeListener() {
     _emotionSubscription = FirebaseDatabase.instance
-        .ref('emotion_data')
+        .ref('emotionData')
         .onValue
         .listen((event) {
           debugPrint('มีการเปลี่ยนแปลงข้อมูล Emotion');
 
-          // โหลดข้อมูลของวันที่กำลังดูอยู่ใหม่
+          // โหลดข้อมูลของวันที่กำลังดูอยู่
           _loadEmotionData(date: _selectedDate ?? DateTime.now());
         });
   }
@@ -653,6 +653,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       MaterialPageRoute(
         builder: (context) {
           return ChatScreen(
+            emotionData: emotionData,
             subjectCode: _subject.subjectCode,
             sessionId: sessionId,
           );
@@ -1191,6 +1192,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
   // Delete Subject
   // ==========================================================
+
   Future<void> _confirmDeleteSubject() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1224,7 +1226,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             ),
           ),
           content: Text(
-            'รายวิชา “${_subject.subjectName}” จะถูกลบพร้อมข้อมูลทั้งหมด และไม่สามารถกู้คืนได้',
+            'รายวิชา “${_subject.subjectName}” จะถูกนำออกจากหน้ารายวิชาของฉัน และไม่สามารถย้อนกลับจากหน้านี้ได้',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: _DashboardColors.secondaryText,
@@ -1265,55 +1267,21 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       return;
     }
 
-    // ============================================================
-    // ปิด Session ก่อนลบ
-    // ============================================================
-
+    // ถ้ามีห้องเรียนเปิดอยู่
+    // ให้ปิด Session ก่อน
     if (_isClassActive && _sessionId != null) {
       try {
         await _sessionService.endSession(_sessionId!);
       } catch (error) {
         debugPrint('ปิด Session ก่อนลบรายวิชาไม่สำเร็จ: $error');
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ไม่สามารถปิดห้องเรียนก่อนลบรายวิชาได้'),
-          ),
-        );
-
-        return;
       }
     }
 
-    // ============================================================
-    // ลบรายวิชาและข้อมูลทั้งหมด
-    // ============================================================
+    if (!mounted) return;
 
-    try {
-      await _subjectService.deleteSubject(_subject.subjectCode);
+    widget.onSubjectDeleted?.call();
 
-      debugPrint(
-        'ลบรายวิชา ${_subject.subjectCode} และข้อมูลที่เกี่ยวข้องทั้งหมดแล้ว',
-      );
-
-      if (!mounted) return;
-
-      // แจ้ง Home ให้โหลดรายการวิชาใหม่
-      widget.onSubjectDeleted?.call();
-
-      // กลับไปหน้า Home
-      Navigator.pop(context);
-    } catch (error) {
-      debugPrint('ลบรายวิชาไม่สำเร็จ: $error');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่สามารถลบรายวิชาได้ กรุณาลองใหม่')),
-      );
-    }
+    Navigator.pop(context);
   }
 
   // ==========================================================
@@ -1339,7 +1307,15 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         return;
 
       case 2:
-        _openChatbot();
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => ChatScreen(
+              subjectCode: _subject.subjectCode,
+              sessionId: _sessionId,
+            ),
+          ),
+        );
         return;
     }
   }
@@ -2205,22 +2181,22 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             height: 46,
 
             child: OutlinedButton.icon(
-              onPressed: () async {
-                await DashboardPdfConnector.open(
-                  context: context,
-                  subjectName: _subject.subjectName,
-                  subjectCode: _subject.subjectCode,
-                  academicYear: _subject.year,
-                  semester: _subject.semester,
-                  selectedDate: _selectedDate ?? DateTime.now(),
-                  beforeRespondents: beforeStudentCount,
-                  afterRespondents: afterStudentCount,
-                  beforePositivePercent: beforePositivePercentage,
-                  afterPositivePercent: afterPositivePercentage,
-                  beforeDistribution: beforeEmotionDistribution,
-                  afterDistribution: afterEmotionDistribution,
-                );
-              },
+           onPressed: () async {
+  await DashboardPdfConnector.open(
+    context: context,
+    subjectName: _subject.subjectName,
+    subjectCode: _subject.subjectCode,
+    academicYear: _subject.year,
+    semester: _subject.semester,
+    selectedDate: _selectedDate ?? DateTime.now(),
+    beforeRespondents: beforeStudentCount,
+    afterRespondents: afterStudentCount,
+    beforePositivePercent: beforePositivePercentage,
+    afterPositivePercent: afterPositivePercentage,
+    beforeDistribution: beforeEmotionDistribution,
+    afterDistribution: afterEmotionDistribution,
+  );
+},
 
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
 
