@@ -140,7 +140,7 @@ class SubjectCard extends StatelessWidget {
                         color: _SubjectCardColors.summary,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const EmotionSummaryWidget(),
+                      child: EmotionSummaryWidget(subjectCode: subject.subjectCode,),
                     ),
                   ],
                 ),

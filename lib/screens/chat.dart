@@ -10,6 +10,7 @@ import '../services/chat_service.dart';
 import '../services/chat_history_service.dart';
 import '../models/chat_message.dart';
 import '../widgets/message_bubble.dart';
+import '../services/emotion_service.dart';
 
 class _ChatColors {
   static const background = Color(0xFF0E0D18);
@@ -47,8 +48,6 @@ class ChatScreen extends StatefulWidget {
   // General Chat สามารถเป็น null ได้
   // ============================================================
 
-  final Map<String, dynamic>? emotionData;
-
   // ============================================================
   // Subject Code
   //
@@ -63,12 +62,7 @@ class ChatScreen extends StatefulWidget {
 
   final String? sessionId;
 
-  const ChatScreen({
-    super.key,
-    this.emotionData,
-    this.subjectCode,
-    this.sessionId,
-  });
+  const ChatScreen({super.key, this.subjectCode, this.sessionId});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -78,26 +72,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // ============================================================
-  // Chatbot
-  // ============================================================
-
   final ChatService _chatService = ChatService();
-
-  // ============================================================
-  // Firestore Chat History
-  // ============================================================
-
   final ChatHistoryService _historyService = ChatHistoryService();
-
-  // ============================================================
-  // Messages
-  // ============================================================
+  final EmotionService _emotionService = EmotionService();
 
   final List<ChatMessage> messages = [];
 
   bool isSending = false;
   bool _isLoadingHistory = true;
+
+  Map<String, dynamic>? _emotionData;
+  bool _isLoadingEmotion = false;
 
   // ============================================================
   // Conversation ID
@@ -160,6 +145,141 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadEmotionData() async {
+    if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
+      return;
+    }
+
+    if (_isLoadingEmotion) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingEmotion = true;
+    });
+
+    try {
+      final selectedDate = DateTime.now();
+
+      final emotionData = await _emotionService.getEmotionSummaryForAI(
+        subjectCode: widget.subjectCode!,
+        date: selectedDate,
+        type: 'before_class',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _emotionData = emotionData;
+        _isLoadingEmotion = false;
+      });
+
+      debugPrint('========== EMOTION ATTACHED ==========');
+      debugPrint('$_emotionData');
+      debugPrint('======================================');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('แนบข้อมูลอารมณ์เรียบร้อยแล้ว'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      debugPrint('โหลดข้อมูล Emotion ไม่สำเร็จ: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingEmotion = false;
+        _emotionData = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error')),
+      );
+    }
+  }
+
+  Widget _buildEmotionStatus() {
+    if (_isLoadingEmotion) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0x1A6C52E5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0x476C52E5)),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF6C52E5),
+              ),
+            ),
+            SizedBox(width: 9),
+            Text(
+              'กำลังโหลดข้อมูลอารมณ์...',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_emotionData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final total = _emotionData!['totalResponses'] ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0x261BAF7A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x4D1BAF7A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.bar_chart_rounded,
+            color: Color(0xFF3DD99A),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'แนบข้อมูลอารมณ์แล้ว · $total responses',
+              style: const TextStyle(color: Color(0xFF3DD99A), fontSize: 12),
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _emotionData = null;
+              });
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.close_rounded,
+              color: Colors.white54,
+              size: 17,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   // ============================================================
   // เลือกไฟล์จากหน้า Chat
   // ============================================================
@@ -236,11 +356,25 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       setState(() {
+        // จำกัดข้อความที่ส่งให้ AI เพื่อไม่ให้ Request ใหญ่เกิน Groq TPM
+        const int maxTextLength = 6000;
+
+        String textForAI = extractedText;
+
+        if (textForAI.length > maxTextLength) {
+          textForAI = textForAI.substring(0, maxTextLength);
+
+          debugPrint(
+            'ไฟล์มีข้อความยาวเกินกำหนด '
+            'ตัดเหลือ $maxTextLength ตัวอักษร',
+          );
+        }
+
         _chatUploadedFile = {
           'id': 'chat_upload_${DateTime.now().millisecondsSinceEpoch}',
           'fileName': file.name,
           'fileType': file.extension ?? '',
-          'text': extractedText,
+          'text': textForAI,
         };
 
         _isReadingFile = false;
@@ -543,234 +677,204 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
 
   // ============================================================
-// โหลดประวัติการสนทนา
-// ============================================================
+  // โหลดประวัติการสนทนา
+  // ============================================================
 
-Future<void> _loadChatHistory() async {
-  try {
-    debugPrint('========== LOAD CHAT HISTORY ==========');
+  Future<void> _loadChatHistory() async {
+    try {
+      debugPrint('========== LOAD CHAT HISTORY ==========');
 
-    final bool isClassroom =
-        widget.subjectCode != null &&
-        widget.subjectCode!.isNotEmpty;
+      final bool isClassroom =
+          widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
-    debugPrint(
-      'Chat type: ${isClassroom ? 'classroom' : 'general'}',
-    );
+      debugPrint('Chat type: ${isClassroom ? 'classroom' : 'general'}');
 
-    debugPrint(
-      'subjectCode: ${widget.subjectCode}',
-    );
+      debugPrint('subjectCode: ${widget.subjectCode}');
 
-    debugPrint(
-      'sessionId: ${widget.sessionId}',
-    );
+      debugPrint('sessionId: ${widget.sessionId}');
 
-    // ==========================================================
-    // ดึง Conversation ทั้งหมด
-    // ==========================================================
+      // ==========================================================
+      // ดึง Conversation ทั้งหมด
+      // ==========================================================
 
-    final conversations =
-        await _historyService.getConversations();
+      final conversations = await _historyService.getConversations();
 
-    if (conversations.isEmpty) {
-      debugPrint('ยังไม่มีประวัติการสนทนา');
+      if (conversations.isEmpty) {
+        debugPrint('ยังไม่มีประวัติการสนทนา');
 
-      if (mounted) {
-        setState(() {
-          _isLoadingHistory = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoadingHistory = false;
+          });
+        }
+
+        return;
       }
 
-      return;
-    }
+      // ==========================================================
+      // หา Conversation ที่ตรงกับ Chat ปัจจุบัน
+      // ==========================================================
 
-    // ==========================================================
-    // หา Conversation ที่ตรงกับ Chat ปัจจุบัน
-    // ==========================================================
+      QueryDocumentSnapshot<Map<String, dynamic>>? matchedConversation;
 
-    QueryDocumentSnapshot<Map<String, dynamic>>?
-        matchedConversation;
+      for (final conversation in conversations) {
+        final data = conversation.data();
 
-    for (final conversation in conversations) {
-      final data = conversation.data();
+        final String type = data['type']?.toString() ?? '';
 
-      final String type =
-          data['type']?.toString() ?? '';
+        final String conversationSubjectCode =
+            data['subjectCode']?.toString() ?? '';
 
-      final String conversationSubjectCode =
-          data['subjectCode']?.toString() ?? '';
+        final String conversationSessionId =
+            data['sessionId']?.toString() ?? '';
 
-      final String conversationSessionId =
-          data['sessionId']?.toString() ?? '';
+        // ========================================================
+        // GENERAL CHAT
+        // ========================================================
 
-      // ========================================================
-      // GENERAL CHAT
-      // ========================================================
+        if (!isClassroom) {
+          if (type == 'general') {
+            matchedConversation = conversation;
+            break;
+          }
+        }
+        // ========================================================
+        // CLASSROOM CHAT
+        // ========================================================
+        else {
+          // ต้องเป็น classroom เท่านั้น
+          if (type != 'classroom') {
+            continue;
+          }
 
-      if (!isClassroom) {
-        if (type == 'general') {
+          // subjectCode ต้องตรงกับห้องที่กำลังเปิด
+          if (conversationSubjectCode != widget.subjectCode) {
+            continue;
+          }
+
+          // ======================================================
+          // ถ้ามี sessionId
+          // ให้ตรวจ sessionId ด้วย
+          // ======================================================
+
+          if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
+            if (conversationSessionId != widget.sessionId) {
+              continue;
+            }
+          }
+
           matchedConversation = conversation;
           break;
         }
       }
 
-      // ========================================================
-      // CLASSROOM CHAT
-      // ========================================================
+      // ==========================================================
+      // ไม่พบ Conversation
+      // ==========================================================
 
-      else {
-        // ต้องเป็น classroom เท่านั้น
-        if (type != 'classroom') {
+      if (matchedConversation == null) {
+        debugPrint('ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน');
+
+        if (mounted) {
+          setState(() {
+            _isLoadingHistory = false;
+          });
+        }
+
+        return;
+      }
+
+      // ==========================================================
+      // เก็บ Conversation ID
+      // ==========================================================
+
+      _conversationId = matchedConversation.id;
+
+      debugPrint('พบ Conversation: $_conversationId');
+
+      // ==========================================================
+      // ดึง Messages
+      // ==========================================================
+
+      final historyMessages = await _historyService.getMessages(
+        _conversationId!,
+      );
+
+      debugPrint('พบข้อความทั้งหมด: ${historyMessages.length}');
+
+      if (!mounted) {
+        return;
+      }
+
+      // ==========================================================
+      // แปลง Firestore → ChatMessage
+      // ==========================================================
+
+      final List<ChatMessage> loadedMessages = [];
+
+      for (final doc in historyMessages) {
+        final data = doc.data();
+
+        final String role = data['role']?.toString() ?? 'assistant';
+
+        final String text = data['text']?.toString() ?? '';
+
+        if (text.trim().isEmpty) {
           continue;
         }
 
-        // subjectCode ต้องตรงกับห้องที่กำลังเปิด
-        if (conversationSubjectCode != widget.subjectCode) {
-          continue;
+        DateTime messageTime = DateTime.now();
+
+        final timestamp = data['timestamp'];
+
+        if (timestamp is Timestamp) {
+          messageTime = timestamp.toDate();
         }
 
-        // ======================================================
-        // ถ้ามี sessionId
-        // ให้ตรวจ sessionId ด้วย
-        // ======================================================
+        loadedMessages.add(
+          ChatMessage(isAI: role == 'assistant', text: text, time: messageTime),
+        );
+      }
 
-        if (widget.sessionId != null &&
-            widget.sessionId!.isNotEmpty) {
-          if (conversationSessionId != widget.sessionId) {
-            continue;
-          }
+      // ==========================================================
+      // แสดงประวัติ
+      //
+      // สำคัญ:
+      // ไม่ clear messages
+      //
+      // เพราะเราต้องการให้ข้อความ Welcome
+      // ยังคงอยู่ด้านบน
+      // ==========================================================
+
+      setState(() {
+        _isLoadingHistory = false;
+
+        if (loadedMessages.isNotEmpty) {
+          messages.addAll(loadedMessages);
         }
+      });
 
-        matchedConversation = conversation;
-        break;
-      }
-    }
+      debugPrint('โหลดประวัติสำเร็จ: ${loadedMessages.length} ข้อความ');
 
-    // ==========================================================
-    // ไม่พบ Conversation
-    // ==========================================================
+      debugPrint('======================================');
 
-    if (matchedConversation == null) {
-      debugPrint(
-        'ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน',
-      );
+      // ==========================================================
+      // เลื่อนไปล่างสุด
+      // ==========================================================
 
-      if (mounted) {
-        setState(() {
-          _isLoadingHistory = false;
-        });
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('โหลดประวัติการสนทนาไม่สำเร็จ: $e');
+
+      if (!mounted) {
+        return;
       }
 
-      return;
+      setState(() {
+        _isLoadingHistory = false;
+      });
     }
-
-    // ==========================================================
-    // เก็บ Conversation ID
-    // ==========================================================
-
-    _conversationId = matchedConversation.id;
-
-    debugPrint(
-      'พบ Conversation: $_conversationId',
-    );
-
-    // ==========================================================
-    // ดึง Messages
-    // ==========================================================
-
-    final historyMessages =
-        await _historyService.getMessages(
-      _conversationId!,
-    );
-
-    debugPrint(
-      'พบข้อความทั้งหมด: ${historyMessages.length}',
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    // ==========================================================
-    // แปลง Firestore → ChatMessage
-    // ==========================================================
-
-    final List<ChatMessage> loadedMessages = [];
-
-    for (final doc in historyMessages) {
-      final data = doc.data();
-
-      final String role =
-          data['role']?.toString() ?? 'assistant';
-
-      final String text =
-          data['text']?.toString() ?? '';
-
-      if (text.trim().isEmpty) {
-        continue;
-      }
-
-      DateTime messageTime = DateTime.now();
-
-      final timestamp = data['timestamp'];
-
-      if (timestamp is Timestamp) {
-        messageTime = timestamp.toDate();
-      }
-
-      loadedMessages.add(
-        ChatMessage(
-          isAI: role == 'assistant',
-          text: text,
-          time: messageTime,
-        ),
-      );
-    }
-
-    // ==========================================================
-    // แสดงประวัติ
-    //
-    // สำคัญ:
-    // ไม่ clear messages
-    //
-    // เพราะเราต้องการให้ข้อความ Welcome
-    // ยังคงอยู่ด้านบน
-    // ==========================================================
-
-    setState(() {
-      _isLoadingHistory = false;
-
-      if (loadedMessages.isNotEmpty) {
-        messages.addAll(loadedMessages);
-      }
-    });
-
-    debugPrint(
-      'โหลดประวัติสำเร็จ: ${loadedMessages.length} ข้อความ',
-    );
-
-    debugPrint('======================================');
-
-    // ==========================================================
-    // เลื่อนไปล่างสุด
-    // ==========================================================
-
-    _scrollToBottom();
-  } catch (e) {
-    debugPrint(
-      'โหลดประวัติการสนทนาไม่สำเร็จ: $e',
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _isLoadingHistory = false;
-    });
   }
-}
 
   // ============================================================
   // สร้าง Conversation ใน Firestore
@@ -837,9 +941,49 @@ Future<void> _loadChatHistory() async {
 
     final String userMessage = _controller.text.trim();
 
+    // ==========================================================
+    // เก็บข้อมูลที่แนบไว้ ณ ตอนกดส่ง
+    //
+    // สำคัญ:
+    // ต้อง copy ออกมาก่อน
+    // เพราะหลังส่งสำเร็จเราจะล้าง attachment
+    // ==========================================================
+
+    final Map<String, dynamic>? attachedEmotionData = _emotionData != null
+        ? Map<String, dynamic>.from(_emotionData!)
+        : null;
+
+    final List<Map<String, dynamic>> attachedLessonMaterials =
+        _selectedLessonMaterials
+            .map((material) => Map<String, dynamic>.from(material))
+            .toList();
+
+    final Map<String, dynamic>? attachedChatFile = _chatUploadedFile != null
+        ? Map<String, dynamic>.from(_chatUploadedFile!)
+        : null;
+
+    // ==========================================================
+    // เพิ่มข้อความ User ลงหน้าจอ
+    // พร้อมข้อมูลที่แนบ
+    // ==========================================================
+
     setState(() {
       messages.add(
-        ChatMessage(isAI: false, text: userMessage, time: DateTime.now()),
+        ChatMessage(
+          isAI: false,
+          text: userMessage,
+          time: DateTime.now(),
+
+          // Emotion ที่แนบ
+          emotionData: attachedEmotionData,
+
+          // ไฟล์ที่เลือกจาก Lesson Material
+          lessonMaterials: attachedLessonMaterials,
+
+          // ไฟล์ที่แนบจากปุ่ม Attach
+          fileName: attachedChatFile?['fileName']?.toString(),
+          fileType: attachedChatFile?['fileType']?.toString(),
+        ),
       );
 
       isSending = true;
@@ -857,7 +1001,47 @@ Future<void> _loadChatHistory() async {
       await _createConversationIfNeeded(userMessage);
 
       // ==========================================================
-      // บันทึกข้อความ User ลง Firestore
+      // รวมไฟล์ที่จะส่งให้ AI
+      // ==========================================================
+
+      final List<Map<String, dynamic>> materialsForAI = [
+        ...attachedLessonMaterials,
+      ];
+
+      if (attachedChatFile != null) {
+        materialsForAI.add(attachedChatFile);
+      }
+
+      // ==========================================================
+      // Debug
+      // ==========================================================
+
+      debugPrint('========== SEND MESSAGE ==========');
+
+      debugPrint('Message: $userMessage');
+
+      debugPrint(
+        'Emotion attached: '
+        '${attachedEmotionData != null}',
+      );
+
+      debugPrint(
+        'Lesson materials: '
+        '${attachedLessonMaterials.length}',
+      );
+
+      debugPrint(
+        'Chat uploaded file: '
+        '${attachedChatFile?['fileName'] ?? 'ไม่มี'}',
+      );
+
+      debugPrint('==================================');
+
+      // ==========================================================
+      // บันทึกข้อความ User
+      //
+      // ตอนนี้เก็บข้อความก่อน
+      // ส่วน attachment แสดงในหน้า Chat
       // ==========================================================
 
       try {
@@ -871,46 +1055,18 @@ Future<void> _loadChatHistory() async {
       }
 
       // ==========================================================
-      // ส่งคำถามไป Backend
-      //
-      // ตอนนี้ส่งข้อมูล:
-      //
-      // 1. message
-      // 2. emotionData
-      // 3. subjectCode
-      // 4. lessonMaterials
-      //
-      // General Chat:
-      // emotionData = null
-      // subjectCode = null
-      // lessonMaterials = []
-      //
-      // Classroom Chat:
-      // มีข้อมูลทั้งหมด
-      // ==========================================================
-
-      // ==========================================================
-      // รวมไฟล์การสอนจาก Subject
-      // +
-      // ไฟล์ที่ผู้ใช้แนบจากหน้า Chat
-      // ==========================================================
-
-      final List<Map<String, dynamic>> materialsForAI = [
-        ..._selectedLessonMaterials,
-      ];
-
-      if (_chatUploadedFile != null) {
-        materialsForAI.add(_chatUploadedFile!);
-      }
-
-      // ==========================================================
-      // ส่งข้อมูลไป Backend
+      // ส่งไป Backend
       // ==========================================================
 
       final String answer = await _chatService.sendMessage(
         message: userMessage,
-        emotionData: widget.emotionData,
+
+        // ส่ง Emotion เฉพาะตอนที่แนบ
+        emotionData: attachedEmotionData,
+
         subjectCode: widget.subjectCode,
+
+        // ส่งเฉพาะไฟล์ที่แนบ/เลือก
         lessonMaterials: materialsForAI,
       );
 
@@ -926,12 +1082,22 @@ Future<void> _loadChatHistory() async {
         messages.add(
           ChatMessage(isAI: true, text: answer, time: DateTime.now()),
         );
+
+        // ========================================================
+        // ล้าง Attachment หลังส่งสำเร็จ
+        //
+        // เพื่อให้ข้อความถัดไปไม่ส่งข้อมูลเดิมซ้ำ
+        // ========================================================
+
+        _emotionData = null;
+        _chatUploadedFile = null;
+        _selectedLessonMaterials.clear();
       });
 
       _scrollToBottom();
 
       // ==========================================================
-      // บันทึกคำตอบ AI ลง Firestore
+      // บันทึกคำตอบ AI
       // ==========================================================
 
       try {
@@ -954,7 +1120,9 @@ Future<void> _loadChatHistory() async {
         messages.add(
           ChatMessage(
             isAI: true,
-            text: "ไม่สามารถเชื่อมต่อได้\nกรุณาลองใหม่อีกครั้ง",
+            text:
+                "ไม่สามารถเชื่อมต่อได้\n"
+                "กรุณาลองใหม่อีกครั้ง",
             time: DateTime.now(),
           ),
         );
@@ -975,7 +1143,7 @@ Future<void> _loadChatHistory() async {
   // ============================================================
 
   Widget _buildAppBar() {
-    final subject = widget.emotionData?['subject']?.toString();
+    final subject = widget.subjectCode;
 
     final bool isClassroom =
         widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
@@ -1062,80 +1230,6 @@ Future<void> _loadChatHistory() async {
   //
   // แสดงเฉพาะกรณีมี emotionData
   // ============================================================
-
-  Widget _buildContextCard() {
-    final data = widget.emotionData!;
-
-    final date = data['date']?.toString() ?? 'ไม่ระบุวันที่';
-
-    final students = data['students']?.toString() ?? '0';
-
-    return Container(
-      height: 59,
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: _ChatColors.accentSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _ChatColors.accentBorder),
-      ),
-      child: Row(
-        children: [
-          const Text('📊', style: TextStyle(fontSize: 20)),
-
-          const SizedBox(width: 10),
-
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ดึงข้อมูลกราฟอัตโนมัติ',
-                  style: TextStyle(
-                    color: _ChatColors.primaryText,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  'คาบ $date · $students คน',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _ChatColors.faintText,
-                    fontSize: 9.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Container(
-            height: 22,
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _ChatColors.greenSurface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _ChatColors.greenBorder),
-            ),
-            child: const Text(
-              '✓ โหลดแล้ว',
-              style: TextStyle(
-                color: _ChatColors.greenText,
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildLessonMaterialSelector() {
     if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
@@ -1344,8 +1438,8 @@ Future<void> _loadChatHistory() async {
 
   Widget _buildQuickChips() {
     const chips = <Map<String, String>>[
-      {'icon': '📊', 'label': 'ดูกราฟเพิ่ม'},
-      {'icon': '📎', 'label': 'แนบสื่อใหม่'},
+      {'icon': '📊', 'label': 'แนบข้อมูลอารมณ์'},
+      {'icon': '📎', 'label': 'แนบสื่อการสอน'},
       {'icon': '💡', 'label': 'ขอคำแนะนำ'},
       {'icon': '🕐', 'label': 'คาบที่แล้ว'},
     ];
@@ -1402,16 +1496,19 @@ Future<void> _loadChatHistory() async {
   // ============================================================
 
   void _handleQuickAction(String label) {
-    if (label == 'แนบสื่อใหม่') {
+    if (label == 'แนบสื่อการสอน') {
       _pickChatFile();
+      return;
+    }
+
+    if (label == 'แนบข้อมูลอารมณ์') {
+      _loadEmotionData();
       return;
     }
 
     String text = label;
 
-    if (label == 'ดูกราฟเพิ่ม') {
-      text = 'ช่วยวิเคราะห์ข้อมูลกราฟอารมณ์เพิ่มเติม';
-    } else if (label == 'ขอคำแนะนำ') {
+    if (label == 'ขอคำแนะนำ') {
       text = 'ขอคำแนะนำในการปรับการสอนจากข้อมูลนี้';
     } else if (label == 'คาบที่แล้ว') {
       text = 'ช่วยเปรียบเทียบกับข้อมูลคาบที่แล้ว';
@@ -1584,9 +1681,8 @@ Future<void> _loadChatHistory() async {
               //
               // แสดงเฉพาะ Classroom ที่มี Emotion Data
               // ==================================================
-              if (widget.emotionData != null) _buildContextCard(),
-
-              _buildLessonMaterialSelector(),
+              if (widget.subjectCode != null && widget.subjectCode!.isNotEmpty)
+                _buildLessonMaterialSelector(),
 
               // ==================================================
               // Lesson Material Status
@@ -1603,8 +1699,8 @@ Future<void> _loadChatHistory() async {
               // ==================================================
               // Sending Indicator
               // ==================================================
-              if (isSending)
-                if (isSending) _buildSendingIndicator(),
+              if (isSending) _buildSendingIndicator(),
+              _buildEmotionStatus(),
               _buildQuickChips(),
               _buildChatUploadedFile(),
               _buildInputBar(),

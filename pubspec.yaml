@@ -36,6 +36,7 @@ dependencies:
   http: ^1.2.2
   file_picker: ^10.3.3
   syncfusion_flutter_pdf: ^31.2.5
+  url_launcher: ^6.3.2
   firebase_core: ^4.12.1
   firebase_database: ^12.4.6
   cloud_firestore: ^6.9.0

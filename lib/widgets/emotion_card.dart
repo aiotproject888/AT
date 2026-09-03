@@ -1,100 +1,188 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 
-class EmotionSummaryWidget extends StatelessWidget {
-  const EmotionSummaryWidget({super.key});
+class EmotionSummaryWidget extends StatefulWidget {
+  final String subjectCode;
+
+  const EmotionSummaryWidget({
+    super.key,
+    required this.subjectCode,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final DatabaseReference ref = FirebaseDatabase.instance.ref("emotionData");
+  State<EmotionSummaryWidget> createState() =>
+      _EmotionSummaryWidgetState();
+}
 
-    return StreamBuilder<DatabaseEvent>(
-      stream: ref.onValue,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
+  StreamSubscription<DatabaseEvent>? _emotionSubscription;
 
-        if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
-          return const _NoDataWidget();
-        }
+  Map<String, int> _emotionCounts = {};
+  bool _isLoading = true;
 
-        final root = Map<String, dynamic>.from(
-          snapshot.data!.snapshot.value as Map,
+  String _currentDateString() {
+    final now = DateTime.now();
+
+    return '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _startRealtimeListener();
+  }
+
+  @override
+  void didUpdateWidget(covariant EmotionSummaryWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.subjectCode != widget.subjectCode) {
+      _startRealtimeListener();
+    }
+  }
+
+  void _startRealtimeListener() {
+    _emotionSubscription?.cancel();
+
+    final date = _currentDateString();
+
+    final beforeRef = FirebaseDatabase.instance.ref(
+      'emotion_data/${widget.subjectCode}/before_class_$date',
+    );
+
+    final afterRef = FirebaseDatabase.instance.ref(
+      'emotion_data/${widget.subjectCode}/after_class_$date',
+    );
+
+    // ฟังทั้ง before และ after
+    _emotionSubscription = beforeRef.onValue.listen((_) {
+      _loadTodayEmotion();
+    });
+
+    afterRef.onValue.listen((_) {
+      _loadTodayEmotion();
+    });
+
+    _loadTodayEmotion();
+  }
+
+  Future<void> _loadTodayEmotion() async {
+    try {
+      final date = _currentDateString();
+
+      final beforeSnapshot = await FirebaseDatabase.instance
+          .ref(
+            'emotion_data/${widget.subjectCode}/before_class_$date',
+          )
+          .get();
+
+      final afterSnapshot = await FirebaseDatabase.instance
+          .ref(
+            'emotion_data/${widget.subjectCode}/after_class_$date',
+          )
+          .get();
+
+      DatabaseEvent? selectedEvent;
+
+      Map<String, dynamic>? beforeData;
+      Map<String, dynamic>? afterData;
+
+      if (beforeSnapshot.exists && beforeSnapshot.value is Map) {
+        beforeData = Map<String, dynamic>.from(
+          beforeSnapshot.value as Map,
         );
+      }
 
-        Map<String, dynamic>? emotionData;
+      if (afterSnapshot.exists && afterSnapshot.value is Map) {
+        afterData = Map<String, dynamic>.from(
+          afterSnapshot.value as Map,
+        );
+      }
 
-        // ถ้ามี after ให้ใช้ after
-        if (root["after"] != null && (root["after"] as Map).isNotEmpty) {
-          emotionData = Map<String, dynamic>.from(root["after"]);
-        }
-        // ถ้ายังไม่มี after ให้ใช้ before
-        else if (root["before"] != null && (root["before"] as Map).isNotEmpty) {
-          emotionData = Map<String, dynamic>.from(root["before"]);
-        }
+      // ถ้ามี after ให้ใช้ after
+      // ถ้ายังไม่มี after ให้ใช้ before
+      final Map<String, dynamic>? selectedData =
+          afterData != null && afterData.isNotEmpty
+              ? afterData
+              : beforeData;
 
-        if (emotionData == null) {
-          return const _NoDataWidget();
-        }
+      if (selectedData == null || selectedData.isEmpty) {
+        if (!mounted) return;
 
-        Map<String, int> counter = {};
-
-        for (var item in emotionData.values) {
-          final value = Map<String, dynamic>.from(item);
-
-          String emotion = value["emotion"] ?? "ไม่ระบุ";
-
-          counter[emotion] = (counter[emotion] ?? 0) + 1;
-        }
-
-        String topEmotion = "";
-        int topCount = 0;
-
-        counter.forEach((emotion, count) {
-          if (count > topCount) {
-            topEmotion = emotion;
-            topCount = count;
-          }
+        setState(() {
+          _emotionCounts = {};
+          _isLoading = false;
         });
 
-        int total = emotionData.length;
+        return;
+      }
 
-        double percent = (topCount / total) * 100;
+      final Map<String, int> counts = {};
 
-        String emoji = _getEmoji(topEmotion);
+      for (final item in selectedData.values) {
+        if (item is! Map) continue;
 
-        return Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 45)),
+        final record = Map<String, dynamic>.from(item);
 
-            const SizedBox(height: 5),
+        final emotion =
+            record['emotion_name'] ??
+            record['emotion'] ??
+            'ไม่ระบุ';
 
-            Text(
-              topEmotion,
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-            ),
+        final counterValue = record['counter'];
 
-            Text(
-              "${percent.toStringAsFixed(0)}% มากที่สุด",
-              style: const TextStyle(color: Colors.white54),
-            ),
-          ],
-        );
-      },
-    );
+        int counter = 1;
+
+        if (counterValue is int) {
+          counter = counterValue;
+        } else if (counterValue is num) {
+          counter = counterValue.toInt();
+        }
+
+        counts[emotion.toString()] =
+            (counts[emotion.toString()] ?? 0) + counter;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _emotionCounts = counts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'โหลด Emotion ของ ${widget.subjectCode} ไม่สำเร็จ: $e',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _emotionCounts = {};
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _emotionSubscription?.cancel();
+    super.dispose();
   }
 
   String _getEmoji(String emotion) {
     switch (emotion) {
       case "รู้สึกสนใจ":
-        return "🧐";
+        return "😊";
 
       case "รู้สึกตื่นเต้น":
         return "🤩";
 
-      case "รู้กสึกสนุกสนาน":
+      case "รู้สึกสนุกสนาน":
         return "😄";
 
       case "รู้สึกเฉยๆ":
@@ -116,6 +204,176 @@ class EmotionSummaryWidget extends StatelessWidget {
         return "🙂";
     }
   }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const SizedBox(
+        height: 62,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF6C52E5),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_emotionCounts.isEmpty) {
+      return const _NoDataWidget();
+    }
+
+    return _buildEmotionSummary();
+  }
+
+  Widget _buildEmotionSummary() {
+    final total = _emotionCounts.values.fold<int>(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    if (total == 0) {
+      return const _NoDataWidget();
+    }
+
+    final sortedEmotions = _emotionCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final topEmotion = sortedEmotions.first;
+    final topPercent =
+        ((topEmotion.value / total) * 100).round();
+
+    // แสดงอารมณ์รองได้สูงสุด 3 อารมณ์
+    final otherEmotions = sortedEmotions.skip(1).take(3).toList();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ==========================
+        // อารมณ์หลัก
+        // ==========================
+        SizedBox(
+          width: 92,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _getEmoji(topEmotion.key),
+                style: const TextStyle(
+                  fontSize: 25,
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              Text(
+                topEmotion.key,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              Text(
+                '$topPercent% มากที่สุด',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // เส้นแบ่ง
+        Container(
+          width: 1,
+          height: 48,
+          color: Colors.white24,
+        ),
+
+        const SizedBox(width: 12),
+
+        // ==========================
+        // Emotion รอง
+        // ==========================
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ...otherEmotions.map((entry) {
+                final percent =
+                    ((entry.value / total) * 100).round();
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 3,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        child: Text(
+                          _getEmoji(entry.key),
+                          style: const TextStyle(
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 4),
+
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: entry.value / total,
+                            minHeight: 5,
+                            backgroundColor:
+                                Colors.white12,
+                            valueColor:
+                                const AlwaysStoppedAnimation<
+                                    Color>(
+                              Color(0xFF6C52E5),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 7),
+
+                      SizedBox(
+                        width: 27,
+                        child: Text(
+                          '$percent%',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _NoDataWidget extends StatelessWidget {
@@ -123,28 +381,47 @@ class _NoDataWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      children: [
-
-        SizedBox(height: 20),
-
-        Text(
-          "ยังไม่มีข้อมูล",
-          style: TextStyle(color: Colors.white, fontSize: 25),
+    return const SizedBox(
+      height: 62,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'ยังไม่มีข้อมูล',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'รอการประเมิน',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 10,
+              ),
+            ),
+          ],
         ),
-
-        Text("รอการประเมิน", style: TextStyle(color: Colors.white54)),
-
-        SizedBox(height: 20),
-      ],
+      ),
     );
   }
 }
 
+
+// ======================================================
+// EmotionDonutChart เดิม
+// ======================================================
+
 class EmotionDonutChart extends StatelessWidget {
   final Map<String, int> emotionData;
 
-  const EmotionDonutChart({super.key, required this.emotionData});
+  const EmotionDonutChart({
+    super.key,
+    required this.emotionData,
+  });
 
   static const Color purple = Color(0xff7C5CFC);
   static const Color blue = Color(0xff4F8CFF);
@@ -156,12 +433,18 @@ class EmotionDonutChart extends StatelessWidget {
       return const Center(
         child: Text(
           'รอการประเมิน',
-          style: TextStyle(color: Color(0x4DFFFFFF), fontSize: 14),
+          style: TextStyle(
+            color: Color(0x4DFFFFFF),
+            fontSize: 14,
+          ),
         ),
       );
     }
 
-    final total = emotionData.values.fold<int>(0, (sum, value) => sum + value);
+    final total = emotionData.values.fold<int>(
+      0,
+      (sum, value) => sum + value,
+    );
 
     final sections = <PieChartSectionData>[];
 
@@ -200,9 +483,6 @@ class EmotionDonutChart extends StatelessWidget {
 
     return Row(
       children: [
-        // =========================
-        // Donut Chart
-        // =========================
         Expanded(
           flex: 5,
           child: SizedBox(
@@ -219,9 +499,6 @@ class EmotionDonutChart extends StatelessWidget {
 
         const SizedBox(width: 10),
 
-        // =========================
-        // Emoji Legend
-        // =========================
         Expanded(
           flex: 3,
           child: Column(
@@ -232,15 +509,14 @@ class EmotionDonutChart extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    // จุดสี
                     Container(
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color:
-                            colors[emotionData.keys.toList().indexOf(
-                                  entry.key,
-                                ) %
+                        color: colors[
+                            emotionData.keys
+                                    .toList()
+                                    .indexOf(entry.key) %
                                 colors.length],
                         shape: BoxShape.circle,
                       ),
@@ -248,7 +524,6 @@ class EmotionDonutChart extends StatelessWidget {
 
                     const SizedBox(width: 8),
 
-                    // ชื่ออารมณ์
                     Expanded(
                       child: Text(
                         entry.key,
@@ -269,6 +544,3 @@ class EmotionDonutChart extends StatelessWidget {
     );
   }
 }
-
-
-

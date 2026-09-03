@@ -4,14 +4,15 @@ import 'package:firebase_database/firebase_database.dart';
 import '../models/subject.dart';
 
 class SubjectService {
-  final FirebaseFirestore _firestore =
-      FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final DatabaseReference _emotionRef =
-      FirebaseDatabase.instance.ref('emotion_data');
+  final DatabaseReference _emotionRef = FirebaseDatabase.instance.ref(
+    'emotion_data',
+  );
 
-  final DatabaseReference _currentSessionRef =
-      FirebaseDatabase.instance.ref('current_session');
+  final DatabaseReference _currentSessionRef = FirebaseDatabase.instance.ref(
+    'current_session',
+  );
 
   // ============================================================
   // เพิ่มรายวิชา
@@ -27,10 +28,7 @@ class SubjectService {
       throw Exception('รหัสวิชานี้มีอยู่แล้ว');
     }
 
-    await _firestore
-        .collection('subjects')
-        .doc(subject.subjectCode)
-        .set({
+    await _firestore.collection('subjects').doc(subject.subjectCode).set({
       'subjectName': subject.subjectName,
       'year': subject.year,
       'semester': subject.semester,
@@ -47,8 +45,7 @@ class SubjectService {
     required String oldCode,
     required Subject newSubject,
   }) async {
-    final subjects =
-        _firestore.collection('subjects');
+    final subjects = _firestore.collection('subjects');
 
     // ----------------------------------------------------------
     // ถ้าเปลี่ยนรหัสวิชา
@@ -56,18 +53,14 @@ class SubjectService {
 
     if (oldCode != newSubject.subjectCode) {
       // ตรวจสอบว่ารหัสใหม่มีอยู่แล้วหรือไม่
-      final newDoc = await subjects
-          .doc(newSubject.subjectCode)
-          .get();
+      final newDoc = await subjects.doc(newSubject.subjectCode).get();
 
       if (newDoc.exists) {
         throw Exception('รหัสวิชานี้มีอยู่แล้ว');
       }
 
       // 1. เปลี่ยนข้อมูลรายวิชา
-      await subjects
-          .doc(newSubject.subjectCode)
-          .set({
+      await subjects.doc(newSubject.subjectCode).set({
         'subjectName': newSubject.subjectName,
         'year': newSubject.year,
         'semester': newSubject.semester,
@@ -78,45 +71,27 @@ class SubjectService {
       // 2. เปลี่ยน Session
       final sessions = await _firestore
           .collection('class_sessions')
-          .where(
-            'subjectCode',
-            isEqualTo: oldCode,
-          )
+          .where('subjectCode', isEqualTo: oldCode)
           .get();
 
       for (final session in sessions.docs) {
-        await session.reference.update({
-          'subjectCode':
-              newSubject.subjectCode,
-        });
+        await session.reference.update({'subjectCode': newSubject.subjectCode});
       }
 
       // 3. เปลี่ยน Emotion
-      await _moveEmotionData(
-        oldCode,
-        newSubject.subjectCode,
-      );
+      await _moveEmotionData(oldCode, newSubject.subjectCode);
 
       // 4. เปลี่ยน Current Session
-      await _updateCurrentSession(
-        oldCode,
-        newSubject.subjectCode,
-      );
+      await _updateCurrentSession(oldCode, newSubject.subjectCode);
 
       // 5. ลบรายวิชาเดิม
-      await subjects
-          .doc(oldCode)
-          .delete();
+      await subjects.doc(oldCode).delete();
     }
-
     // ----------------------------------------------------------
     // ถ้าไม่ได้เปลี่ยนรหัสวิชา
     // ----------------------------------------------------------
-
     else {
-      await subjects
-          .doc(oldCode)
-          .update({
+      await subjects.doc(oldCode).update({
         'subjectName': newSubject.subjectName,
         'year': newSubject.year,
         'semester': newSubject.semester,
@@ -128,94 +103,60 @@ class SubjectService {
   // ย้าย Emotion จากรหัสเก่า → รหัสใหม่
   // ============================================================
 
-  Future<void> _moveEmotionData(
-    String oldCode,
-    String newCode,
-  ) async {
-    final oldSnapshot =
-        await _emotionRef
-            .child(oldCode)
-            .get();
+  Future<void> _moveEmotionData(String oldCode, String newCode) async {
+    final oldSnapshot = await _emotionRef.child(oldCode).get();
 
-    if (!oldSnapshot.exists ||
-        oldSnapshot.value == null) {
+    if (!oldSnapshot.exists || oldSnapshot.value == null) {
       return;
     }
 
-    final data =
-        Map<String, dynamic>.from(
-      oldSnapshot.value as Map,
-    );
+    final data = Map<String, dynamic>.from(oldSnapshot.value as Map);
 
     // เปลี่ยน subjectCode ที่อยู่ในแต่ละ record
-    for (final typeData
-        in data.entries) {
+    for (final typeData in data.entries) {
       if (typeData.value is! Map) {
         continue;
       }
 
-      final records =
-          Map<String, dynamic>.from(
-        typeData.value as Map,
-      );
+      final records = Map<String, dynamic>.from(typeData.value as Map);
 
-      for (final record
-          in records.entries) {
+      for (final record in records.entries) {
         if (record.value is! Map) {
           continue;
         }
 
-        final recordData =
-            Map<String, dynamic>.from(
-          record.value as Map,
-        );
+        final recordData = Map<String, dynamic>.from(record.value as Map);
 
-        recordData['subjectCode'] =
-            newCode;
+        recordData['subjectCode'] = newCode;
 
-        records[record.key] =
-            recordData;
+        records[record.key] = recordData;
       }
 
       data[typeData.key] = records;
     }
 
     // บันทึกข้อมูลไว้ใต้รหัสใหม่
-    await _emotionRef
-        .child(newCode)
-        .set(data);
+    await _emotionRef.child(newCode).set(data);
 
     // ลบข้อมูลรหัสเก่า
-    await _emotionRef
-        .child(oldCode)
-        .remove();
+    await _emotionRef.child(oldCode).remove();
   }
 
   // ============================================================
   // เปลี่ยน Current Session
   // ============================================================
 
-  Future<void> _updateCurrentSession(
-    String oldCode,
-    String newCode,
-  ) async {
-    final snapshot =
-        await _currentSessionRef.get();
+  Future<void> _updateCurrentSession(String oldCode, String newCode) async {
+    final snapshot = await _currentSessionRef.get();
 
-    if (!snapshot.exists ||
-        snapshot.value == null) {
+    if (!snapshot.exists || snapshot.value == null) {
       return;
     }
 
-    final data =
-        Map<String, dynamic>.from(
-      snapshot.value as Map,
-    );
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
 
     if (data['subjectCode'] == oldCode) {
-      await _currentSessionRef.update({
-        'subjectCode': newCode,
-      });
+      await _currentSessionRef.update({'subjectCode': newCode});
     }
   }
 
@@ -223,13 +164,51 @@ class SubjectService {
   // ลบรายวิชา
   // ============================================================
 
-  Future<void> deleteSubject(
-    String subjectCode,
-  ) async {
-    await _firestore
-        .collection('subjects')
-        .doc(subjectCode)
-        .delete();
+  // ============================================================
+  // ลบรายวิชา + ข้อมูลทั้งหมดที่เกี่ยวข้อง
+  // ============================================================
+
+  Future<void> deleteSubject(String subjectCode) async {
+    // ----------------------------------------------------------
+    // 1. ลบข้อมูลรายวิชา
+    // ----------------------------------------------------------
+
+    await _firestore.collection('subjects').doc(subjectCode).delete();
+
+    // ----------------------------------------------------------
+    // 2. ลบประวัติ Session ของรายวิชา
+    // ----------------------------------------------------------
+
+    final sessions = await _firestore
+        .collection('class_sessions')
+        .where('subjectCode', isEqualTo: subjectCode)
+        .get();
+
+    for (final session in sessions.docs) {
+      await session.reference.delete();
+    }
+
+    // ----------------------------------------------------------
+    // 3. ลบ Emotion Data ของรายวิชา
+    // ----------------------------------------------------------
+
+    await _emotionRef.child(subjectCode).remove();
+
+    // ----------------------------------------------------------
+    // 4. ลบ Current Session ถ้าเป็นของรายวิชานี้
+    // ----------------------------------------------------------
+
+    final currentSessionSnapshot = await _currentSessionRef.get();
+
+    if (currentSessionSnapshot.exists && currentSessionSnapshot.value != null) {
+      final data = Map<String, dynamic>.from(
+        currentSessionSnapshot.value as Map,
+      );
+
+      if (data['subjectCode'] == subjectCode) {
+        await _currentSessionRef.remove();
+      }
+    }
   }
 
   // ============================================================
@@ -237,24 +216,16 @@ class SubjectService {
   // ============================================================
 
   Future<List<Subject>> getSubjects() async {
-    final snapshot =
-        await _firestore
-            .collection('subjects')
-            .get();
+    final snapshot = await _firestore.collection('subjects').get();
 
     return snapshot.docs.map((doc) {
       final data = doc.data();
 
       return Subject(
-        subjectName:
-            data['subjectName'] ?? '',
-        year:
-            data['year'] ?? '',
-        semester:
-            data['semester'] ?? '',
-        subjectCode:
-            data['subjectCode'] ??
-                doc.id,
+        subjectName: data['subjectName'] ?? '',
+        year: data['year'] ?? '',
+        semester: data['semester'] ?? '',
+        subjectCode: data['subjectCode'] ?? doc.id,
       );
     }).toList();
   }
@@ -263,24 +234,14 @@ class SubjectService {
   // ดึง Emotion Data
   // ============================================================
 
-  Future<List<Map<String, dynamic>>>
-      getEmotionData(
-    String subjectCode,
-  ) async {
-    final snapshot =
-        await _firestore
-            .collection('emotion_records')
-            .where(
-              'subjectCode',
-              isEqualTo: subjectCode,
-            )
-            .get();
+  Future<List<Map<String, dynamic>>> getEmotionData(String subjectCode) async {
+    final snapshot = await _firestore
+        .collection('emotion_records')
+        .where('subjectCode', isEqualTo: subjectCode)
+        .get();
 
     return snapshot.docs.map((doc) {
-      return {
-        'id': doc.id,
-        ...doc.data(),
-      };
+      return {'id': doc.id, ...doc.data()};
     }).toList();
   }
 }
