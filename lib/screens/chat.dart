@@ -41,28 +41,26 @@ class _ChatColors {
 }
 
 class ChatScreen extends StatefulWidget {
-  // ============================================================
-  // Emotion Data
-  //
-  // มีเฉพาะกรณีเข้ามาจากห้องเรียน
-  // General Chat สามารถเป็น null ได้
-  // ============================================================
+  final Map<String, dynamic>? emotionData;
 
-  // ============================================================
-  // Subject Code
-  //
-  // มีเฉพาะกรณีเข้ามาจากรายวิชา
-  // ============================================================
+// ============================================================
+// Subject Code
+// ============================================================
 
-  final String? subjectCode;
+final String? subjectCode;
 
-  // ============================================================
-  // Session ID
-  // ============================================================
+// ============================================================
+// Session ID
+// ============================================================
 
-  final String? sessionId;
+final String? sessionId;
 
-  const ChatScreen({super.key, this.subjectCode, this.sessionId});
+const ChatScreen({
+  super.key,
+  this.emotionData,
+  this.subjectCode,
+  this.sessionId,
+});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
