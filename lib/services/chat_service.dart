@@ -9,31 +9,58 @@ class ChatService {
     required String message,
     List<Map<String, dynamic>>? history,
     Map<String, dynamic>? emotionData,
+    String? subjectCode,
+    List<Map<String, dynamic>>? lessonMaterials,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_backendUrl/api/chat'),
+        Uri.parse(
+          '$_backendUrl/api/chat',
+        ),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':
+              'application/json',
         },
         body: jsonEncode({
           'message': message,
-          'history': history ?? [],
-          'emotionData': emotionData,
+
+          'history':
+              history ?? [],
+
+          'emotionData':
+              emotionData,
+
+          'subjectCode':
+              subjectCode,
+
+          // ====================================================
+          // ส่งเนื้อหาไฟล์ไป Backend
+          // ====================================================
+
+          'lessonMaterials':
+              lessonMaterials ?? [],
         }),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data =
+            jsonDecode(response.body)
+                as Map<String, dynamic>;
 
-        return data['reply'] ?? 'ไม่สามารถรับคำตอบได้';
-      } else {
-        throw Exception(
-          'Backend Error: ${response.statusCode}\n${response.body}',
-        );
+        return data['reply']
+                ?.toString() ??
+            'ไม่สามารถรับคำตอบได้';
       }
+
+      throw Exception(
+        'Backend Error: '
+        '${response.statusCode}\n'
+        '${response.body}',
+      );
     } catch (e) {
-      throw Exception('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e');
+      throw Exception(
+        'เกิดข้อผิดพลาดในการเชื่อมต่อ: $e',
+      );
     }
   }
 }

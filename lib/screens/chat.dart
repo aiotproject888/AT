@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../services/chat_service.dart';
 import '../services/chat_history_service.dart';
@@ -34,8 +40,27 @@ class _ChatColors {
 }
 
 class ChatScreen extends StatefulWidget {
+  // ============================================================
+  // Emotion Data
+  //
+  // มีเฉพาะกรณีเข้ามาจากห้องเรียน
+  // General Chat สามารถเป็น null ได้
+  // ============================================================
+
   final Map<String, dynamic>? emotionData;
+
+  // ============================================================
+  // Subject Code
+  //
+  // มีเฉพาะกรณีเข้ามาจากรายวิชา
+  // ============================================================
+
   final String? subjectCode;
+
+  // ============================================================
+  // Session ID
+  // ============================================================
+
   final String? sessionId;
 
   const ChatScreen({
@@ -65,15 +90,52 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final ChatHistoryService _historyService = ChatHistoryService();
 
+  // ============================================================
+  // Messages
+  // ============================================================
+
   final List<ChatMessage> messages = [];
 
   bool isSending = false;
+  bool _isLoadingHistory = true;
 
   // ============================================================
-  // ID ของบทสนทนาใน Firestore
+  // Conversation ID
   // ============================================================
 
   String? _conversationId;
+
+  // ============================================================
+  // Lesson Materials
+  //
+  // เก็บเนื้อหาบทเรียนที่อ่านจาก Firestore
+  //
+  // ตัวอย่าง:
+  //
+  // [
+  //   {
+  //     "id": "...",
+  //     "fileName": "bayesian.pdf",
+  //     "text": "...",
+  //     "fileType": "application/pdf"
+  //   }
+  // ]
+  // ============================================================
+
+  List<Map<String, dynamic>> _lessonMaterials = [];
+  List<Map<String, dynamic>> _selectedLessonMaterials = [];
+
+  bool _isLoadingMaterials = false;
+
+  // ============================================================
+  // Chat Uploaded File
+  //
+  // ไฟล์ที่ผู้ใช้แนบจากหน้า Chat โดยตรง
+  // ============================================================
+
+  Map<String, dynamic>? _chatUploadedFile;
+
+  bool _isReadingFile = false;
 
   // ============================================================
   // Initial Message
@@ -91,7 +153,624 @@ class _ChatScreenState extends State<ChatScreen> {
         time: DateTime.now(),
       ),
     );
+    _loadChatHistory();
+
+    if (widget.subjectCode != null && widget.subjectCode!.isNotEmpty) {
+      _loadLessonMaterials();
+    }
   }
+
+  // ============================================================
+  // เลือกไฟล์จากหน้า Chat
+  // ============================================================
+
+  Future<void> _pickChatFile() async {
+    if (_isReadingFile || isSending) {
+      return;
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'txt', 'md', 'csv'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.first;
+
+      if (file.bytes == null) {
+        _showFileError('ไม่สามารถอ่านไฟล์ได้');
+        return;
+      }
+
+      setState(() {
+        _isReadingFile = true;
+      });
+
+      final String extension = file.extension?.toLowerCase() ?? '';
+
+      String extractedText = '';
+
+      // ==========================================================
+      // PDF
+      // ==========================================================
+
+      if (extension == 'pdf') {
+        extractedText = await _extractPdfText(file.bytes!);
+      }
+      // ==========================================================
+      // TXT / MD / CSV
+      // ==========================================================
+      else if (extension == 'txt' || extension == 'md' || extension == 'csv') {
+        extractedText = utf8.decode(file.bytes!, allowMalformed: true);
+      }
+      // ==========================================================
+      // ไม่รองรับ
+      // ==========================================================
+      else {
+        _showFileError('ไฟล์ประเภท .$extension ยังไม่รองรับ');
+
+        return;
+      }
+
+      // ==========================================================
+      // ตรวจว่ามีข้อความจริง
+      // ==========================================================
+
+      if (extractedText.trim().isEmpty) {
+        _showFileError('ไม่พบข้อความในไฟล์นี้');
+
+        return;
+      }
+
+      // ==========================================================
+      // เก็บไฟล์ที่อัปโหลด
+      // ==========================================================
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _chatUploadedFile = {
+          'id': 'chat_upload_${DateTime.now().millisecondsSinceEpoch}',
+          'fileName': file.name,
+          'fileType': file.extension ?? '',
+          'text': extractedText,
+        };
+
+        _isReadingFile = false;
+      });
+
+      debugPrint('==========================================');
+
+      debugPrint('CHAT FILE UPLOAD');
+
+      debugPrint('File name: ${file.name}');
+
+      debugPrint('File type: $extension');
+
+      debugPrint('Text length: ${extractedText.length}');
+
+      debugPrint('==========================================');
+    } catch (e) {
+      debugPrint('อ่านไฟล์ไม่สำเร็จ: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isReadingFile = false;
+      });
+
+      _showFileError('ไม่สามารถอ่านไฟล์ได้');
+    }
+  }
+
+  // ============================================================
+  // อ่านข้อความจาก PDF
+  // ============================================================
+
+  Future<String> _extractPdfText(Uint8List bytes) async {
+    PdfDocument? document;
+
+    try {
+      document = PdfDocument(inputBytes: bytes);
+
+      final StringBuffer buffer = StringBuffer();
+
+      for (int i = 0; i < document.pages.count; i++) {
+        final String text = PdfTextExtractor(
+          document,
+        ).extractText(startPageIndex: i, endPageIndex: i);
+
+        if (text.trim().isNotEmpty) {
+          buffer.writeln(text);
+        }
+      }
+
+      return buffer.toString();
+    } finally {
+      document?.dispose();
+    }
+  }
+
+  void _showFileError(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ============================================================
+  // แสดงไฟล์ที่แนบจากหน้า Chat
+  // ============================================================
+
+  Widget _buildChatUploadedFile() {
+    if (_chatUploadedFile == null) {
+      return const SizedBox.shrink();
+    }
+
+    final String fileName =
+        _chatUploadedFile!['fileName']?.toString() ?? 'ไฟล์';
+
+    final String fileType =
+        _chatUploadedFile!['fileType']?.toString().toUpperCase() ?? '';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _ChatColors.accentSurface,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: _ChatColors.accentBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _ChatColors.accent.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              fileType == 'PDF'
+                  ? Icons.picture_as_pdf_rounded
+                  : Icons.description_rounded,
+              color: _ChatColors.cyan,
+              size: 18,
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(height: 3),
+
+                Text(
+                  'แนบไฟล์แล้ว · AI สามารถใช้เนื้อหาได้',
+                  style: const TextStyle(color: Colors.white60, fontSize: 9.5),
+                ),
+              ],
+            ),
+          ),
+
+          IconButton(
+            onPressed: isSending
+                ? null
+                : () {
+                    setState(() {
+                      _chatUploadedFile = null;
+                    });
+                  },
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: Colors.white60,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // โหลด Lesson Materials
+  // ============================================================
+  Future<void> _loadLessonMaterials() async {
+    if (widget.subjectCode == null || widget.subjectCode!.isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMaterials = true;
+    });
+
+    try {
+      debugPrint('========== LOAD LESSON MATERIALS ==========');
+
+      debugPrint('subjectCode: ${widget.subjectCode}');
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('lesson_materials')
+          .where('subjectCode', isEqualTo: widget.subjectCode)
+          .get();
+
+      final List<Map<String, dynamic>> materials = [];
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+
+        // ==========================================================
+        // AI Status
+        // ==========================================================
+
+        final String aiStatus = data['aiStatus']?.toString() ?? '';
+
+        // ==========================================================
+        // File Name
+        // ==========================================================
+
+        final String fileName =
+            data['fileName']?.toString() ??
+            data['name']?.toString() ??
+            'ไม่ทราบชื่อไฟล์';
+
+        // ==========================================================
+        // File Type
+        // ==========================================================
+
+        final String fileType = data['fileType']?.toString() ?? '';
+
+        // ==========================================================
+        // อ่าน extractedText
+        //
+        // รองรับทั้ง 2 รูปแบบ
+        //
+        // แบบที่ 1:
+        // extractedText: "เนื้อหา..."
+        //
+        // แบบที่ 2:
+        // extractedText:
+        // {
+        //   text: "เนื้อหา...",
+        //   type: "pdf"
+        // }
+        // ==========================================================
+
+        final dynamic rawExtractedText = data['extractedText'];
+
+        String extractedText = '';
+
+        if (rawExtractedText is String) {
+          extractedText = rawExtractedText;
+        } else if (rawExtractedText is Map) {
+          extractedText = rawExtractedText['text']?.toString() ?? '';
+        }
+
+        // ==========================================================
+        // Debug
+        // ==========================================================
+
+        debugPrint('ไฟล์: $fileName');
+
+        debugPrint('aiStatus: $aiStatus');
+
+        debugPrint(
+          'extractedText type: '
+          '${rawExtractedText.runtimeType}',
+        );
+
+        debugPrint(
+          'extractedText length: '
+          '${extractedText.length}',
+        );
+
+        // ==========================================================
+        // เอาเฉพาะไฟล์ที่อ่านเนื้อหาแล้ว
+        // และมีข้อความจริง
+        // ==========================================================
+
+        if (aiStatus == 'อ่านเนื้อหาแล้ว' && extractedText.trim().isNotEmpty) {
+          materials.add({
+            'id': doc.id,
+            'fileName': fileName,
+            'text': extractedText,
+            'fileType': fileType,
+          });
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _lessonMaterials = materials;
+        _isLoadingMaterials = false;
+      });
+
+      debugPrint(
+        'โหลดเนื้อหาบทเรียนสำเร็จ: '
+        '${materials.length} ไฟล์',
+      );
+
+      debugPrint('==========================================');
+    } catch (e) {
+      debugPrint('โหลด Lesson Materials ไม่สำเร็จ: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _lessonMaterials = [];
+        _isLoadingMaterials = false;
+      });
+    }
+  }
+
+  // ============================================================
+  // โหลดประวัติการสนทนา
+  // ============================================================
+
+  // ============================================================
+// โหลดประวัติการสนทนา
+// ============================================================
+
+Future<void> _loadChatHistory() async {
+  try {
+    debugPrint('========== LOAD CHAT HISTORY ==========');
+
+    final bool isClassroom =
+        widget.subjectCode != null &&
+        widget.subjectCode!.isNotEmpty;
+
+    debugPrint(
+      'Chat type: ${isClassroom ? 'classroom' : 'general'}',
+    );
+
+    debugPrint(
+      'subjectCode: ${widget.subjectCode}',
+    );
+
+    debugPrint(
+      'sessionId: ${widget.sessionId}',
+    );
+
+    // ==========================================================
+    // ดึง Conversation ทั้งหมด
+    // ==========================================================
+
+    final conversations =
+        await _historyService.getConversations();
+
+    if (conversations.isEmpty) {
+      debugPrint('ยังไม่มีประวัติการสนทนา');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+        });
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // หา Conversation ที่ตรงกับ Chat ปัจจุบัน
+    // ==========================================================
+
+    QueryDocumentSnapshot<Map<String, dynamic>>?
+        matchedConversation;
+
+    for (final conversation in conversations) {
+      final data = conversation.data();
+
+      final String type =
+          data['type']?.toString() ?? '';
+
+      final String conversationSubjectCode =
+          data['subjectCode']?.toString() ?? '';
+
+      final String conversationSessionId =
+          data['sessionId']?.toString() ?? '';
+
+      // ========================================================
+      // GENERAL CHAT
+      // ========================================================
+
+      if (!isClassroom) {
+        if (type == 'general') {
+          matchedConversation = conversation;
+          break;
+        }
+      }
+
+      // ========================================================
+      // CLASSROOM CHAT
+      // ========================================================
+
+      else {
+        // ต้องเป็น classroom เท่านั้น
+        if (type != 'classroom') {
+          continue;
+        }
+
+        // subjectCode ต้องตรงกับห้องที่กำลังเปิด
+        if (conversationSubjectCode != widget.subjectCode) {
+          continue;
+        }
+
+        // ======================================================
+        // ถ้ามี sessionId
+        // ให้ตรวจ sessionId ด้วย
+        // ======================================================
+
+        if (widget.sessionId != null &&
+            widget.sessionId!.isNotEmpty) {
+          if (conversationSessionId != widget.sessionId) {
+            continue;
+          }
+        }
+
+        matchedConversation = conversation;
+        break;
+      }
+    }
+
+    // ==========================================================
+    // ไม่พบ Conversation
+    // ==========================================================
+
+    if (matchedConversation == null) {
+      debugPrint(
+        'ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน',
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+        });
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // เก็บ Conversation ID
+    // ==========================================================
+
+    _conversationId = matchedConversation.id;
+
+    debugPrint(
+      'พบ Conversation: $_conversationId',
+    );
+
+    // ==========================================================
+    // ดึง Messages
+    // ==========================================================
+
+    final historyMessages =
+        await _historyService.getMessages(
+      _conversationId!,
+    );
+
+    debugPrint(
+      'พบข้อความทั้งหมด: ${historyMessages.length}',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    // ==========================================================
+    // แปลง Firestore → ChatMessage
+    // ==========================================================
+
+    final List<ChatMessage> loadedMessages = [];
+
+    for (final doc in historyMessages) {
+      final data = doc.data();
+
+      final String role =
+          data['role']?.toString() ?? 'assistant';
+
+      final String text =
+          data['text']?.toString() ?? '';
+
+      if (text.trim().isEmpty) {
+        continue;
+      }
+
+      DateTime messageTime = DateTime.now();
+
+      final timestamp = data['timestamp'];
+
+      if (timestamp is Timestamp) {
+        messageTime = timestamp.toDate();
+      }
+
+      loadedMessages.add(
+        ChatMessage(
+          isAI: role == 'assistant',
+          text: text,
+          time: messageTime,
+        ),
+      );
+    }
+
+    // ==========================================================
+    // แสดงประวัติ
+    //
+    // สำคัญ:
+    // ไม่ clear messages
+    //
+    // เพราะเราต้องการให้ข้อความ Welcome
+    // ยังคงอยู่ด้านบน
+    // ==========================================================
+
+    setState(() {
+      _isLoadingHistory = false;
+
+      if (loadedMessages.isNotEmpty) {
+        messages.addAll(loadedMessages);
+      }
+    });
+
+    debugPrint(
+      'โหลดประวัติสำเร็จ: ${loadedMessages.length} ข้อความ',
+    );
+
+    debugPrint('======================================');
+
+    // ==========================================================
+    // เลื่อนไปล่างสุด
+    // ==========================================================
+
+    _scrollToBottom();
+  } catch (e) {
+    debugPrint(
+      'โหลดประวัติการสนทนาไม่สำเร็จ: $e',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingHistory = false;
+    });
+  }
+}
 
   // ============================================================
   // สร้าง Conversation ใน Firestore
@@ -100,6 +779,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _createConversationIfNeeded(String firstMessage) async {
     if (_conversationId != null) {
       debugPrint('มี Conversation อยู่แล้ว: $_conversationId');
+
       return;
     }
 
@@ -107,9 +787,13 @@ class _ChatScreenState extends State<ChatScreen> {
         widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
     debugPrint('========== CREATE CONVERSATION ==========');
+
     debugPrint('type: ${isClassroom ? 'classroom' : 'general'}');
+
     debugPrint('subjectCode: ${widget.subjectCode}');
+
     debugPrint('sessionId: ${widget.sessionId}');
+
     debugPrint('title: ${_makeTitle(firstMessage)}');
 
     _conversationId = await _historyService.createConversation(
@@ -120,6 +804,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     debugPrint('สร้าง Conversation สำเร็จ! ID: $_conversationId');
+
     debugPrint('==========================================');
   }
 
@@ -154,11 +839,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       messages.add(
-        ChatMessage(
-          isAI: false,
-          text: userMessage,
-          time: DateTime.now(),
-        ),
+        ChatMessage(isAI: false, text: userMessage, time: DateTime.now()),
       );
 
       isSending = true;
@@ -192,27 +873,58 @@ class _ChatScreenState extends State<ChatScreen> {
       // ==========================================================
       // ส่งคำถามไป Backend
       //
-      // ส่วนนี้ใช้ Logic ของข้อ 1 เหมือนเดิม
+      // ตอนนี้ส่งข้อมูล:
+      //
+      // 1. message
+      // 2. emotionData
+      // 3. subjectCode
+      // 4. lessonMaterials
+      //
+      // General Chat:
+      // emotionData = null
+      // subjectCode = null
+      // lessonMaterials = []
+      //
+      // Classroom Chat:
+      // มีข้อมูลทั้งหมด
+      // ==========================================================
+
+      // ==========================================================
+      // รวมไฟล์การสอนจาก Subject
+      // +
+      // ไฟล์ที่ผู้ใช้แนบจากหน้า Chat
+      // ==========================================================
+
+      final List<Map<String, dynamic>> materialsForAI = [
+        ..._selectedLessonMaterials,
+      ];
+
+      if (_chatUploadedFile != null) {
+        materialsForAI.add(_chatUploadedFile!);
+      }
+
+      // ==========================================================
+      // ส่งข้อมูลไป Backend
       // ==========================================================
 
       final String answer = await _chatService.sendMessage(
         message: userMessage,
         emotionData: widget.emotionData,
+        subjectCode: widget.subjectCode,
+        lessonMaterials: materialsForAI,
       );
 
       // ==========================================================
       // แสดงคำตอบ AI
       // ==========================================================
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         messages.add(
-          ChatMessage(
-            isAI: true,
-            text: answer,
-            time: DateTime.now(),
-          ),
+          ChatMessage(isAI: true, text: answer, time: DateTime.now()),
         );
       });
 
@@ -234,13 +946,15 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('Chat Error: $e');
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         messages.add(
           ChatMessage(
             isAI: true,
-            text: "ไม่สามารถเชื่อมต่อได้",
+            text: "ไม่สามารถเชื่อมต่อได้\nกรุณาลองใหม่อีกครั้ง",
             time: DateTime.now(),
           ),
         );
@@ -263,9 +977,18 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildAppBar() {
     final subject = widget.emotionData?['subject']?.toString();
 
-    final subtitle = subject == null || subject.isEmpty
-        ? 'ผู้ช่วยสอนอัจฉริยะ'
-        : 'วิเคราะห์อารมณ์ · $subject';
+    final bool isClassroom =
+        widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+
+    String subtitle;
+
+    if (subject != null && subject.isNotEmpty) {
+      subtitle = 'วิเคราะห์อารมณ์ · $subject';
+    } else if (isClassroom) {
+      subtitle = 'ผู้ช่วยสอน · ${widget.subjectCode}';
+    } else {
+      subtitle = 'ผู้ช่วยสอนอัจฉริยะ';
+    }
 
     return SizedBox(
       height: 62,
@@ -314,7 +1037,6 @@ class _ChatScreenState extends State<ChatScreen> {
             // ======================================================
             // AI Icon
             // ======================================================
-
             Container(
               width: 36,
               height: 36,
@@ -323,17 +1045,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    _ChatColors.accent,
-                    _ChatColors.cyan,
-                  ],
+                  colors: [_ChatColors.accent, _ChatColors.cyan],
                 ),
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: const Text(
-                '🤖',
-                style: TextStyle(fontSize: 17),
-              ),
+              child: const Text('🤖', style: TextStyle(fontSize: 17)),
             ),
           ],
         ),
@@ -345,13 +1061,13 @@ class _ChatScreenState extends State<ChatScreen> {
   // Context Card
   //
   // แสดงเฉพาะกรณีมี emotionData
-  // ไม่กระทบ Logic เดิม
   // ============================================================
 
   Widget _buildContextCard() {
     final data = widget.emotionData!;
 
     final date = data['date']?.toString() ?? 'ไม่ระบุวันที่';
+
     final students = data['students']?.toString() ?? '0';
 
     return Container(
@@ -361,16 +1077,11 @@ class _ChatScreenState extends State<ChatScreen> {
       decoration: BoxDecoration(
         color: _ChatColors.accentSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _ChatColors.accentBorder,
-        ),
+        border: Border.all(color: _ChatColors.accentBorder),
       ),
       child: Row(
         children: [
-          const Text(
-            '📊',
-            style: TextStyle(fontSize: 20),
-          ),
+          const Text('📊', style: TextStyle(fontSize: 20)),
 
           const SizedBox(width: 10),
 
@@ -410,9 +1121,7 @@ class _ChatScreenState extends State<ChatScreen> {
             decoration: BoxDecoration(
               color: _ChatColors.greenSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _ChatColors.greenBorder,
-              ),
+              border: Border.all(color: _ChatColors.greenBorder),
             ),
             child: const Text(
               '✓ โหลดแล้ว',
@@ -420,6 +1129,157 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: _ChatColors.greenText,
                 fontSize: 9,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLessonMaterialSelector() {
+    if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (_isLoadingMaterials) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_lessonMaterials.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xff1E1B2E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.menu_book_rounded, color: Color(0xff8B7CF6)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'เอกสารที่ใช้ในการวิเคราะห์',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '${_selectedLessonMaterials.length}/${_lessonMaterials.length}',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          const Text(
+            'เลือกไฟล์ที่ต้องการให้ AI ใช้ในการวิเคราะห์',
+            style: TextStyle(color: Colors.white60, fontSize: 12),
+          ),
+
+          const SizedBox(height: 10),
+
+          ..._lessonMaterials.map((material) {
+            final isSelected = _selectedLessonMaterials.any(
+              (selected) => selected['id'] == material['id'],
+            );
+
+            return CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: isSelected,
+              activeColor: const Color(0xff6C52E5),
+              checkColor: Colors.white,
+              title: Text(
+                material['fileName']?.toString() ?? 'ไม่ทราบชื่อไฟล์',
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+              subtitle: Text(
+                material['fileType']?.toString() ?? '',
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    _selectedLessonMaterials.add(material);
+                  } else {
+                    _selectedLessonMaterials.removeWhere(
+                      (selected) => selected['id'] == material['id'],
+                    );
+                  }
+                });
+              },
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // Lesson Material Status
+  //
+  // แสดงเมื่อเข้ามาจาก Subject
+  // ============================================================
+
+  Widget _buildLessonMaterialStatus() {
+    if (widget.subjectCode == null || widget.subjectCode!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    String text;
+
+    if (_isLoadingMaterials) {
+      text = 'กำลังโหลดเนื้อหาบทเรียน...';
+    } else if (_lessonMaterials.isEmpty) {
+      text = 'ยังไม่มีเนื้อหาบทเรียนที่พร้อมใช้กับ AI';
+    } else {
+      text =
+          '📚 โหลดเนื้อหาบทเรียนแล้ว '
+          '${_lessonMaterials.length} ไฟล์';
+    }
+
+    return Container(
+      height: 38,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: _ChatColors.subtleSurface,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: _ChatColors.inputBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isLoadingMaterials ? Icons.sync_rounded : Icons.menu_book_rounded,
+            size: 16,
+            color: _ChatColors.cyan,
+          ),
+
+          const SizedBox(width: 8),
+
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _ChatColors.mutedText,
+                fontSize: 10,
               ),
             ),
           ),
@@ -471,10 +1331,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           Text(
             'กำลังวิเคราะห์ข้อมูล...',
-            style: TextStyle(
-              color: _ChatColors.mutedText,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: _ChatColors.mutedText, fontSize: 11),
           ),
         ],
       ),
@@ -483,39 +1340,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============================================================
   // Quick Chips
-  //
-  // เป็น UI เพิ่มเข้ามาเท่านั้น
-  // ไม่ไปยุ่งกับระบบส่งข้อความเดิม
   // ============================================================
 
   Widget _buildQuickChips() {
     const chips = <Map<String, String>>[
-      {
-        'icon': '📊',
-        'label': 'ดูกราฟเพิ่ม',
-      },
-      {
-        'icon': '📎',
-        'label': 'แนบสื่อใหม่',
-      },
-      {
-        'icon': '💡',
-        'label': 'ขอคำแนะนำ',
-      },
-      {
-        'icon': '🕐',
-        'label': 'คาบที่แล้ว',
-      },
+      {'icon': '📊', 'label': 'ดูกราฟเพิ่ม'},
+      {'icon': '📎', 'label': 'แนบสื่อใหม่'},
+      {'icon': '💡', 'label': 'ขอคำแนะนำ'},
+      {'icon': '🕐', 'label': 'คาบที่แล้ว'},
     ];
 
     return SizedBox(
       height: 43,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
         itemCount: chips.length,
         separatorBuilder: (context, index) {
           return const SizedBox(width: 7);
@@ -530,24 +1369,15 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(20),
             child: Container(
               height: 31,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 13,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 13),
               decoration: BoxDecoration(
                 color: _ChatColors.subtleSurface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _ChatColors.inputBorder,
-                ),
+                border: Border.all(color: _ChatColors.inputBorder),
               ),
               child: Row(
                 children: [
-                  Text(
-                    chip['icon']!,
-                    style: const TextStyle(
-                      fontSize: 12,
-                    ),
-                  ),
+                  Text(chip['icon']!, style: const TextStyle(fontSize: 12)),
 
                   const SizedBox(width: 5),
 
@@ -569,21 +1399,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============================================================
   // Quick Action
-  //
-  // แค่เติมข้อความลงช่อง Input
-  // ยังไม่ได้เปลี่ยน Logic Chatbot
   // ============================================================
 
   void _handleQuickAction(String label) {
     if (label == 'แนบสื่อใหม่') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'กรุณาเชื่อม File Picker ก่อนใช้งาน',
-          ),
-        ),
-      );
-
+      _pickChatFile();
       return;
     }
 
@@ -599,9 +1419,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _controller.text = text;
 
-    _controller.selection = TextSelection.collapsed(
-      offset: text.length,
-    );
+    _controller.selection = TextSelection.collapsed(offset: text.length);
   }
 
   // ============================================================
@@ -610,57 +1428,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        9,
-        20,
-        12,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 9, 20, 12),
       decoration: const BoxDecoration(
         color: Color(0x08FFFFFF),
-        border: Border(
-          top: BorderSide(
-            color: Color(0x12FFFFFF),
-          ),
-        ),
+        border: Border(top: BorderSide(color: Color(0x12FFFFFF))),
       ),
       child: Row(
         children: [
           // ======================================================
           // Attach Button
           // ======================================================
-
-          _SquareButton(
-            icon: Icons.attach_file_rounded,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'กรุณาเชื่อม File Picker ก่อนใช้งาน',
-                  ),
-                ),
-              );
-            },
-          ),
+          _SquareButton(icon: Icons.attach_file_rounded, onTap: _pickChatFile),
 
           const SizedBox(width: 9),
 
           // ======================================================
           // Text Field
           // ======================================================
-
           Expanded(
             child: Container(
               height: 42,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: _ChatColors.inputSurface,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: _ChatColors.inputBorder,
-                ),
+                border: Border.all(color: _ChatColors.inputBorder),
               ),
               alignment: Alignment.center,
               child: TextField(
@@ -700,7 +1492,6 @@ class _ChatScreenState extends State<ChatScreen> {
           // ======================================================
           // Send Button
           // ======================================================
-
           SizedBox(
             width: 36,
             height: 36,
@@ -711,8 +1502,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
               borderRadius: BorderRadius.circular(11),
 
-              shadowColor:
-                  _ChatColors.accent.withOpacity(0.4),
+              shadowColor: _ChatColors.accent.withOpacity(0.4),
 
               elevation: 7,
 
@@ -777,37 +1567,46 @@ class _ChatScreenState extends State<ChatScreen> {
               Color(0xFF171329),
               _ChatColors.background,
             ],
-            stops: [
-              0,
-              0.40,
-              1,
-            ],
+            stops: [0, 0.40, 1],
           ),
         ),
 
         child: SafeArea(
           child: Column(
             children: [
+              // ==================================================
               // App Bar
+              // ==================================================
               _buildAppBar(),
 
-              // Context Card
-              if (widget.emotionData != null)
-                _buildContextCard(),
+              // ==================================================
+              // Emotion Context
+              //
+              // แสดงเฉพาะ Classroom ที่มี Emotion Data
+              // ==================================================
+              if (widget.emotionData != null) _buildContextCard(),
 
+              _buildLessonMaterialSelector(),
+
+              // ==================================================
+              // Lesson Material Status
+              //
+              // แสดงเฉพาะตอนมี Subject
+              // ==================================================
+              _buildLessonMaterialStatus(),
+
+              // ==================================================
               // Chat
-              Expanded(
-                child: _buildChatList(),
-              ),
+              // ==================================================
+              Expanded(child: _buildChatList()),
 
+              // ==================================================
               // Sending Indicator
+              // ==================================================
               if (isSending)
-                _buildSendingIndicator(),
-
-              // Quick Chips
+                if (isSending) _buildSendingIndicator(),
               _buildQuickChips(),
-
-              // Input
+              _buildChatUploadedFile(),
               _buildInputBar(),
             ],
           ),
@@ -837,10 +1636,7 @@ class _SquareButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SquareButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _SquareButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -850,16 +1646,10 @@ class _SquareButton extends StatelessWidget {
       child: Material(
         color: _ChatColors.subtleSurface,
         borderRadius: BorderRadius.circular(11),
-
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(11),
-
-          child: Icon(
-            icon,
-            size: 18,
-            color: _ChatColors.mutedText,
-          ),
+          child: Icon(icon, size: 18, color: _ChatColors.mutedText),
         ),
       ),
     );
