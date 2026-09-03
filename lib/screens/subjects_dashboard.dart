@@ -11,6 +11,7 @@ import '../services/session_service.dart';
 import '../services/subject_service.dart';
 import '../widgets/emotion_card.dart';
 import 'chat.dart';
+import '../services/dashboard_pdf_connector.dart';
 
 // ============================================================
 // Dashboard Colors
@@ -2180,13 +2181,22 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             height: 46,
 
             child: OutlinedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('ระบบส่งออก PDF ยังไม่ได้เชื่อมต่อ'),
-                  ),
-                );
-              },
+           onPressed: () async {
+  await DashboardPdfConnector.open(
+    context: context,
+    subjectName: _subject.subjectName,
+    subjectCode: _subject.subjectCode,
+    academicYear: _subject.year,
+    semester: _subject.semester,
+    selectedDate: _selectedDate ?? DateTime.now(),
+    beforeRespondents: beforeStudentCount,
+    afterRespondents: afterStudentCount,
+    beforePositivePercent: beforePositivePercentage,
+    afterPositivePercent: afterPositivePercentage,
+    beforeDistribution: beforeEmotionDistribution,
+    afterDistribution: afterEmotionDistribution,
+  );
+},
 
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
 
@@ -2437,7 +2447,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                             ),
                           ),
 
-                          child: const Text('ดูข้อมูล'),
+                          child: const Text('ดูข้อตัวอย่างรายงาน PDFมูล'),
                         ),
                       ),
                     ],
