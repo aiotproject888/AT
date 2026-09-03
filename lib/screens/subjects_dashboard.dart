@@ -1,6 +1,5 @@
 import 'dart:async';
 
-
 import 'package:firebase_database/firebase_database.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -625,33 +624,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   Future<void> _openChatbot() async {
     Map<String, dynamic>? emotionData;
 
-    String? sessionId;
-    String? type;
+    String? sessionId = _sessionId;
+    String type = 'before_class';
 
     try {
       final selectedDate = _selectedDate ?? DateTime.now();
-
-      // ------------------------------------------------------
-      // Current Session
-      // ------------------------------------------------------
-
-      final currentSession = await _sessionService.getCurrentSession();
-
-      if (currentSession != null) {
-        type = currentSession['type']?.toString();
-
-        sessionId = currentSession['sessionId']?.toString();
-      }
-
-      // ------------------------------------------------------
-      // Default type
-      // ------------------------------------------------------
-
-      type ??= 'before_class';
-
-      // ------------------------------------------------------
-      // Emotion Data
-      // ------------------------------------------------------
 
       emotionData = await _emotionService.getEmotionSummaryForAI(
         subjectCode: _subject.subjectCode,
@@ -659,18 +636,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         type: type,
       );
 
-      debugPrint('========== EMOTION DATA FOR AI ==========');
-
-      debugPrint(emotionData.toString());
-
       debugPrint('========== CHAT CONTEXT ==========');
-
       debugPrint('subjectCode: ${_subject.subjectCode}');
-
       debugPrint('sessionId: $sessionId');
-
       debugPrint('type: $type');
-
       debugPrint('==================================');
     } catch (error) {
       debugPrint('ไม่สามารถโหลดข้อมูล Emotion สำหรับ Chatbot: $error');
@@ -684,10 +653,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         builder: (context) {
           return ChatScreen(
             emotionData: emotionData,
-
-            // สำคัญ: เก็บไว้เหมือนโค้ด 1
             subjectCode: _subject.subjectCode,
-
             sessionId: sessionId,
           );
         },
@@ -700,142 +666,137 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
 
   Future<void> _showSubjectManagement() async {
-  final action = await showModalBottomSheet<_SubjectManagementAction>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.50),
-    builder: (sheetContext) {
-      return SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 11, 20, 24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF19162A),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
+    final action = await showModalBottomSheet<_SubjectManagementAction>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.50),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 11, 20, 24),
+            decoration: const BoxDecoration(
+              color: Color(0xFF19162A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Title
+                const Text(
+                  'จัดการรายวิชา',
+                  style: TextStyle(
+                    color: _DashboardColors.primaryText,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                Text(
+                  '${_subject.subjectName} · ${_subject.subjectCode}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _DashboardColors.faintText,
+                    fontSize: 11,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Edit
+                _managementActionTile(
+                  icon: Icons.edit_outlined,
+                  title: 'แก้ไขข้อมูลรายวิชา',
+                  subtitle: 'ชื่อวิชา รหัส ปีการศึกษา และภาคเรียน',
+                  onTap: () {
+                    Navigator.pop(sheetContext, _SubjectManagementAction.edit);
+                  },
+                ),
+
+                const SizedBox(height: 10),
+
+                // Delete
+                _managementActionTile(
+                  icon: Icons.delete_outline_rounded,
+                  title: 'ลบรายวิชา',
+                  subtitle: 'นำรายวิชานี้ออกจากรายการของฉัน',
+                  destructive: true,
+                  onTap: () {
+                    Navigator.pop(
+                      sheetContext,
+                      _SubjectManagementAction.delete,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Cancel
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _DashboardColors.secondaryText,
+                      side: const BorderSide(
+                        color: _DashboardColors.buttonBorder,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                    child: const Text('ยกเลิก'),
+                  ),
+                ),
+              ],
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
+        );
+      },
+    );
 
-              const SizedBox(height: 18),
+    if (!mounted || action == null) {
+      return;
+    }
 
-              // Title
-              const Text(
-                'จัดการรายวิชา',
-                style: TextStyle(
-                  color: _DashboardColors.primaryText,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+    // ==========================================================
+    // Edit
+    // ==========================================================
 
-              const SizedBox(height: 4),
+    if (action == _SubjectManagementAction.edit) {
+      await _showEditSubjectSheet();
+      return;
+    }
 
-              Text(
-                '${_subject.subjectName} · ${_subject.subjectCode}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _DashboardColors.faintText,
-                  fontSize: 11,
-                ),
-              ),
+    // ==========================================================
+    // Delete
+    // ==========================================================
 
-              const SizedBox(height: 16),
-
-              // Edit
-              _managementActionTile(
-                icon: Icons.edit_outlined,
-                title: 'แก้ไขข้อมูลรายวิชา',
-                subtitle: 'ชื่อวิชา รหัส ปีการศึกษา และภาคเรียน',
-                onTap: () {
-                  Navigator.pop(
-                    sheetContext,
-                    _SubjectManagementAction.edit,
-                  );
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              // Delete
-              _managementActionTile(
-                icon: Icons.delete_outline_rounded,
-                title: 'ลบรายวิชา',
-                subtitle: 'นำรายวิชานี้ออกจากรายการของฉัน',
-                destructive: true,
-                onTap: () {
-                  Navigator.pop(
-                    sheetContext,
-                    _SubjectManagementAction.delete,
-                  );
-                },
-              ),
-
-              const SizedBox(height: 12),
-
-              // Cancel
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _DashboardColors.secondaryText,
-                    side: const BorderSide(
-                      color: _DashboardColors.buttonBorder,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                  ),
-                  child: const Text('ยกเลิก'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-
-  if (!mounted || action == null) {
-    return;
+    if (action == _SubjectManagementAction.delete) {
+      await _confirmDeleteSubject();
+    }
   }
-
-  // ==========================================================
-  // Edit
-  // ==========================================================
-
-  if (action == _SubjectManagementAction.edit) {
-    await _showEditSubjectSheet();
-    return;
-  }
-
-  // ==========================================================
-  // Delete
-  // ==========================================================
-
-  if (action == _SubjectManagementAction.delete) {
-    await _confirmDeleteSubject();
-  }
-}
 
   // ==========================================================
   // Management Action Tile
@@ -930,258 +891,242 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // Edit Subject
   // ==========================================================
   Future<void> _showEditSubjectSheet() async {
-  // ==========================================================
-  // ใส่ข้อมูลเดิมลง Controller
-  // ==========================================================
+    // ==========================================================
+    // ใส่ข้อมูลเดิมลง Controller
+    // ==========================================================
 
-  nameController.text = _subject.subjectName;
-  codeController.text = _subject.subjectCode;
-  yearController.text = _subject.year;
-  semesterController.text = _subject.semester;
+    nameController.text = _subject.subjectName;
+    codeController.text = _subject.subjectCode;
+    yearController.text = _subject.year;
+    semesterController.text = _subject.semester;
 
-  errorMessage = '';
+    errorMessage = '';
 
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.50),
-    builder: (sheetContext) {
-      return StatefulBuilder(
-        builder: (context, setSheetState) {
-          return SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  12,
-                  20,
-                  24,
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.50),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF19162A),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(28),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF19162A),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Handle
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(10),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Handle
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      // Header
-                      const Text(
-                        'แก้ไขข้อมูลรายวิชา',
-                        style: TextStyle(
-                          color: _DashboardColors.primaryText,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
+                        // Header
+                        const Text(
+                          'แก้ไขข้อมูลรายวิชา',
+                          style: TextStyle(
+                            color: _DashboardColors.primaryText,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 5),
+                        const SizedBox(height: 5),
 
-                      const Text(
-                        'แก้ไขข้อมูลของรายวิชานี้',
-                        style: TextStyle(
-                          color: _DashboardColors.faintText,
-                          fontSize: 11,
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // ชื่อวิชา
-                      _subjectTextField(
-                        label: 'ชื่อวิชา',
-                        controller: nameController,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // รหัสวิชา
-                      _subjectTextField(
-                        label: 'รหัสวิชา',
-                        controller: codeController,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ปีการศึกษา
-                      _subjectTextField(
-                        label: 'ปีการศึกษา',
-                        controller: yearController,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ภาคเรียน
-                      _subjectTextField(
-                        label: 'ภาคเรียน',
-                        controller: semesterController,
-                      ),
-
-                      // Error
-                      if (errorMessage.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-
-                        Text(
-                          errorMessage,
-                          style: const TextStyle(
-                            color: _DashboardColors.danger,
+                        const Text(
+                          'แก้ไขข้อมูลของรายวิชานี้',
+                          style: TextStyle(
+                            color: _DashboardColors.faintText,
                             fontSize: 11,
                           ),
                         ),
-                      ],
 
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      // Buttons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                Navigator.pop(sheetContext);
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor:
-                                    _DashboardColors.secondaryText,
-                                side: const BorderSide(
-                                  color: _DashboardColors.buttonBorder,
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text('ยกเลิก'),
-                            ),
-                          ),
+                        // ชื่อวิชา
+                        _subjectTextField(
+                          label: 'ชื่อวิชา',
+                          controller: nameController,
+                        ),
 
-                          const SizedBox(width: 10),
+                        const SizedBox(height: 12),
 
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                await _saveSubject(
-                                  sheetContext,
-                                  setSheetState,
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor:
-                                    _DashboardColors.accent,
-                                foregroundColor:
-                                    _DashboardColors.primaryText,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: const Text('บันทึกการแก้ไข'),
+                        // รหัสวิชา
+                        _subjectTextField(
+                          label: 'รหัสวิชา',
+                          controller: codeController,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ปีการศึกษา
+                        _subjectTextField(
+                          label: 'ปีการศึกษา',
+                          controller: yearController,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ภาคเรียน
+                        _subjectTextField(
+                          label: 'ภาคเรียน',
+                          controller: semesterController,
+                        ),
+
+                        // Error
+                        if (errorMessage.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+
+                          Text(
+                            errorMessage,
+                            style: const TextStyle(
+                              color: _DashboardColors.danger,
+                              fontSize: 11,
                             ),
                           ),
                         ],
-                      ),
-                    ],
+
+                        const SizedBox(height: 20),
+
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.pop(sheetContext);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor:
+                                      _DashboardColors.secondaryText,
+                                  side: const BorderSide(
+                                    color: _DashboardColors.buttonBorder,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('ยกเลิก'),
+                              ),
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  await _saveSubject(
+                                    sheetContext,
+                                    setSheetState,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: _DashboardColors.accent,
+                                  foregroundColor: _DashboardColors.primaryText,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('บันทึกการแก้ไข'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
-
-Future<void> _saveSubject(
-  BuildContext sheetContext,
-  StateSetter setSheetState,
-) async {
-  final name = nameController.text.trim();
-  final code = codeController.text.trim();
-  final year = yearController.text.trim();
-  final semester = semesterController.text.trim();
-
-  if (name.isEmpty ||
-      code.isEmpty ||
-      year.isEmpty ||
-      semester.isEmpty) {
-    setSheetState(() {
-      errorMessage = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
-    });
-    return;
+            );
+          },
+        );
+      },
+    );
   }
 
-  final updatedSubject = Subject(
-    subjectName: name,
-    subjectCode: code,
-    year: year,
-    semester: semester,
-  );
+  Future<void> _saveSubject(
+    BuildContext sheetContext,
+    StateSetter setSheetState,
+  ) async {
+    final name = nameController.text.trim();
+    final code = codeController.text.trim();
+    final year = yearController.text.trim();
+    final semester = semesterController.text.trim();
 
-  try {
-    // บันทึกลง Database
-    await _subjectService.updateSubject(
-      oldCode: _subject.subjectCode,
-      newSubject: updatedSubject,
+    if (name.isEmpty || code.isEmpty || year.isEmpty || semester.isEmpty) {
+      setSheetState(() {
+        errorMessage = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+      });
+      return;
+    }
+
+    final updatedSubject = Subject(
+      subjectName: name,
+      subjectCode: code,
+      year: year,
+      semester: semester,
     );
 
-    if (!mounted || !sheetContext.mounted) return;
+    try {
+      // บันทึกลง Database
+      await _subjectService.updateSubject(
+        oldCode: _subject.subjectCode,
+        newSubject: updatedSubject,
+      );
 
-    // อัปเดต Dashboard ปัจจุบัน
-    setState(() {
-      _subject = updatedSubject;
-    });
+      if (!mounted || !sheetContext.mounted) return;
 
-    // ⭐ สำคัญที่สุด
-    // ส่งข้อมูลใหม่กลับไปให้ Home
-    widget.onSubjectUpdated?.call(updatedSubject);
+      // อัปเดต Dashboard ปัจจุบัน
+      setState(() {
+        _subject = updatedSubject;
+      });
 
-    // ปิดหน้าแก้ไข
-    Navigator.pop(sheetContext);
-  } catch (error) {
-    debugPrint('แก้ไขรายวิชาไม่สำเร็จ: $error');
+      // ⭐ สำคัญที่สุด
+      // ส่งข้อมูลใหม่กลับไปให้ Home
+      widget.onSubjectUpdated?.call(updatedSubject);
 
-    if (!sheetContext.mounted) return;
+      // ปิดหน้าแก้ไข
+      Navigator.pop(sheetContext);
+    } catch (error) {
+      debugPrint('แก้ไขรายวิชาไม่สำเร็จ: $error');
 
-    setSheetState(() {
-      errorMessage =
-          error.toString().replaceFirst('Exception: ', '');
-    });
+      if (!sheetContext.mounted) return;
+
+      setSheetState(() {
+        errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
-}
-
 
   // ==========================================================
   // Subject TextField
@@ -1349,10 +1294,13 @@ Future<void> _saveSubject(
         return;
 
       case 1:
-         Navigator.push(
+        Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (context) => MaterialScreen(subjectName: _subject.subjectName,subjectCode: _subject.subjectCode),
+            builder: (context) => MaterialScreen(
+              subjectName: _subject.subjectName,
+              subjectCode: _subject.subjectCode,
+            ),
           ),
         );
         return;
@@ -1361,7 +1309,10 @@ Future<void> _saveSubject(
         Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (context) => const ChatScreen(),
+            builder: (context) => ChatScreen(
+              subjectCode: _subject.subjectCode,
+              sessionId: _sessionId,
+            ),
           ),
         );
         return;
@@ -2657,7 +2608,6 @@ class _MiniBars extends StatelessWidget {
   }
 }
 
-
 // ================================================================
 // Dashboard Bottom Navigation
 // ================================================================
@@ -2699,7 +2649,9 @@ class _DashboardBottomNavigation extends StatelessWidget {
       decoration: const BoxDecoration(
         color: _DashboardColors.navigation,
 
-        border: Border(top: BorderSide(color: _DashboardColors.navigationBorder)),
+        border: Border(
+          top: BorderSide(color: _DashboardColors.navigationBorder),
+        ),
       ),
 
       child: Row(
@@ -2792,9 +2744,5 @@ class _DashboardNavigationData {
   final IconData activeIcon;
   final String label;
 
-  const _DashboardNavigationData(
-    this.icon,
-    this.activeIcon,
-    this.label,
-  );
+  const _DashboardNavigationData(this.icon, this.activeIcon, this.label);
 }
