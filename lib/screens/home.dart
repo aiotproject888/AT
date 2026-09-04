@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 3),
 
           const Text(
-            'ยินดีต้อนรับ, อ.สมชาย',
+            'ยินดีต้อนรับ',
             style: TextStyle(
               color: _HomeColors.secondaryText,
               fontSize: 15,
@@ -839,7 +839,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        const _FieldLabel('เทอม*'),
+                        const _FieldLabel('ภาคเรียน*'),
 
                         const SizedBox(height: 6),
 

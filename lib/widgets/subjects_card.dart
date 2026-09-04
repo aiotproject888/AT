@@ -87,7 +87,7 @@ class SubjectCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '${subject.subjectCode}  ${subject.year}  เทอม ${subject.semester}',
+                                '${subject.subjectCode} • ปีการศึกษา ${subject.year} • ภาคเรียนที่ ${subject.semester}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

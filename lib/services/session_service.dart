@@ -40,7 +40,7 @@ class SessionService {
     await _currentSessionRef.set({
       'sessionId': sessionId,
       'subjectCode': subjectCode,
-      'type': 'before_class',
+      //'type': 'before_class',
       'status': 'active',
     });
 
@@ -54,7 +54,7 @@ class SessionService {
   Future<void> changeToAfterClass(String sessionId) async {
     await _currentSessionRef.update({
       'sessionId': sessionId,
-      'type': 'after_class',
+      //'type': 'after_class',
       'status': 'active',
     });
   }

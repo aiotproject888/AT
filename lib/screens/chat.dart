@@ -43,24 +43,19 @@ class _ChatColors {
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic>? emotionData;
 
-// ============================================================
-// Subject Code
-// ============================================================
+  final String? subjectCode;
 
-final String? subjectCode;
+  final String? sessionId;
 
-// ============================================================
-// Session ID
-// ============================================================
+  final bool autoAttachEmotion;
 
-final String? sessionId;
-
-const ChatScreen({
-  super.key,
-  this.emotionData,
-  this.subjectCode,
-  this.sessionId,
-});
+  const ChatScreen({
+    super.key,
+    this.emotionData,
+    this.subjectCode,
+    this.sessionId,
+    this.autoAttachEmotion = false,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -82,39 +77,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _emotionData;
   bool _isLoadingEmotion = false;
 
-  // ============================================================
-  // Conversation ID
-  // ============================================================
-
   String? _conversationId;
-
-  // ============================================================
-  // Lesson Materials
-  //
-  // เก็บเนื้อหาบทเรียนที่อ่านจาก Firestore
-  //
-  // ตัวอย่าง:
-  //
-  // [
-  //   {
-  //     "id": "...",
-  //     "fileName": "bayesian.pdf",
-  //     "text": "...",
-  //     "fileType": "application/pdf"
-  //   }
-  // ]
-  // ============================================================
 
   List<Map<String, dynamic>> _lessonMaterials = [];
   List<Map<String, dynamic>> _selectedLessonMaterials = [];
 
   bool _isLoadingMaterials = false;
-
-  // ============================================================
-  // Chat Uploaded File
-  //
-  // ไฟล์ที่ผู้ใช้แนบจากหน้า Chat โดยตรง
-  // ============================================================
 
   Map<String, dynamic>? _chatUploadedFile;
 
@@ -136,12 +104,21 @@ class _ChatScreenState extends State<ChatScreen> {
         time: DateTime.now(),
       ),
     );
+
+    if (widget.autoAttachEmotion && widget.emotionData != null) {
+      _emotionData = Map<String, dynamic>.from(widget.emotionData!);
+    }
+
     _loadChatHistory();
 
     if (widget.subjectCode != null && widget.subjectCode!.isNotEmpty) {
       _loadLessonMaterials();
     }
   }
+
+  // ============================================================
+  // โหลด Emotion เดิม
+  // ============================================================
 
   Future<void> _loadEmotionData() async {
     if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
@@ -197,10 +174,281 @@ class _ChatScreenState extends State<ChatScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error')),
+        SnackBar(
+          content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error'),
+        ),
       );
     }
   }
+
+  // ============================================================
+  // เลือกและโหลด Emotion ก่อน/หลังเรียน
+  // ============================================================
+
+  Future<void> _loadSelectedEmotionData({
+    required bool beforeSelected,
+    required bool afterSelected,
+  }) async {
+    if (widget.subjectCode == null ||
+        widget.subjectCode!.trim().isEmpty) {
+      return;
+    }
+
+    if (_isLoadingEmotion) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingEmotion = true;
+    });
+
+    try {
+      final selectedDate = DateTime.now();
+
+      Map<String, dynamic>? beforeData;
+      Map<String, dynamic>? afterData;
+
+      // ==========================================================
+      // ก่อนเรียน
+      // ==========================================================
+
+      if (beforeSelected) {
+        beforeData = await _emotionService.getEmotionSummaryForAI(
+          subjectCode: widget.subjectCode!,
+          date: selectedDate,
+          type: 'before_class',
+        );
+      }
+
+      // ==========================================================
+      // หลังเรียน
+      // ==========================================================
+
+      if (afterSelected) {
+        afterData = await _emotionService.getEmotionSummaryForAI(
+          subjectCode: widget.subjectCode!,
+          date: selectedDate,
+          type: 'after_class',
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      // ==========================================================
+      // สร้างข้อมูลสำหรับส่ง AI
+      // ==========================================================
+
+      final Map<String, dynamic> combinedData = {};
+
+      if (beforeData != null) {
+        combinedData['beforeClass'] = beforeData;
+      }
+
+      if (afterData != null) {
+        combinedData['afterClass'] = afterData;
+      }
+
+      // ==========================================================
+      // รวมจำนวน Responses
+      // ==========================================================
+
+      int totalResponses = 0;
+
+      if (beforeData != null) {
+        totalResponses +=
+            int.tryParse(
+              beforeData['totalResponses']?.toString() ?? '0',
+            ) ??
+            0;
+      }
+
+      if (afterData != null) {
+        totalResponses +=
+            int.tryParse(
+              afterData['totalResponses']?.toString() ?? '0',
+            ) ??
+            0;
+      }
+
+      combinedData['totalResponses'] = totalResponses;
+
+      // ==========================================================
+      // เก็บข้อมูลว่าผู้ใช้เลือกอะไร
+      // ==========================================================
+
+      combinedData['includeBeforeClass'] = beforeSelected;
+      combinedData['includeAfterClass'] = afterSelected;
+
+      setState(() {
+        _emotionData = combinedData;
+        _isLoadingEmotion = false;
+      });
+
+      debugPrint('========== EMOTION ATTACHED ==========');
+      debugPrint('Before class: $beforeSelected');
+      debugPrint('After class: $afterSelected');
+      debugPrint('Total responses: $totalResponses');
+      debugPrint('Data: $_emotionData');
+      debugPrint('======================================');
+
+      String attachedText = 'แนบข้อมูลอารมณ์แล้ว';
+
+      if (beforeSelected && afterSelected) {
+        attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนและหลังเรียนแล้ว';
+      } else if (beforeSelected) {
+        attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนแล้ว';
+      } else if (afterSelected) {
+        attachedText = 'แนบข้อมูลอารมณ์หลังเรียนแล้ว';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(attachedText),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      debugPrint('โหลดข้อมูล Emotion ไม่สำเร็จ: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingEmotion = false;
+        _emotionData = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error'),
+        ),
+      );
+    }
+  }
+
+  // ============================================================
+  // Dialog เลือก Emotion
+  // ============================================================
+
+  Future<void> _showEmotionSelectionDialog() async {
+    bool beforeSelected = false;
+    bool afterSelected = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xff1E1B2E),
+              title: const Text(
+                'แนบข้อมูลอารมณ์',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CheckboxListTile(
+                    value: beforeSelected,
+                    activeColor: _ChatColors.accent,
+                    checkColor: Colors.white,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'ก่อนเรียน',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'ข้อมูลอารมณ์ก่อนเริ่มเรียน',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        beforeSelected = value ?? false;
+                      });
+                    },
+                  ),
+
+                  CheckboxListTile(
+                    value: afterSelected,
+                    activeColor: _ChatColors.accent,
+                    checkColor: Colors.white,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'หลังเรียน',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'ข้อมูลอารมณ์หลังเรียน',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        afterSelected = value ?? false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text(
+                    'ยกเลิก',
+                    style: TextStyle(
+                      color: Colors.white60,
+                    ),
+                  ),
+                ),
+
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _ChatColors.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: (!beforeSelected && !afterSelected)
+                      ? null
+                      : () async {
+                          Navigator.pop(dialogContext);
+
+                          await _loadSelectedEmotionData(
+                            beforeSelected: beforeSelected,
+                            afterSelected: afterSelected,
+                          );
+                        },
+                  child: const Text('ยืนยัน'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // Emotion Status
+  // ============================================================
 
   Widget _buildEmotionStatus() {
     if (_isLoadingEmotion) {
@@ -210,7 +458,9 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(
           color: const Color(0x1A6C52E5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x476C52E5)),
+          border: Border.all(
+            color: const Color(0x476C52E5),
+          ),
         ),
         child: const Row(
           children: [
@@ -225,7 +475,10 @@ class _ChatScreenState extends State<ChatScreen> {
             SizedBox(width: 9),
             Text(
               'กำลังโหลดข้อมูลอารมณ์...',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -240,11 +493,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: const Color(0x261BAF7A),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x4D1BAF7A)),
+        border: Border.all(
+          color: const Color(0x4D1BAF7A),
+        ),
       ),
       child: Row(
         children: [
@@ -253,13 +511,19 @@ class _ChatScreenState extends State<ChatScreen> {
             color: Color(0xFF3DD99A),
             size: 18,
           ),
+
           const SizedBox(width: 8),
+
           Expanded(
             child: Text(
               'แนบข้อมูลอารมณ์แล้ว · $total responses',
-              style: const TextStyle(color: Color(0xFF3DD99A), fontSize: 12),
+              style: const TextStyle(
+                color: Color(0xFF3DD99A),
+                fontSize: 12,
+              ),
             ),
           ),
+
           IconButton(
             onPressed: () {
               setState(() {
@@ -278,6 +542,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
   // ============================================================
   // เลือกไฟล์จากหน้า Chat
   // ============================================================
@@ -309,7 +574,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _isReadingFile = true;
       });
 
-      final String extension = file.extension?.toLowerCase() ?? '';
+      final String extension =
+          file.extension?.toLowerCase() ?? '';
 
       String extractedText = '';
 
@@ -320,17 +586,29 @@ class _ChatScreenState extends State<ChatScreen> {
       if (extension == 'pdf') {
         extractedText = await _extractPdfText(file.bytes!);
       }
+
       // ==========================================================
       // TXT / MD / CSV
       // ==========================================================
-      else if (extension == 'txt' || extension == 'md' || extension == 'csv') {
-        extractedText = utf8.decode(file.bytes!, allowMalformed: true);
+
+      else if (
+          extension == 'txt' ||
+          extension == 'md' ||
+          extension == 'csv') {
+        extractedText = utf8.decode(
+          file.bytes!,
+          allowMalformed: true,
+        );
       }
+
       // ==========================================================
       // ไม่รองรับ
       // ==========================================================
+
       else {
-        _showFileError('ไฟล์ประเภท .$extension ยังไม่รองรับ');
+        _showFileError(
+          'ไฟล์ประเภท .$extension ยังไม่รองรับ',
+        );
 
         return;
       }
@@ -354,13 +632,15 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       setState(() {
-        // จำกัดข้อความที่ส่งให้ AI เพื่อไม่ให้ Request ใหญ่เกิน Groq TPM
         const int maxTextLength = 6000;
 
         String textForAI = extractedText;
 
         if (textForAI.length > maxTextLength) {
-          textForAI = textForAI.substring(0, maxTextLength);
+          textForAI = textForAI.substring(
+            0,
+            maxTextLength,
+          );
 
           debugPrint(
             'ไฟล์มีข้อความยาวเกินกำหนด '
@@ -369,7 +649,8 @@ class _ChatScreenState extends State<ChatScreen> {
         }
 
         _chatUploadedFile = {
-          'id': 'chat_upload_${DateTime.now().millisecondsSinceEpoch}',
+          'id':
+              'chat_upload_${DateTime.now().millisecondsSinceEpoch}',
           'fileName': file.name,
           'fileType': file.extension ?? '',
           'text': textForAI,
@@ -378,17 +659,20 @@ class _ChatScreenState extends State<ChatScreen> {
         _isReadingFile = false;
       });
 
-      debugPrint('==========================================');
+      debugPrint(
+        '==========================================',
+      );
 
       debugPrint('CHAT FILE UPLOAD');
-
       debugPrint('File name: ${file.name}');
-
       debugPrint('File type: $extension');
+      debugPrint(
+        'Text length: ${extractedText.length}',
+      );
 
-      debugPrint('Text length: ${extractedText.length}');
-
-      debugPrint('==========================================');
+      debugPrint(
+        '==========================================',
+      );
     } catch (e) {
       debugPrint('อ่านไฟล์ไม่สำเร็จ: $e');
 
@@ -416,10 +700,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final StringBuffer buffer = StringBuffer();
 
-      for (int i = 0; i < document.pages.count; i++) {
+      for (
+        int i = 0;
+        i < document.pages.count;
+        i++
+      ) {
         final String text = PdfTextExtractor(
           document,
-        ).extractText(startPageIndex: i, endPageIndex: i);
+        ).extractText(
+          startPageIndex: i,
+          endPageIndex: i,
+        );
 
         if (text.trim().isNotEmpty) {
           buffer.writeln(text);
@@ -439,7 +730,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(message),
+      ),
+    );
   }
 
   // ============================================================
@@ -452,18 +747,32 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final String fileName =
-        _chatUploadedFile!['fileName']?.toString() ?? 'ไฟล์';
+        _chatUploadedFile!['fileName']?.toString() ??
+        'ไฟล์';
 
     final String fileType =
-        _chatUploadedFile!['fileType']?.toString().toUpperCase() ?? '';
+        _chatUploadedFile!['fileType']
+                ?.toString()
+                .toUpperCase() ??
+            '';
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        8,
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: _ChatColors.accentSurface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: _ChatColors.accentBorder),
+        border: Border.all(
+          color: _ChatColors.accentBorder,
+        ),
       ),
       child: Row(
         children: [
@@ -472,7 +781,9 @@ class _ChatScreenState extends State<ChatScreen> {
             height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _ChatColors.accent.withOpacity(0.25),
+              color: _ChatColors.accent.withOpacity(
+                0.25,
+              ),
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(
@@ -488,7 +799,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   fileName,
@@ -505,7 +817,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 Text(
                   'แนบไฟล์แล้ว · AI สามารถใช้เนื้อหาได้',
-                  style: const TextStyle(color: Colors.white60, fontSize: 9.5),
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 9.5,
+                  ),
                 ),
               ],
             ),
@@ -533,8 +848,10 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
   // โหลด Lesson Materials
   // ============================================================
+
   Future<void> _loadLessonMaterials() async {
-    if (widget.subjectCode == null || widget.subjectCode!.isEmpty) {
+    if (widget.subjectCode == null ||
+        widget.subjectCode!.isEmpty) {
       return;
     }
 
@@ -547,73 +864,53 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      debugPrint('========== LOAD LESSON MATERIALS ==========');
+      debugPrint(
+        '========== LOAD LESSON MATERIALS ==========',
+      );
 
-      debugPrint('subjectCode: ${widget.subjectCode}');
+      debugPrint(
+        'subjectCode: ${widget.subjectCode}',
+      );
 
       final snapshot = await FirebaseFirestore.instance
           .collection('lesson_materials')
-          .where('subjectCode', isEqualTo: widget.subjectCode)
+          .where(
+            'subjectCode',
+            isEqualTo: widget.subjectCode,
+          )
           .get();
 
-      final List<Map<String, dynamic>> materials = [];
+      final List<Map<String, dynamic>> materials =
+          [];
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
 
-        // ==========================================================
-        // AI Status
-        // ==========================================================
-
-        final String aiStatus = data['aiStatus']?.toString() ?? '';
-
-        // ==========================================================
-        // File Name
-        // ==========================================================
+        final String aiStatus =
+            data['aiStatus']?.toString() ?? '';
 
         final String fileName =
             data['fileName']?.toString() ??
             data['name']?.toString() ??
             'ไม่ทราบชื่อไฟล์';
 
-        // ==========================================================
-        // File Type
-        // ==========================================================
+        final String fileType =
+            data['fileType']?.toString() ?? '';
 
-        final String fileType = data['fileType']?.toString() ?? '';
-
-        // ==========================================================
-        // อ่าน extractedText
-        //
-        // รองรับทั้ง 2 รูปแบบ
-        //
-        // แบบที่ 1:
-        // extractedText: "เนื้อหา..."
-        //
-        // แบบที่ 2:
-        // extractedText:
-        // {
-        //   text: "เนื้อหา...",
-        //   type: "pdf"
-        // }
-        // ==========================================================
-
-        final dynamic rawExtractedText = data['extractedText'];
+        final dynamic rawExtractedText =
+            data['extractedText'];
 
         String extractedText = '';
 
         if (rawExtractedText is String) {
           extractedText = rawExtractedText;
         } else if (rawExtractedText is Map) {
-          extractedText = rawExtractedText['text']?.toString() ?? '';
+          extractedText =
+              rawExtractedText['text']?.toString() ??
+              '';
         }
 
-        // ==========================================================
-        // Debug
-        // ==========================================================
-
         debugPrint('ไฟล์: $fileName');
-
         debugPrint('aiStatus: $aiStatus');
 
         debugPrint(
@@ -626,12 +923,9 @@ class _ChatScreenState extends State<ChatScreen> {
           '${extractedText.length}',
         );
 
-        // ==========================================================
-        // เอาเฉพาะไฟล์ที่อ่านเนื้อหาแล้ว
-        // และมีข้อความจริง
-        // ==========================================================
-
-        if (aiStatus == 'อ่านเนื้อหาแล้ว' && extractedText.trim().isNotEmpty) {
+        if (
+            aiStatus == 'อ่านเนื้อหาแล้ว' &&
+            extractedText.trim().isNotEmpty) {
           materials.add({
             'id': doc.id,
             'fileName': fileName,
@@ -655,9 +949,13 @@ class _ChatScreenState extends State<ChatScreen> {
         '${materials.length} ไฟล์',
       );
 
-      debugPrint('==========================================');
+      debugPrint(
+        '==========================================',
+      );
     } catch (e) {
-      debugPrint('โหลด Lesson Materials ไม่สำเร็จ: $e');
+      debugPrint(
+        'โหลด Lesson Materials ไม่สำเร็จ: $e',
+      );
 
       if (!mounted) {
         return;
@@ -670,35 +968,36 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // ============================================================
-  // โหลดประวัติการสนทนา
-  // ============================================================
-
-  // ============================================================
-  // โหลดประวัติการสนทนา
-  // ============================================================
-
   Future<void> _loadChatHistory() async {
     try {
-      debugPrint('========== LOAD CHAT HISTORY ==========');
+      debugPrint(
+        '========== LOAD CHAT HISTORY ==========',
+      );
 
       final bool isClassroom =
-          widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+          widget.subjectCode != null &&
+          widget.subjectCode!.isNotEmpty;
 
-      debugPrint('Chat type: ${isClassroom ? 'classroom' : 'general'}');
+      debugPrint(
+        'Chat type: '
+        '${isClassroom ? 'classroom' : 'general'}',
+      );
 
-      debugPrint('subjectCode: ${widget.subjectCode}');
+      debugPrint(
+        'subjectCode: ${widget.subjectCode}',
+      );
 
-      debugPrint('sessionId: ${widget.sessionId}');
+      debugPrint(
+        'sessionId: ${widget.sessionId}',
+      );
 
-      // ==========================================================
-      // ดึง Conversation ทั้งหมด
-      // ==========================================================
-
-      final conversations = await _historyService.getConversations();
+      final conversations =
+          await _historyService.getConversations();
 
       if (conversations.isEmpty) {
-        debugPrint('ยังไม่มีประวัติการสนทนา');
+        debugPrint(
+          'ยังไม่มีประวัติการสนทนา',
+        );
 
         if (mounted) {
           setState(() {
@@ -709,16 +1008,14 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // ==========================================================
-      // หา Conversation ที่ตรงกับ Chat ปัจจุบัน
-      // ==========================================================
-
-      QueryDocumentSnapshot<Map<String, dynamic>>? matchedConversation;
+      QueryDocumentSnapshot<
+          Map<String, dynamic>>? matchedConversation;
 
       for (final conversation in conversations) {
         final data = conversation.data();
 
-        final String type = data['type']?.toString() ?? '';
+        final String type =
+            data['type']?.toString() ?? '';
 
         final String conversationSubjectCode =
             data['subjectCode']?.toString() ?? '';
@@ -726,37 +1023,28 @@ class _ChatScreenState extends State<ChatScreen> {
         final String conversationSessionId =
             data['sessionId']?.toString() ?? '';
 
-        // ========================================================
-        // GENERAL CHAT
-        // ========================================================
-
         if (!isClassroom) {
           if (type == 'general') {
             matchedConversation = conversation;
             break;
           }
-        }
-        // ========================================================
-        // CLASSROOM CHAT
-        // ========================================================
-        else {
-          // ต้องเป็น classroom เท่านั้น
+        } else {
           if (type != 'classroom') {
             continue;
           }
 
-          // subjectCode ต้องตรงกับห้องที่กำลังเปิด
-          if (conversationSubjectCode != widget.subjectCode) {
+          if (
+              conversationSubjectCode !=
+              widget.subjectCode) {
             continue;
           }
 
-          // ======================================================
-          // ถ้ามี sessionId
-          // ให้ตรวจ sessionId ด้วย
-          // ======================================================
-
-          if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
-            if (conversationSessionId != widget.sessionId) {
+          if (
+              widget.sessionId != null &&
+              widget.sessionId!.isNotEmpty) {
+            if (
+                conversationSessionId !=
+                widget.sessionId) {
               continue;
             }
           }
@@ -766,12 +1054,10 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
 
-      // ==========================================================
-      // ไม่พบ Conversation
-      // ==========================================================
-
       if (matchedConversation == null) {
-        debugPrint('ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน');
+        debugPrint(
+          'ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน',
+        );
 
         if (mounted) {
           setState(() {
@@ -782,40 +1068,38 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // ==========================================================
-      // เก็บ Conversation ID
-      // ==========================================================
-
       _conversationId = matchedConversation.id;
 
-      debugPrint('พบ Conversation: $_conversationId');
+      debugPrint(
+        'พบ Conversation: $_conversationId',
+      );
 
-      // ==========================================================
-      // ดึง Messages
-      // ==========================================================
-
-      final historyMessages = await _historyService.getMessages(
+      final historyMessages =
+          await _historyService.getMessages(
         _conversationId!,
       );
 
-      debugPrint('พบข้อความทั้งหมด: ${historyMessages.length}');
+      debugPrint(
+        'พบข้อความทั้งหมด: '
+        '${historyMessages.length}',
+      );
 
       if (!mounted) {
         return;
       }
 
-      // ==========================================================
-      // แปลง Firestore → ChatMessage
-      // ==========================================================
-
-      final List<ChatMessage> loadedMessages = [];
+      final List<ChatMessage> loadedMessages =
+          [];
 
       for (final doc in historyMessages) {
         final data = doc.data();
 
-        final String role = data['role']?.toString() ?? 'assistant';
+        final String role =
+            data['role']?.toString() ??
+            'assistant';
 
-        final String text = data['text']?.toString() ?? '';
+        final String text =
+            data['text']?.toString() ?? '';
 
         if (text.trim().isEmpty) {
           continue;
@@ -830,19 +1114,13 @@ class _ChatScreenState extends State<ChatScreen> {
         }
 
         loadedMessages.add(
-          ChatMessage(isAI: role == 'assistant', text: text, time: messageTime),
+          ChatMessage(
+            isAI: role == 'assistant',
+            text: text,
+            time: messageTime,
+          ),
         );
       }
-
-      // ==========================================================
-      // แสดงประวัติ
-      //
-      // สำคัญ:
-      // ไม่ clear messages
-      //
-      // เพราะเราต้องการให้ข้อความ Welcome
-      // ยังคงอยู่ด้านบน
-      // ==========================================================
 
       setState(() {
         _isLoadingHistory = false;
@@ -852,17 +1130,20 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
 
-      debugPrint('โหลดประวัติสำเร็จ: ${loadedMessages.length} ข้อความ');
+      debugPrint(
+        'โหลดประวัติสำเร็จ: '
+        '${loadedMessages.length} ข้อความ',
+      );
 
-      debugPrint('======================================');
-
-      // ==========================================================
-      // เลื่อนไปล่างสุด
-      // ==========================================================
+      debugPrint(
+        '======================================',
+      );
 
       _scrollToBottom();
     } catch (e) {
-      debugPrint('โหลดประวัติการสนทนาไม่สำเร็จ: $e');
+      debugPrint(
+        'โหลดประวัติการสนทนาไม่สำเร็จ: $e',
+      );
 
       if (!mounted) {
         return;
@@ -878,36 +1159,57 @@ class _ChatScreenState extends State<ChatScreen> {
   // สร้าง Conversation ใน Firestore
   // ============================================================
 
-  Future<void> _createConversationIfNeeded(String firstMessage) async {
+  Future<void> _createConversationIfNeeded(
+    String firstMessage,
+  ) async {
     if (_conversationId != null) {
-      debugPrint('มี Conversation อยู่แล้ว: $_conversationId');
+      debugPrint(
+        'มี Conversation อยู่แล้ว: $_conversationId',
+      );
 
       return;
     }
 
     final bool isClassroom =
-        widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+        widget.subjectCode != null &&
+        widget.subjectCode!.isNotEmpty;
 
-    debugPrint('========== CREATE CONVERSATION ==========');
+    debugPrint(
+      '========== CREATE CONVERSATION ==========',
+    );
 
-    debugPrint('type: ${isClassroom ? 'classroom' : 'general'}');
+    debugPrint(
+      'type: ${isClassroom ? 'classroom' : 'general'}',
+    );
 
-    debugPrint('subjectCode: ${widget.subjectCode}');
+    debugPrint(
+      'subjectCode: ${widget.subjectCode}',
+    );
 
-    debugPrint('sessionId: ${widget.sessionId}');
+    debugPrint(
+      'sessionId: ${widget.sessionId}',
+    );
 
-    debugPrint('title: ${_makeTitle(firstMessage)}');
+    debugPrint(
+      'title: ${_makeTitle(firstMessage)}',
+    );
 
-    _conversationId = await _historyService.createConversation(
+    _conversationId =
+        await _historyService.createConversation(
       type: isClassroom ? 'classroom' : 'general',
       subjectCode: widget.subjectCode,
       sessionId: widget.sessionId,
       title: _makeTitle(firstMessage),
     );
 
-    debugPrint('สร้าง Conversation สำเร็จ! ID: $_conversationId');
+    debugPrint(
+      'สร้าง Conversation สำเร็จ! '
+      'ID: $_conversationId',
+    );
 
-    debugPrint('==========================================');
+    debugPrint(
+      '==========================================',
+    );
   }
 
   // ============================================================
@@ -937,33 +1239,33 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    final String userMessage = _controller.text.trim();
+    final String userMessage =
+        _controller.text.trim();
 
-    // ==========================================================
-    // เก็บข้อมูลที่แนบไว้ ณ ตอนกดส่ง
-    //
-    // สำคัญ:
-    // ต้อง copy ออกมาก่อน
-    // เพราะหลังส่งสำเร็จเราจะล้าง attachment
-    // ==========================================================
+    final Map<String, dynamic>? attachedEmotionData =
+        _emotionData != null
+            ? Map<String, dynamic>.from(
+                _emotionData!,
+              )
+            : null;
 
-    final Map<String, dynamic>? attachedEmotionData = _emotionData != null
-        ? Map<String, dynamic>.from(_emotionData!)
-        : null;
-
-    final List<Map<String, dynamic>> attachedLessonMaterials =
+    final List<Map<String, dynamic>>
+        attachedLessonMaterials =
         _selectedLessonMaterials
-            .map((material) => Map<String, dynamic>.from(material))
+            .map(
+              (material) =>
+                  Map<String, dynamic>.from(
+                material,
+              ),
+            )
             .toList();
 
-    final Map<String, dynamic>? attachedChatFile = _chatUploadedFile != null
-        ? Map<String, dynamic>.from(_chatUploadedFile!)
-        : null;
-
-    // ==========================================================
-    // เพิ่มข้อความ User ลงหน้าจอ
-    // พร้อมข้อมูลที่แนบ
-    // ==========================================================
+    final Map<String, dynamic>? attachedChatFile =
+        _chatUploadedFile != null
+            ? Map<String, dynamic>.from(
+                _chatUploadedFile!,
+              )
+            : null;
 
     setState(() {
       messages.add(
@@ -972,15 +1274,18 @@ class _ChatScreenState extends State<ChatScreen> {
           text: userMessage,
           time: DateTime.now(),
 
-          // Emotion ที่แนบ
           emotionData: attachedEmotionData,
 
-          // ไฟล์ที่เลือกจาก Lesson Material
-          lessonMaterials: attachedLessonMaterials,
+          lessonMaterials:
+              attachedLessonMaterials,
 
-          // ไฟล์ที่แนบจากปุ่ม Attach
-          fileName: attachedChatFile?['fileName']?.toString(),
-          fileType: attachedChatFile?['fileType']?.toString(),
+          fileName:
+              attachedChatFile?['fileName']
+                  ?.toString(),
+
+          fileType:
+              attachedChatFile?['fileType']
+                  ?.toString(),
         ),
       );
 
@@ -992,17 +1297,12 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
 
     try {
-      // ==========================================================
-      // สร้าง Conversation
-      // ==========================================================
+      await _createConversationIfNeeded(
+        userMessage,
+      );
 
-      await _createConversationIfNeeded(userMessage);
-
-      // ==========================================================
-      // รวมไฟล์ที่จะส่งให้ AI
-      // ==========================================================
-
-      final List<Map<String, dynamic>> materialsForAI = [
+      final List<Map<String, dynamic>>
+          materialsForAI = [
         ...attachedLessonMaterials,
       ];
 
@@ -1010,13 +1310,13 @@ class _ChatScreenState extends State<ChatScreen> {
         materialsForAI.add(attachedChatFile);
       }
 
-      // ==========================================================
-      // Debug
-      // ==========================================================
+      debugPrint(
+        '========== SEND MESSAGE ==========',
+      );
 
-      debugPrint('========== SEND MESSAGE ==========');
-
-      debugPrint('Message: $userMessage');
+      debugPrint(
+        'Message: $userMessage',
+      );
 
       debugPrint(
         'Emotion attached: '
@@ -1033,14 +1333,9 @@ class _ChatScreenState extends State<ChatScreen> {
         '${attachedChatFile?['fileName'] ?? 'ไม่มี'}',
       );
 
-      debugPrint('==================================');
-
-      // ==========================================================
-      // บันทึกข้อความ User
-      //
-      // ตอนนี้เก็บข้อความก่อน
-      // ส่วน attachment แสดงในหน้า Chat
-      // ==========================================================
+      debugPrint(
+        '==================================',
+      );
 
       try {
         await _historyService.saveMessage(
@@ -1049,28 +1344,21 @@ class _ChatScreenState extends State<ChatScreen> {
           text: userMessage,
         );
       } catch (e) {
-        debugPrint('บันทึกข้อความ User ไม่สำเร็จ: $e');
+        debugPrint(
+          'บันทึกข้อความ User ไม่สำเร็จ: $e',
+        );
       }
 
-      // ==========================================================
-      // ส่งไป Backend
-      // ==========================================================
-
-      final String answer = await _chatService.sendMessage(
+      final String answer =
+          await _chatService.sendMessage(
         message: userMessage,
 
-        // ส่ง Emotion เฉพาะตอนที่แนบ
         emotionData: attachedEmotionData,
 
         subjectCode: widget.subjectCode,
 
-        // ส่งเฉพาะไฟล์ที่แนบ/เลือก
         lessonMaterials: materialsForAI,
       );
-
-      // ==========================================================
-      // แสดงคำตอบ AI
-      // ==========================================================
 
       if (!mounted) {
         return;
@@ -1078,14 +1366,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
       setState(() {
         messages.add(
-          ChatMessage(isAI: true, text: answer, time: DateTime.now()),
+          ChatMessage(
+            isAI: true,
+            text: answer,
+            time: DateTime.now(),
+          ),
         );
-
-        // ========================================================
-        // ล้าง Attachment หลังส่งสำเร็จ
-        //
-        // เพื่อให้ข้อความถัดไปไม่ส่งข้อมูลเดิมซ้ำ
-        // ========================================================
 
         _emotionData = null;
         _chatUploadedFile = null;
@@ -1094,10 +1380,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
       _scrollToBottom();
 
-      // ==========================================================
-      // บันทึกคำตอบ AI
-      // ==========================================================
-
       try {
         await _historyService.saveMessage(
           conversationId: _conversationId!,
@@ -1105,10 +1387,14 @@ class _ChatScreenState extends State<ChatScreen> {
           text: answer,
         );
       } catch (e) {
-        debugPrint('บันทึกคำตอบ AI ไม่สำเร็จ: $e');
+        debugPrint(
+          'บันทึกคำตอบ AI ไม่สำเร็จ: $e',
+        );
       }
     } catch (e) {
-      debugPrint('Chat Error: $e');
+      debugPrint(
+        'Chat Error: $e',
+      );
 
       if (!mounted) {
         return;
@@ -1144,14 +1430,17 @@ class _ChatScreenState extends State<ChatScreen> {
     final subject = widget.subjectCode;
 
     final bool isClassroom =
-        widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+        widget.subjectCode != null &&
+        widget.subjectCode!.isNotEmpty;
 
     String subtitle;
 
     if (subject != null && subject.isNotEmpty) {
-      subtitle = 'วิเคราะห์อารมณ์ · $subject';
+      subtitle =
+          'วิเคราะห์อารมณ์ · $subject';
     } else if (isClassroom) {
-      subtitle = 'ผู้ช่วยสอน · ${widget.subjectCode}';
+      subtitle =
+          'ผู้ช่วยสอน · ${widget.subjectCode}';
     } else {
       subtitle = 'ผู้ช่วยสอนอัจฉริยะ';
     }
@@ -1159,11 +1448,14 @@ class _ChatScreenState extends State<ChatScreen> {
     return SizedBox(
       height: 62,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+        ),
         child: Row(
           children: [
             _SquareButton(
-              icon: Icons.arrow_back_ios_new_rounded,
+              icon:
+                  Icons.arrow_back_ios_new_rounded,
               onTap: () {
                 Navigator.pop(context);
               },
@@ -1173,15 +1465,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
             Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment:
+                    MainAxisAlignment.center,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'EmotiTeach AI',
                     style: TextStyle(
-                      color: _ChatColors.primaryText,
+                      color:
+                          _ChatColors.primaryText,
                       fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight.w600,
                     ),
                   ),
 
@@ -1190,9 +1486,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     subtitle,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    overflow:
+                        TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: _ChatColors.veryFaintText,
+                      color:
+                          _ChatColors
+                              .veryFaintText,
                       fontSize: 10,
                     ),
                   ),
@@ -1200,22 +1499,30 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-            // ======================================================
-            // AI Icon
-            // ======================================================
             Container(
               width: 36,
               height: 36,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [_ChatColors.accent, _ChatColors.cyan],
+                gradient:
+                    const LinearGradient(
+                  begin:
+                      Alignment.topLeft,
+                  end:
+                      Alignment.bottomRight,
+                  colors: [
+                    _ChatColors.accent,
+                    _ChatColors.cyan,
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius:
+                    BorderRadius.circular(11),
               ),
-              child: const Text('🤖', style: TextStyle(fontSize: 17)),
+              child: const Text(
+                '🤖',
+                style:
+                    TextStyle(fontSize: 17),
+              ),
             ),
           ],
         ),
@@ -1225,19 +1532,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============================================================
   // Context Card
-  //
-  // แสดงเฉพาะกรณีมี emotionData
   // ============================================================
 
   Widget _buildLessonMaterialSelector() {
-    if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
+    if (widget.subjectCode == null ||
+        widget.subjectCode!.trim().isEmpty) {
       return const SizedBox.shrink();
     }
 
     if (_isLoadingMaterials) {
       return const Padding(
         padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
       );
     }
 
@@ -1246,32 +1555,49 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      margin: const EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        8,
+      ),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xff1E1B2E),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.menu_book_rounded, color: Color(0xff8B7CF6)),
+              const Icon(
+                Icons.menu_book_rounded,
+                color: Color(0xff8B7CF6),
+              ),
+
               const SizedBox(width: 8),
+
               const Expanded(
                 child: Text(
                   'เอกสารที่ใช้ในการวิเคราะห์',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
+
               Text(
                 '${_selectedLessonMaterials.length}/${_lessonMaterials.length}',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -1280,43 +1606,67 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const Text(
             'เลือกไฟล์ที่ต้องการให้ AI ใช้ในการวิเคราะห์',
-            style: TextStyle(color: Colors.white60, fontSize: 12),
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: 12,
+            ),
           ),
 
           const SizedBox(height: 10),
 
-          ..._lessonMaterials.map((material) {
-            final isSelected = _selectedLessonMaterials.any(
-              (selected) => selected['id'] == material['id'],
-            );
+          ..._lessonMaterials.map(
+            (material) {
+              final isSelected =
+                  _selectedLessonMaterials.any(
+                (selected) =>
+                    selected['id'] ==
+                    material['id'],
+              );
 
-            return CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              value: isSelected,
-              activeColor: const Color(0xff6C52E5),
-              checkColor: Colors.white,
-              title: Text(
-                material['fileName']?.toString() ?? 'ไม่ทราบชื่อไฟล์',
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-              subtitle: Text(
-                material['fileType']?.toString() ?? '',
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  if (value == true) {
-                    _selectedLessonMaterials.add(material);
-                  } else {
-                    _selectedLessonMaterials.removeWhere(
-                      (selected) => selected['id'] == material['id'],
-                    );
-                  }
-                });
-              },
-            );
-          }),
+              return CheckboxListTile(
+                contentPadding:
+                    EdgeInsets.zero,
+                dense: true,
+                value: isSelected,
+                activeColor:
+                    const Color(0xff6C52E5),
+                checkColor: Colors.white,
+                title: Text(
+                  material['fileName']
+                          ?.toString() ??
+                      'ไม่ทราบชื่อไฟล์',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                ),
+                subtitle: Text(
+                  material['fileType']
+                          ?.toString() ??
+                      '',
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      _selectedLessonMaterials
+                          .add(material);
+                    } else {
+                      _selectedLessonMaterials
+                          .removeWhere(
+                        (selected) =>
+                            selected['id'] ==
+                            material['id'],
+                      );
+                    }
+                  });
+                },
+              );
+            },
+          ),
         ],
       ),
     );
@@ -1324,21 +1674,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ============================================================
   // Lesson Material Status
-  //
-  // แสดงเมื่อเข้ามาจาก Subject
   // ============================================================
 
   Widget _buildLessonMaterialStatus() {
-    if (widget.subjectCode == null || widget.subjectCode!.isEmpty) {
+    if (widget.subjectCode == null ||
+        widget.subjectCode!.isEmpty) {
       return const SizedBox.shrink();
     }
 
     String text;
 
     if (_isLoadingMaterials) {
-      text = 'กำลังโหลดเนื้อหาบทเรียน...';
+      text =
+          'กำลังโหลดเนื้อหาบทเรียน...';
     } else if (_lessonMaterials.isEmpty) {
-      text = 'ยังไม่มีเนื้อหาบทเรียนที่พร้อมใช้กับ AI';
+      text =
+          'ยังไม่มีเนื้อหาบทเรียนที่พร้อมใช้กับ AI';
     } else {
       text =
           '📚 โหลดเนื้อหาบทเรียนแล้ว '
@@ -1347,17 +1698,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Container(
       height: 38,
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        8,
+      ),
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 12,
+      ),
       decoration: BoxDecoration(
-        color: _ChatColors.subtleSurface,
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: _ChatColors.inputBorder),
+        color:
+            _ChatColors.subtleSurface,
+        borderRadius:
+            BorderRadius.circular(11),
+        border: Border.all(
+          color: _ChatColors.inputBorder,
+        ),
       ),
       child: Row(
         children: [
           Icon(
-            _isLoadingMaterials ? Icons.sync_rounded : Icons.menu_book_rounded,
+            _isLoadingMaterials
+                ? Icons.sync_rounded
+                : Icons.menu_book_rounded,
             size: 16,
             color: _ChatColors.cyan,
           ),
@@ -1368,9 +1733,11 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text(
               text,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              overflow:
+                  TextOverflow.ellipsis,
               style: const TextStyle(
-                color: _ChatColors.mutedText,
+                color:
+                    _ChatColors.mutedText,
                 fontSize: 10,
               ),
             ),
@@ -1387,14 +1754,25 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildChatList() {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      padding:
+          const EdgeInsets.fromLTRB(
+        20,
+        4,
+        20,
+        12,
+      ),
       itemCount: messages.length,
-      itemBuilder: (context, index) {
+      itemBuilder:
+          (context, index) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
+          padding:
+              const EdgeInsets.only(
+            bottom: 14,
+          ),
           child: MessageBubble(
             message: messages[index],
-            primaryColor: _ChatColors.accent,
+            primaryColor:
+                _ChatColors.accent,
           ),
         );
       },
@@ -1407,13 +1785,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildSendingIndicator() {
     return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        4,
+        20,
+        8,
+      ),
       child: Row(
         children: [
           SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(
+            child:
+                CircularProgressIndicator(
               strokeWidth: 1.8,
               color: _ChatColors.cyan,
             ),
@@ -1423,7 +1807,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
           Text(
             'กำลังวิเคราะห์ข้อมูล...',
-            style: TextStyle(color: _ChatColors.mutedText, fontSize: 11),
+            style: TextStyle(
+              color:
+                  _ChatColors.mutedText,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
@@ -1435,48 +1823,86 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
 
   Widget _buildQuickChips() {
-    const chips = <Map<String, String>>[
-      {'icon': '📊', 'label': 'แนบข้อมูลอารมณ์'},
-      {'icon': '📎', 'label': 'แนบสื่อการสอน'},
-      {'icon': '💡', 'label': 'ขอคำแนะนำ'},
-      {'icon': '🕐', 'label': 'คาบที่แล้ว'},
+    const chips =
+        <Map<String, String>>[
+      {
+        'icon': '📊',
+        'label': 'แนบข้อมูลอารมณ์',
+      },
+      {
+        'icon': '📎',
+        'label': 'แนบสื่อการสอน',
+      },
+      {
+        'icon': '💡',
+        'label': 'ขอคำแนะนำ',
+      },
+      //{'icon': '🕐', 'label': 'คาบที่แล้ว'},
     ];
 
     return SizedBox(
       height: 43,
       child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        scrollDirection:
+            Axis.horizontal,
+        padding:
+            const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 4,
+        ),
         itemCount: chips.length,
-        separatorBuilder: (context, index) {
-          return const SizedBox(width: 7);
+        separatorBuilder:
+            (context, index) {
+          return const SizedBox(
+            width: 7,
+          );
         },
-        itemBuilder: (context, index) {
+        itemBuilder:
+            (context, index) {
           final chip = chips[index];
 
           return InkWell(
             onTap: () {
-              _handleQuickAction(chip['label']!);
+              _handleQuickAction(
+                chip['label']!,
+              );
             },
-            borderRadius: BorderRadius.circular(20),
+            borderRadius:
+                BorderRadius.circular(20),
             child: Container(
               height: 31,
-              padding: const EdgeInsets.symmetric(horizontal: 13),
+              padding:
+                  const EdgeInsets.symmetric(
+                horizontal: 13,
+              ),
               decoration: BoxDecoration(
-                color: _ChatColors.subtleSurface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _ChatColors.inputBorder),
+                color:
+                    _ChatColors.subtleSurface,
+                borderRadius:
+                    BorderRadius.circular(20),
+                border: Border.all(
+                  color:
+                      _ChatColors.inputBorder,
+                ),
               ),
               child: Row(
                 children: [
-                  Text(chip['icon']!, style: const TextStyle(fontSize: 12)),
+                  Text(
+                    chip['icon']!,
+                    style:
+                        const TextStyle(
+                      fontSize: 12,
+                    ),
+                  ),
 
                   const SizedBox(width: 5),
 
                   Text(
                     chip['label']!,
-                    style: const TextStyle(
-                      color: _ChatColors.mutedText,
+                    style:
+                        const TextStyle(
+                      color:
+                          _ChatColors.mutedText,
                       fontSize: 10.5,
                     ),
                   ),
@@ -1500,21 +1926,26 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (label == 'แนบข้อมูลอารมณ์') {
-      _loadEmotionData();
+      _showEmotionSelectionDialog();
       return;
     }
 
     String text = label;
 
     if (label == 'ขอคำแนะนำ') {
-      text = 'ขอคำแนะนำในการปรับการสอนจากข้อมูลนี้';
+      text =
+          'ขอคำแนะนำในการปรับการสอนจากข้อมูลนี้';
     } else if (label == 'คาบที่แล้ว') {
-      text = 'ช่วยเปรียบเทียบกับข้อมูลคาบที่แล้ว';
+      text =
+          'ช่วยเปรียบเทียบกับข้อมูลคาบที่แล้ว';
     }
 
     _controller.text = text;
 
-    _controller.selection = TextSelection.collapsed(offset: text.length);
+    _controller.selection =
+        TextSelection.collapsed(
+      offset: text.length,
+    );
   }
 
   // ============================================================
@@ -1523,58 +1954,76 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 9, 20, 12),
-      decoration: const BoxDecoration(
+      padding:
+          const EdgeInsets.fromLTRB(
+        20,
+        9,
+        20,
+        12,
+      ),
+      decoration:
+          const BoxDecoration(
         color: Color(0x08FFFFFF),
-        border: Border(top: BorderSide(color: Color(0x12FFFFFF))),
+        border: Border(
+          top: BorderSide(
+            color: Color(0x12FFFFFF),
+          ),
+        ),
       ),
       child: Row(
         children: [
-          // ======================================================
-          // Attach Button
-          // ======================================================
-          _SquareButton(icon: Icons.attach_file_rounded, onTap: _pickChatFile),
+          _SquareButton(
+            icon:
+                Icons.attach_file_rounded,
+            onTap: _pickChatFile,
+          ),
 
           const SizedBox(width: 9),
 
-          // ======================================================
-          // Text Field
-          // ======================================================
           Expanded(
             child: Container(
               height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding:
+                  const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
               decoration: BoxDecoration(
-                color: _ChatColors.inputSurface,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: _ChatColors.inputBorder),
+                color:
+                    _ChatColors.inputSurface,
+                borderRadius:
+                    BorderRadius.circular(22),
+                border: Border.all(
+                  color:
+                      _ChatColors.inputBorder,
+                ),
               ),
               alignment: Alignment.center,
               child: TextField(
                 controller: _controller,
-
                 enabled: !isSending,
-
-                textInputAction: TextInputAction.send,
-
+                textInputAction:
+                    TextInputAction.send,
                 onSubmitted: (_) {
                   sendMessage();
                 },
-
                 style: const TextStyle(
-                  color: _ChatColors.primaryText,
+                  color:
+                      _ChatColors.primaryText,
                   fontSize: 12.5,
                 ),
-
-                decoration: const InputDecoration(
+                decoration:
+                    const InputDecoration(
                   isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-
-                  hintText: 'พิมพ์ข้อความ หรือแนบไฟล์...',
-
-                  hintStyle: TextStyle(
-                    color: Color(0x40FFFFFF),
+                  border:
+                      InputBorder.none,
+                  contentPadding:
+                      EdgeInsets.zero,
+                  hintText:
+                      'พิมพ์ข้อความ หรือแนบไฟล์...',
+                  hintStyle:
+                      TextStyle(
+                    color:
+                        Color(0x40FFFFFF),
                     fontSize: 12.5,
                   ),
                 ),
@@ -1584,36 +2033,33 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const SizedBox(width: 9),
 
-          // ======================================================
-          // Send Button
-          // ======================================================
           SizedBox(
             width: 36,
             height: 36,
             child: Material(
               color: isSending
-                  ? _ChatColors.accent.withOpacity(0.45)
+                  ? _ChatColors.accent
+                      .withOpacity(0.45)
                   : _ChatColors.accent,
-
-              borderRadius: BorderRadius.circular(11),
-
-              shadowColor: _ChatColors.accent.withOpacity(0.4),
-
+              borderRadius:
+                  BorderRadius.circular(11),
+              shadowColor:
+                  _ChatColors.accent
+                      .withOpacity(0.4),
               elevation: 7,
-
               child: InkWell(
                 onTap: isSending
                     ? null
                     : () {
                         sendMessage();
                       },
-
-                borderRadius: BorderRadius.circular(11),
-
+                borderRadius:
+                    BorderRadius.circular(11),
                 child: const Icon(
                   Icons.send_rounded,
                   size: 16,
-                  color: _ChatColors.primaryText,
+                  color:
+                      _ChatColors.primaryText,
                 ),
               ),
             ),
@@ -1628,14 +2074,17 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
 
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) {
       if (!_scrollController.hasClients) {
         return;
       }
 
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
+        _scrollController.position
+            .maxScrollExtent,
+        duration:
+            const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
     });
@@ -1648,14 +2097,17 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _ChatColors.background,
+      backgroundColor:
+          _ChatColors.background,
 
       resizeToAvoidBottomInset: true,
 
       body: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration:
+            const BoxDecoration(
           gradient: RadialGradient(
-            center: Alignment(-0.15, -1.15),
+            center:
+                Alignment(-0.15, -1.15),
             radius: 1.05,
             colors: [
               Color(0xFF31245C),
@@ -1669,38 +2121,27 @@ class _ChatScreenState extends State<ChatScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // ==================================================
-              // App Bar
-              // ==================================================
               _buildAppBar(),
 
-              // ==================================================
-              // Emotion Context
-              //
-              // แสดงเฉพาะ Classroom ที่มี Emotion Data
-              // ==================================================
-              if (widget.subjectCode != null && widget.subjectCode!.isNotEmpty)
-                _buildLessonMaterialSelector(),
+              // if (widget.subjectCode != null &&
+              //     widget.subjectCode!.isNotEmpty)
+              //   _buildLessonMaterialSelector(),
 
-              // ==================================================
-              // Lesson Material Status
-              //
-              // แสดงเฉพาะตอนมี Subject
-              // ==================================================
-              _buildLessonMaterialStatus(),
+              //_buildLessonMaterialStatus(),
 
-              // ==================================================
-              // Chat
-              // ==================================================
-              Expanded(child: _buildChatList()),
+              Expanded(
+                child: _buildChatList(),
+              ),
 
-              // ==================================================
-              // Sending Indicator
-              // ==================================================
-              if (isSending) _buildSendingIndicator(),
+              if (isSending)
+                _buildSendingIndicator(),
+
               _buildEmotionStatus(),
-              _buildQuickChips(),
+
               _buildChatUploadedFile(),
+
+              _buildQuickChips(),
+
               _buildInputBar(),
             ],
           ),
@@ -1730,7 +2171,10 @@ class _SquareButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SquareButton({required this.icon, required this.onTap});
+  const _SquareButton({
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1738,12 +2182,20 @@ class _SquareButton extends StatelessWidget {
       width: 36,
       height: 36,
       child: Material(
-        color: _ChatColors.subtleSurface,
-        borderRadius: BorderRadius.circular(11),
+        color:
+            _ChatColors.subtleSurface,
+        borderRadius:
+            BorderRadius.circular(11),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(11),
-          child: Icon(icon, size: 18, color: _ChatColors.mutedText),
+          borderRadius:
+              BorderRadius.circular(11),
+          child: Icon(
+            icon,
+            size: 18,
+            color:
+                _ChatColors.mutedText,
+          ),
         ),
       ),
     );
