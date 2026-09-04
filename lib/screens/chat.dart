@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -87,6 +88,31 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _chatUploadedFile;
 
   bool _isReadingFile = false;
+
+  bool _isLoadingAttachment = false;
+  String _attachmentLoadingText = 'กำลังโหลดข้อมูล...';
+
+  void _showAttachmentLoading(String text) {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingAttachment = true;
+      _attachmentLoadingText = text;
+    });
+  }
+
+  void _updateAttachmentLoading(String text) {
+    if (!mounted) return;
+    setState(() {
+      _attachmentLoadingText = text;
+    });
+  }
+
+  void _hideAttachmentLoading() {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingAttachment = false;
+    });
+  }
 
   // ============================================================
   // Initial Message
@@ -552,6 +578,513 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
+    // ถ้าเป็น Chat ของห้องเรียน ให้เลือกจากไฟล์ของห้องเรียนก่อน
+    if (widget.subjectCode != null &&
+        widget.subjectCode!.trim().isNotEmpty) {
+      await _showLessonMaterialPicker();
+      return;
+    }
+
+    // Chat ทั่วไปยังใช้การแนบไฟล์แบบเดิม
+    await _pickStandaloneChatFile();
+  }
+
+  // ============================================================
+  // Dialog เลือกสื่อการสอนของห้องเรียน
+  // ============================================================
+
+  Future<void> _showLessonMaterialPicker() async {
+    if (widget.subjectCode == null ||
+        widget.subjectCode!.trim().isEmpty ||
+        isSending ||
+        _isReadingFile) {
+      return;
+    }
+
+    if (_isLoadingMaterials) {
+      await _loadLessonMaterials();
+    }
+
+    final Set<String> selectedIds = _selectedLessonMaterials
+        .map((material) => material['id']?.toString())
+        .whereType<String>()
+        .toSet();
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final materials = _lessonMaterials;
+
+            return AlertDialog(
+              backgroundColor: const Color(0xff1E1B2E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _ChatColors.accent.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book_rounded,
+                      color: _ChatColors.cyan,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'แนบสื่อการสอน',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 430,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 430),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ไฟล์ในห้องเรียน ${widget.subjectCode}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Flexible(
+                        child: _isLoadingMaterials
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(25),
+                                  child: CircularProgressIndicator(
+                                    color: _ChatColors.accent,
+                                  ),
+                                ),
+                              )
+                            : materials.isEmpty
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 28,
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(
+                                            Icons.folder_open_rounded,
+                                            color: Colors.white38,
+                                            size: 40,
+                                          ),
+                                          SizedBox(height: 10),
+                                          Text(
+                                            'ยังไม่มีไฟล์ที่พร้อมให้ AI ใช้งาน',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'อัปโหลดไฟล์ใหม่ได้จากปุ่มด้านล่าง',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    itemCount: materials.length,
+                                    separatorBuilder: (_, __) =>
+                                        const Divider(
+                                      color: Colors.white10,
+                                      height: 1,
+                                    ),
+                                    itemBuilder: (context, index) {
+                                      final material = materials[index];
+                                      final id =
+                                          material['id']?.toString() ?? '';
+                                      final isSelected =
+                                          selectedIds.contains(id);
+                                      final fileName =
+                                          material['fileName']?.toString() ??
+                                              'ไม่ทราบชื่อไฟล์';
+                                      final fileType =
+                                          material['fileType']?.toString() ?? '';
+
+                                      return CheckboxListTile(
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 2,
+                                        ),
+                                        dense: true,
+                                        value: isSelected,
+                                        activeColor: _ChatColors.accent,
+                                        checkColor: Colors.white,
+                                        controlAffinity:
+                                            ListTileControlAffinity.leading,
+                                        secondary: Icon(
+                                          fileType.toLowerCase() == 'pdf' ||
+                                                  fileName
+                                                      .toLowerCase()
+                                                      .endsWith('.pdf')
+                                              ? Icons.picture_as_pdf_rounded
+                                              : Icons.description_rounded,
+                                          color: _ChatColors.cyan,
+                                          size: 21,
+                                        ),
+                                        title: Text(
+                                          fileName,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          fileType.isEmpty
+                                              ? 'พร้อมให้ AI วิเคราะห์'
+                                              : '$fileType · พร้อมให้ AI วิเคราะห์',
+                                          style: const TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 10.5,
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setDialogState(() {
+                                            if (value == true) {
+                                              selectedIds.add(id);
+                                            } else {
+                                              selectedIds.remove(id);
+                                            }
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await _pickAndUploadLessonMaterial();
+                  },
+                  icon: const Icon(
+                    Icons.upload_file_rounded,
+                    size: 18,
+                  ),
+                  label: const Text('อัปโหลดไฟล์ใหม่'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _ChatColors.cyan,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text(
+                    'ยกเลิก',
+                    style: TextStyle(color: Colors.white60),
+                  ),
+                ),
+                
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // อัปโหลดสื่อการสอนใหม่จาก Chat
+  // ใช้ Backend + Firestore collection เดียวกับ files.dart
+  // ============================================================
+
+  Future<void> _pickAndUploadLessonMaterial() async {
+    if (isSending || _isReadingFile) {
+      return;
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'ppt',
+          'pptx',
+        ],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final pickedFile = result.files.single;
+      final bytes = pickedFile.bytes;
+
+      if (bytes == null || bytes.isEmpty) {
+        _showFileError('ไม่สามารถอ่านข้อมูลไฟล์ได้');
+        return;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _isReadingFile = true;
+      });
+      _showAttachmentLoading('กำลังเตรียมไฟล์...');
+
+      const String backendBaseUrl =
+          'https://groq-backend-yzr8.onrender.com';
+
+      final fileName = pickedFile.name;
+      final extension = _getLessonMaterialExtension(fileName);
+      final contentType = _getLessonMaterialContentType(fileName);
+      final fileType = _getLessonMaterialFileType(extension);
+      final category = fileType;
+      final uploadedAt = DateTime.now();
+
+      // 1. ขอ Presigned URL
+      _updateAttachmentLoading('กำลังเตรียมไฟล์สำหรับอัปโหลด...');
+      final urlResponse = await http.post(
+        Uri.parse('$backendBaseUrl/api/materials/upload-url'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'fileName': fileName,
+          'contentType': contentType,
+        }),
+      );
+
+      if (urlResponse.statusCode != 200) {
+        throw Exception(
+          'ไม่สามารถสร้าง Upload URL ได้ (${urlResponse.statusCode})',
+        );
+      }
+
+      final Map<String, dynamic> urlData =
+          jsonDecode(urlResponse.body) as Map<String, dynamic>;
+
+      if (urlData['success'] != true) {
+        throw Exception(
+          urlData['message'] ?? 'ไม่สามารถสร้าง Upload URL ได้',
+        );
+      }
+
+      final uploadUrl = urlData['uploadUrl']?.toString();
+      final storageKey = urlData['storageKey']?.toString();
+
+      if (uploadUrl == null || uploadUrl.isEmpty) {
+        throw Exception('Backend ไม่ได้ส่ง uploadUrl กลับมา');
+      }
+
+      if (storageKey == null || storageKey.isEmpty) {
+        throw Exception('Backend ไม่ได้ส่ง storageKey กลับมา');
+      }
+
+      // 2. Upload ไป Backblaze B2
+      _updateAttachmentLoading('กำลังอัปโหลดไฟล์...');
+      final uploadResponse = await http.put(
+        Uri.parse(uploadUrl),
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: bytes,
+      );
+
+      if (uploadResponse.statusCode < 200 ||
+          uploadResponse.statusCode >= 300) {
+        throw Exception(
+          'อัปโหลดไม่สำเร็จ (${uploadResponse.statusCode})',
+        );
+      }
+
+      // 3. Process / Extract Text
+      _updateAttachmentLoading('กำลังอ่านเนื้อหาในไฟล์...');
+      String extractedText = '';
+      String aiStatus = 'อัปโหลดแล้ว';
+
+      try {
+        final processResponse = await http.post(
+          Uri.parse('$backendBaseUrl/api/materials/process'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'storageKey': storageKey,
+            'fileName': fileName,
+            'contentType': contentType,
+          }),
+        );
+
+        if (processResponse.statusCode == 200) {
+          final processData =
+              jsonDecode(processResponse.body) as Map<String, dynamic>;
+
+          if (processData['success'] == true) {
+            final extractedTextData = processData['extractedText'];
+
+            if (extractedTextData is Map) {
+              extractedText =
+                  extractedTextData['text']?.toString() ?? '';
+            } else if (extractedTextData is String) {
+              extractedText = extractedTextData;
+            }
+
+            if (extractedText.trim().isNotEmpty) {
+              aiStatus = 'อ่านเนื้อหาแล้ว';
+            }
+          }
+        }
+      } catch (processError) {
+        debugPrint('Process Error: $processError');
+      }
+
+      // 4. Save metadata ลง Firestore เหมือน files.dart
+      _updateAttachmentLoading('กำลังบันทึกข้อมูล...');
+      final Map<String, dynamic> firestoreData = {
+        'subjectCode': widget.subjectCode,
+        'fileName': fileName,
+        'fileType': fileType,
+        'extension': extension,
+        'category': category,
+        'fileSize': bytes.length,
+        'contentType': contentType,
+        'storageKey': storageKey,
+        'uploadedAt': FieldValue.serverTimestamp(),
+        'aiStatus': aiStatus,
+        'extractedTextLength': extractedText.length,
+        'extractedText': extractedText,
+      };
+
+      await FirebaseFirestore.instance
+          .collection('lesson_materials')
+          .add(firestoreData);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isReadingFile = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            aiStatus == 'อ่านเนื้อหาแล้ว'
+                ? 'อัปโหลด $fileName สำเร็จ และพร้อมให้ AI ใช้งานแล้ว'
+                : 'อัปโหลด $fileName สำเร็จ แต่ยังไม่สามารถอ่านเนื้อหาได้',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // โหลดรายการใหม่ แล้วเปิดตัวเลือกให้เลือกไฟล์ที่เพิ่งอัปโหลดได้ทันที
+      _updateAttachmentLoading('กำลังโหลดรายการไฟล์...');
+      await _loadLessonMaterials();
+      _hideAttachmentLoading();
+      await _showLessonMaterialPicker();
+    } catch (error) {
+      debugPrint('Upload Lesson Material Error: $error');
+
+      if (!mounted) return;
+
+      _showFileError('ไม่สามารถอัปโหลดไฟล์ได้\n$error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReadingFile = false;
+        });
+        _hideAttachmentLoading();
+      }
+    }
+  }
+
+  String _getLessonMaterialExtension(String fileName) {
+    final index = fileName.lastIndexOf('.');
+
+    if (index == -1) {
+      return '';
+    }
+
+    return fileName.substring(index + 1).toLowerCase();
+  }
+
+  String _getLessonMaterialFileType(String extension) {
+    switch (extension) {
+      case 'pdf':
+      case 'doc':
+      case 'docx':
+      case 'txt':
+        return 'เอกสาร';
+      case 'ppt':
+      case 'pptx':
+        return 'สไลด์';
+      default:
+        return 'อื่นๆ';
+    }
+  }
+
+  String _getLessonMaterialContentType(String fileName) {
+    switch (_getLessonMaterialExtension(fileName)) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'txt':
+        return 'text/plain';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  // ============================================================
+  // แนบไฟล์แบบเดิมสำหรับ Chat ทั่วไป
+  // ============================================================
+
+  Future<void> _pickStandaloneChatFile() async {
+    if (_isReadingFile || isSending) {
+      return;
+    }
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -565,7 +1098,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final file = result.files.first;
 
-      if (file.bytes == null) {
+      if (file.bytes == null || file.bytes!.isEmpty) {
         _showFileError('ไม่สามารถอ่านไฟล์ได้');
         return;
       }
@@ -573,63 +1106,40 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isReadingFile = true;
       });
+      _showAttachmentLoading('กำลังอ่านไฟล์...');
 
-      final String extension =
-          file.extension?.toLowerCase() ?? '';
+      final String extension = file.extension?.toLowerCase() ?? '';
 
       String extractedText = '';
 
-      // ==========================================================
-      // PDF
-      // ==========================================================
-
       if (extension == 'pdf') {
+        _updateAttachmentLoading('กำลังอ่านข้อความจาก PDF...');
         extractedText = await _extractPdfText(file.bytes!);
-      }
-
-      // ==========================================================
-      // TXT / MD / CSV
-      // ==========================================================
-
-      else if (
-          extension == 'txt' ||
+      } else if (extension == 'txt' ||
           extension == 'md' ||
           extension == 'csv') {
+        _updateAttachmentLoading('กำลังเตรียมข้อความ...');
         extractedText = utf8.decode(
           file.bytes!,
           allowMalformed: true,
         );
-      }
-
-      // ==========================================================
-      // ไม่รองรับ
-      // ==========================================================
-
-      else {
+      } else {
         _showFileError(
           'ไฟล์ประเภท .$extension ยังไม่รองรับ',
         );
-
         return;
       }
-
-      // ==========================================================
-      // ตรวจว่ามีข้อความจริง
-      // ==========================================================
 
       if (extractedText.trim().isEmpty) {
         _showFileError('ไม่พบข้อความในไฟล์นี้');
-
         return;
       }
-
-      // ==========================================================
-      // เก็บไฟล์ที่อัปโหลด
-      // ==========================================================
 
       if (!mounted) {
         return;
       }
+
+      _updateAttachmentLoading('กำลังเตรียมข้อมูลสำหรับ AI...');
 
       setState(() {
         const int maxTextLength = 6000;
@@ -680,11 +1190,14 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      setState(() {
-        _isReadingFile = false;
-      });
-
       _showFileError('ไม่สามารถอ่านไฟล์ได้');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReadingFile = false;
+        });
+        _hideAttachmentLoading();
+      }
     }
   }
 
@@ -2090,6 +2603,76 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Widget _buildAttachmentLoadingOverlay() {
+    if (!_isLoadingAttachment) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned.fill(
+      child: AbsorbPointer(
+        absorbing: true,
+        child: Container(
+          color: Colors.black.withOpacity(0.65),
+          child: Center(
+            child: Container(
+              width: 280,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xff1E1B2E),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: _ChatColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'กำลังโหลดข้อมูล',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _attachmentLoadingText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'กรุณารอสักครู่...',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ============================================================
   // Build
   // ============================================================
@@ -2119,8 +2702,10 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
 
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
+              Column(
+                children: [
               _buildAppBar(),
 
               // if (widget.subjectCode != null &&
@@ -2143,6 +2728,9 @@ class _ChatScreenState extends State<ChatScreen> {
               _buildQuickChips(),
 
               _buildInputBar(),
+                ],
+              ),
+              _buildAttachmentLoadingOverlay(),
             ],
           ),
         ),

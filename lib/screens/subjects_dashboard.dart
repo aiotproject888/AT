@@ -10,6 +10,7 @@ import '../services/emotion_service.dart';
 import '../services/session_service.dart';
 import '../services/subject_service.dart';
 import '../widgets/emotion_card.dart';
+import '../services/dashboard_pdf_connector.dart';
 import 'chat.dart';
 
 // ============================================================
@@ -1270,24 +1271,22 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     }
 
     try {
-  await _subjectService.deleteSubject(_subject.subjectCode);
+      await _subjectService.deleteSubject(_subject.subjectCode);
 
-  if (!mounted) return;
+      if (!mounted) return;
 
-  widget.onSubjectDeleted?.call();
+      widget.onSubjectDeleted?.call();
 
-  Navigator.pop(context);
-} catch (error) {
-  debugPrint('ลบรายวิชาไม่สำเร็จ: $error');
+      Navigator.pop(context);
+    } catch (error) {
+      debugPrint('ลบรายวิชาไม่สำเร็จ: $error');
 
-  if (!mounted) return;
+      if (!mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('ลบรายวิชาไม่สำเร็จ: $error'),
-    ),
-  );
-}
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ลบรายวิชาไม่สำเร็จ: $error')));
+    }
   }
 
   // ==========================================================
@@ -2068,7 +2067,22 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           child: SizedBox(
             height: 46,
             child: OutlinedButton.icon(
-              onPressed: null,
+              onPressed: () async {
+                await DashboardPdfConnector.open(
+                  context: context,
+                  subjectName: _subject.subjectName,
+                  subjectCode: _subject.subjectCode,
+                  academicYear: _subject.year,
+                  semester: _subject.semester,
+                  selectedDate: _selectedDate ?? DateTime.now(),
+                  beforeRespondents: beforeStudentCount,
+                  afterRespondents: afterStudentCount,
+                  beforePositivePercent: beforePositivePercentage,
+                  afterPositivePercent: afterPositivePercentage,
+                  beforeDistribution: beforeEmotionDistribution,
+                  afterDistribution: afterEmotionDistribution,
+                );
+              },
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
               label: const Text('PDF'),
               style: OutlinedButton.styleFrom(
