@@ -1859,9 +1859,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     }
   }
 
-  // ============================================================
-  // CHATBOT
-  // ============================================================
+ 
 
   Future<void> _openChatbot() async {
     Map<String, dynamic>? emotionData;
