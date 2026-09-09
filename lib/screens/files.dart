@@ -54,6 +54,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // STATE
   // ============================================================
 
+  static const int _maxFileSize = 50 * 1024 * 1024; // 50 MB
   int _selectedCategory = 0;
 
   final TextEditingController _searchController = TextEditingController();
@@ -962,6 +963,20 @@ class _MaterialScreenState extends State<MaterialScreen> {
         throw Exception('ไม่สามารถอ่านข้อมูลไฟล์ได้');
       }
 
+      // ตรวจสอบขนาดไฟล์
+      if (bytes.length > _maxFileSize) {
+        final fileSize = _formatFileSize(bytes.length);
+
+        if (mounted) {
+          _showError(
+            'ไฟล์มีขนาด $fileSize\n'
+            'ขนาดไฟล์สูงสุดที่รองรับคือ 50 MB ต่อไฟล์',
+          );
+        }
+
+        return;
+      }
+
       await _uploadFile(fileName: pickedFile.name, bytes: bytes);
     } catch (error) {
       debugPrint('Pick File Error: $error');
@@ -1742,92 +1757,77 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
-
   Future<void> _deleteFile(_MaterialFile file) async {
-  if (_isLoadingOverlay) return;
+    if (_isLoadingOverlay) return;
 
-  _showLoading('กำลังเตรียมลบไฟล์...');
+    _showLoading('กำลังเตรียมลบไฟล์...');
 
-  try {
-    const String backendBaseUrl =
-        'https://groq-backend-yzr8.onrender.com';
+    try {
+      const String backendBaseUrl = 'https://groq-backend-yzr8.onrender.com';
 
-    // ========================================================
-    // 1. ลบไฟล์จริงจาก Backblaze B2
-    // ========================================================
+      // ========================================================
+      // 1. ลบไฟล์จริงจาก Backblaze B2
+      // ========================================================
 
-    _updateLoading('กำลังลบไฟล์จากระบบจัดเก็บ...');
+      _updateLoading('กำลังลบไฟล์จากระบบจัดเก็บ...');
 
-    final response = await http.post(
-      Uri.parse('$backendBaseUrl/api/materials/delete'),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'storageKey': file.storageKey,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'ไม่สามารถลบไฟล์จากระบบจัดเก็บได้ '
-        '(${response.statusCode})',
+      final response = await http.post(
+        Uri.parse('$backendBaseUrl/api/materials/delete'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'storageKey': file.storageKey}),
       );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'ไม่สามารถลบไฟล์จากระบบจัดเก็บได้ '
+          '(${response.statusCode})',
+        );
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (data['success'] != true) {
+        throw Exception(data['message'] ?? 'ไม่สามารถลบไฟล์ได้');
+      }
+
+      // ========================================================
+      // 2. ลบข้อมูลจาก Firestore
+      // ========================================================
+
+      _updateLoading('กำลังลบข้อมูลไฟล์...');
+
+      await FirebaseFirestore.instance
+          .collection('lesson_materials')
+          .doc(file.id)
+          .delete();
+
+      // ========================================================
+      // 3. ลบออกจากรายการบนหน้าจอ
+      // ========================================================
+
+      if (!mounted) return;
+
+      setState(() {
+        _files.removeWhere((item) => item.id == file.id);
+      });
+
+      _hideLoading();
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ลบไฟล์สำเร็จ')));
+    } catch (error) {
+      debugPrint('Delete File Error: $error');
+
+      _hideLoading();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ไม่สามารถลบไฟล์ได้\n$error')));
     }
-
-    final data =
-        jsonDecode(response.body) as Map<String, dynamic>;
-
-    if (data['success'] != true) {
-      throw Exception(
-        data['message'] ?? 'ไม่สามารถลบไฟล์ได้',
-      );
-    }
-
-    // ========================================================
-    // 2. ลบข้อมูลจาก Firestore
-    // ========================================================
-
-    _updateLoading('กำลังลบข้อมูลไฟล์...');
-
-    await FirebaseFirestore.instance
-        .collection('lesson_materials')
-        .doc(file.id)
-        .delete();
-
-    // ========================================================
-    // 3. ลบออกจากรายการบนหน้าจอ
-    // ========================================================
-
-    if (!mounted) return;
-
-    setState(() {
-      _files.removeWhere(
-        (item) => item.id == file.id,
-      );
-    });
-
-    _hideLoading();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ลบไฟล์สำเร็จ'),
-      ),
-    );
-  } catch (error) {
-    debugPrint('Delete File Error: $error');
-
-    _hideLoading();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('ไม่สามารถลบไฟล์ได้\n$error'),
-      ),
-    );
   }
-}
 
   // ============================================================
   // DOWNLOAD
@@ -1858,8 +1858,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
       debugPrint('ไม่สามารถโหลด Session สำหรับ Chatbot ได้: $error');
     }
   }
-
- 
 
   Future<void> _openChatbot() async {
     Map<String, dynamic>? emotionData;
