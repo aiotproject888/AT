@@ -2043,9 +2043,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ============================================================
-  // Context Card
-  // ============================================================
 
   Widget _buildLessonMaterialSelector() {
     if (widget.subjectCode == null ||
