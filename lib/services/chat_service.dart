@@ -10,7 +10,7 @@ class ChatService {
     Map<String, dynamic>? emotionData,
     String? subjectCode,
     List<Map<String, dynamic>>? lessonMaterials,
-    String model = 'gpt-oss-20b',
+    String model = 'gpt-oss-120b',
   }) async {
     try {
       final response = await http.post(

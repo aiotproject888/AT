@@ -92,7 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingAttachment = false;
   String _attachmentLoadingText = 'กำลังโหลดข้อมูล...';
 
-  String _selectedModel = 'gpt-oss-20b';
+  String _selectedModel = 'gpt-oss-120b';
 
   void _showAttachmentLoading(String text) {
     if (!mounted) return;
@@ -208,8 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ============================================================
-  // เลือกและโหลด Emotion ก่อน/หลังเรียน
-  // ============================================================
+ 
 
   Future<void> _loadSelectedEmotionData({
     required bool beforeSelected,
@@ -1772,9 +1771,9 @@ class _ChatScreenState extends State<ChatScreen> {
               // GPT-OSS 20B
               // ====================================================
               _buildAIModelOption(
-                model: 'gpt-oss-20b',
-                name: 'GPT-OSS 20B',
-                description: 'โมเดลหลักสำหรับการวิเคราะห์และแนะนำการสอน',
+                model: 'gpt-oss-120b',
+                name: 'GPT-OSS 120B',
+                description: '',
                 icon: Icons.psychology_rounded,
               ),
 
