@@ -105,11 +105,19 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   int beforeStudentCount = 0;
   int beforePositivePercentage = 0;
 
+  int duringStudentCount = 0;
+  int duringPositivePercentage = 0;
+
   int afterStudentCount = 0;
   int afterPositivePercentage = 0;
 
   Map<String, int> beforeEmotionDistribution = {};
+  Map<String, int> duringEmotionDistribution = {};
   Map<String, int> afterEmotionDistribution = {};
+
+  final PageController _emotionPageController = PageController();
+
+  int _currentEmotionPage = 0;
 
   // ==========================================================
   // Session
@@ -251,6 +259,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   void dispose() {
     _emotionSubscription?.cancel();
 
+    _emotionPageController.dispose();
+
     nameController.dispose();
     codeController.dispose();
     yearController.dispose();
@@ -287,6 +297,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         type: 'before_class',
       );
 
+      final duringRecords = await _emotionService.getEmotionRecordsByDate(
+        subjectCode: _subject.subjectCode,
+        date: selectedDate,
+        type: 'during_class',
+      );
+
       final afterRecords = await _emotionService.getEmotionRecordsByDate(
         subjectCode: _subject.subjectCode,
         date: selectedDate,
@@ -304,6 +320,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             type: 'before_class',
           );
 
+      final duringDistribution = await _emotionService
+          .getEmotionDistributionByDate(
+            subjectCode: _subject.subjectCode,
+            date: selectedDate,
+            type: 'during_class',
+          );
       final afterDistribution = await _emotionService
           .getEmotionDistributionByDate(
             subjectCode: _subject.subjectCode,
@@ -325,6 +347,19 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
         if (_isPositiveEmotion(record['emotion']?.toString())) {
           beforePositive += count;
+        }
+      }
+
+      int duringTotal = 0;
+      int duringPositive = 0;
+
+      for (final record in duringRecords) {
+        final count = ((record['counter'] ?? 1) as num).toInt();
+
+        duringTotal += count;
+
+        if (_isPositiveEmotion(record['emotion']?.toString())) {
+          duringPositive += count;
         }
       }
 
@@ -353,17 +388,23 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
       setState(() {
         beforeStudentCount = beforeTotal;
+        duringStudentCount = duringTotal;
         afterStudentCount = afterTotal;
 
         beforePositivePercentage = beforeTotal == 0
             ? 0
             : ((beforePositive / beforeTotal) * 100).round();
 
+        duringPositivePercentage = duringTotal == 0
+            ? 0
+            : ((duringPositive / duringTotal) * 100).round();
+
         afterPositivePercentage = afterTotal == 0
             ? 0
             : ((afterPositive / afterTotal) * 100).round();
 
         beforeEmotionDistribution = beforeDistribution;
+        duringEmotionDistribution = duringDistribution;
         afterEmotionDistribution = afterDistribution;
       });
 
@@ -378,12 +419,15 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
       setState(() {
         beforeStudentCount = 0;
+        duringStudentCount = 0;
         afterStudentCount = 0;
 
         beforePositivePercentage = 0;
+        duringPositivePercentage = 0;
         afterPositivePercentage = 0;
 
         beforeEmotionDistribution = {};
+        duringEmotionDistribution = {};
         afterEmotionDistribution = {};
       });
     }
@@ -1372,19 +1416,32 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                     const SizedBox(height: 10),
 
+                    // ======================================================
+                    // Emotion Pages
+                    // ======================================================
                     SizedBox(
                       height: 680,
                       child: PageView(
+                        controller: _emotionPageController,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentEmotionPage = index;
+                          });
+                        },
                         children: [
                           _emotionCard(
-                            title: 'ก่อนเรียน',
                             studentCount: beforeStudentCount,
                             positivePercentage: beforePositivePercentage,
                             emotionData: beforeEmotionDistribution,
                           ),
 
                           _emotionCard(
-                            title: 'หลังเรียน',
+                            studentCount: duringStudentCount,
+                            positivePercentage: duringPositivePercentage,
+                            emotionData: duringEmotionDistribution,
+                          ),
+
+                          _emotionCard(
                             studentCount: afterStudentCount,
                             positivePercentage: afterPositivePercentage,
                             emotionData: afterEmotionDistribution,
@@ -1624,8 +1681,43 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // Emotion Card
   // ==========================================================
 
+  Widget _emotionPeriodButton({required String title, required int index}) {
+    final selected = _currentEmotionPage == index;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _emotionPageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? _DashboardColors.accentSurface
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: selected
+                  ? _DashboardColors.primaryText
+                  : _DashboardColors.secondaryText,
+              fontSize: 12.5,
+              fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _emotionCard({
-    required String title,
     required int studentCount,
     required int positivePercentage,
     required Map<String, int> emotionData,
@@ -1637,26 +1729,30 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: _DashboardColors.primaryText,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          Container(
+            height: 42,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: _DashboardColors.buttonSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _DashboardColors.buttonBorder),
+            ),
+            child: Row(
+              children: [
+                _emotionPeriodButton(title: 'ก่อนเรียน', index: 0),
+
+                _emotionPeriodButton(title: 'ระหว่างเรียน', index: 1),
+
+                _emotionPeriodButton(title: 'หลังเรียน', index: 2),
+              ],
+            ),
           ),
 
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [Column(crossAxisAlignment: CrossAxisAlignment.start)],
+          ),
 
           Row(
             children: [
@@ -1771,17 +1867,16 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     );
   }
 
-  // ==========================================================
-  // Emotion Trend Chart
-  // ==========================================================
 
   Widget _emotionTrendChart() {
     final beforeScore = _calculateEmotionScore(beforeEmotionDistribution);
 
+    final duringScore = _calculateEmotionScore(duringEmotionDistribution);
+
     final afterScore = _calculateEmotionScore(afterEmotionDistribution);
 
     final hasBefore = beforeEmotionDistribution.isNotEmpty;
-
+    final hasDuring = duringEmotionDistribution.isNotEmpty;
     final hasAfter = afterEmotionDistribution.isNotEmpty;
 
     if (!hasBefore) {
@@ -1795,35 +1890,77 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
     return LineChart(
       LineChartData(
+        minX: 0,
+        maxX: 2,
         minY: -1,
         maxY: 1,
 
+        // ======================================================
+        // พื้นหลังแบ่งระดับอารมณ์
+        // ======================================================
+        rangeAnnotations: RangeAnnotations(
+          horizontalRangeAnnotations: [
+            // ดี
+            HorizontalRangeAnnotation(
+              y1: 0.0,
+              y2: 1.0,
+              color: _DashboardColors.green.withOpacity(0.12),
+            ),
+
+            // กลาง
+            HorizontalRangeAnnotation(
+              y1: -0.0,
+              y2: 0.0,
+              color: _DashboardColors.cyan.withOpacity(0.05),
+            ),
+
+            // แย่
+            HorizontalRangeAnnotation(
+              y1: -1.0,
+              y2: 0.0,
+              color: _DashboardColors.danger.withOpacity(0.10),
+            ),
+          ],
+        ),
+
+        // ======================================================
+        // Grid
+        // ======================================================
         gridData: FlGridData(
           show: true,
           horizontalInterval: 0.5,
           verticalInterval: 1,
+
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.white.withOpacity(0.06),
+              color: Colors.white.withOpacity(0.07),
               strokeWidth: 1,
               dashArray: [5, 5],
             );
           },
+
           getDrawingVerticalLine: (value) {
             return FlLine(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withOpacity(0.05),
               strokeWidth: 1,
               dashArray: [5, 5],
             );
           },
         ),
 
+        // ======================================================
+        // Titles
+        // ======================================================
         titlesData: FlTitlesData(
+          // ----------------------------------------------------
+          // ด้านซ้าย
+          // ----------------------------------------------------
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 42,
+              reservedSize: 38,
               interval: 0.5,
+
               getTitlesWidget: (value, meta) {
                 String text;
 
@@ -1831,18 +1968,15 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   case '1.0':
                     text = 'ดีมาก';
                     break;
-                  case '0.5':
-                    text = 'ดี';
-                    break;
+
                   case '0.0':
                     text = 'เฉยๆ';
                     break;
-                  case '-0.5':
-                    text = 'แย่';
-                    break;
+
                   case '-1.0':
                     text = 'แย่มาก';
                     break;
+
                   default:
                     return const SizedBox();
                 }
@@ -1851,39 +1985,44 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   text,
                   style: const TextStyle(
                     color: _DashboardColors.mutedText,
-                    fontSize: 9,
+                    fontSize: 10,
                   ),
                 );
               },
             ),
           ),
 
+          // ----------------------------------------------------
+          // ด้านล่าง
+          // ----------------------------------------------------
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 25,
+              reservedSize: 20,
+
               getTitlesWidget: (value, meta) {
+                String text;
+
                 if (value == 0) {
-                  return const Text(
-                    'ก่อนเรียน',
-                    style: TextStyle(
+                  text = 'ก่อนเรียน';
+                } else if (value == 1) {
+                  text = 'ระหว่างเรียน';
+                } else if (value == 2) {
+                  text = 'หลังเรียน';
+                } else {
+                  return const SizedBox();
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    text,
+                    style: const TextStyle(
                       color: _DashboardColors.mutedText,
                       fontSize: 9,
                     ),
-                  );
-                }
-
-                if (value == 1) {
-                  return const Text(
-                    'หลังเรียน',
-                    style: TextStyle(
-                      color: _DashboardColors.mutedText,
-                      fontSize: 9,
-                    ),
-                  );
-                }
-
-                return const SizedBox();
+                  ),
+                );
               },
             ),
           ),
@@ -1897,37 +2036,67 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           ),
         ),
 
+        // ======================================================
+        // เส้นกราฟ
+        // ======================================================
         lineBarsData: [
           LineChartBarData(
             spots: [
-              FlSpot(0, beforeScore),
-              if (hasAfter) FlSpot(1, afterScore),
+              if (hasBefore) FlSpot(0, beforeScore),
+
+              if (hasDuring) FlSpot(1, duringScore),
+
+              if (hasAfter) FlSpot(2, afterScore),
             ],
+
+            // ทำเส้นโค้งให้นุ่มเหมือนภาพตัวอย่าง
             isCurved: true,
-            curveSmoothness: 0.25,
-            color: _DashboardColors.primaryText,
-            barWidth: 2.5,
+            curveSmoothness: 0.30,
+
+            color: Colors.white,
+
+            barWidth: 2.8,
+
             isStrokeCapRound: true,
+
+            // ==================================================
+            // จุดบนกราฟ
+            // ==================================================
             dotData: FlDotData(
               show: true,
+
               getDotPainter: (spot, percent, barData, index) {
+                Color dotColor;
+
+                // ยังคงใช้คะแนนเดิม -1 / 0 / 1
+                if (spot.y > 0) {
+                  dotColor = _DashboardColors.green;
+                } else if (spot.y < 0) {
+                  dotColor = _DashboardColors.danger;
+                } else {
+                  dotColor = _DashboardColors.cyan;
+                }
+
                 return FlDotCirclePainter(
-                  radius: 5,
-                  color: index == 0
-                      ? _DashboardColors.accent
-                      : _DashboardColors.green,
+                  radius: 5.5,
+                  color: dotColor,
                   strokeWidth: 2,
                   strokeColor: Colors.white,
                 );
               },
             ),
+
+            // พื้นที่บาง ๆ ใต้เส้น
             belowBarData: BarAreaData(
               show: true,
-              color: _DashboardColors.accent.withOpacity(0.07),
+              color: _DashboardColors.accent.withOpacity(0.04),
             ),
           ),
         ],
 
+        // ======================================================
+        // Border
+        // ======================================================
         borderData: FlBorderData(
           show: true,
           border: Border(
@@ -1936,8 +2105,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           ),
         ),
 
+        // ======================================================
+        // Tooltip
+        // ======================================================
         lineTouchData: LineTouchData(
           enabled: true,
+
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
@@ -1945,10 +2118,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                 if (spot.y > 0) {
                   label = 'อารมณ์ด้านบวก';
-                } else if (spot.y == 0) {
-                  label = 'อารมณ์สมดุล';
-                } else {
+                } else if (spot.y < 0) {
                   label = 'อารมณ์ด้านลบ';
+                } else {
+                  label = 'อารมณ์สมดุล';
                 }
 
                 return LineTooltipItem(

@@ -21,6 +21,8 @@ class _HomeColors {
   static const dialogBackground = Color(0xBF23222F);
   static const dialogBorder = Color(0x40F8F6F6);
 
+  static const buttonSurface = Color(0x40191820);
+
   // Text
   static const primaryText = Color(0xFFFFFFFF);
   static const secondaryText = Color(0x99FFFFFF);
@@ -54,6 +56,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _loadError;
 
   String _searchQuery = '';
+  String _sortMode = 'ล่าสุดก่อน';
+
+  bool _isDeleteMode = false;
+  final Set<String> _selectedSubjects = {};
 
   // ============================================================
   // Search
@@ -62,14 +68,41 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Subject> get _filteredSubjects {
     final query = _searchQuery.trim().toLowerCase();
 
-    if (query.isEmpty) {
-      return subjects;
-    }
+    final result = subjects.where((subject) {
+      if (query.isEmpty) {
+        return true;
+      }
 
-    return subjects.where((subject) {
       return subject.subjectName.toLowerCase().contains(query) ||
           subject.subjectCode.toLowerCase().contains(query);
     }).toList();
+
+    switch (_sortMode) {
+      case 'ล่าสุดก่อน':
+        // รายการใน subjects ถูกเก็บตามลำดับล่าสุดอยู่แล้ว
+        break;
+
+      case 'เก่าสุดก่อน':
+        return result.reversed.toList();
+
+      case 'ชื่อวิชา A-Z':
+        result.sort(
+          (a, b) => a.subjectName.toLowerCase().compareTo(
+            b.subjectName.toLowerCase(),
+          ),
+        );
+        break;
+
+      case 'ชื่อวิชา Z-A':
+        result.sort(
+          (a, b) => b.subjectName.toLowerCase().compareTo(
+            a.subjectName.toLowerCase(),
+          ),
+        );
+        break;
+    }
+
+    return result;
   }
 
   // ============================================================
@@ -193,15 +226,33 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'รายวิชาของฉัน',
-            style: TextStyle(
-              color: _HomeColors.primaryText,
-              fontSize: 24,
-              fontWeight: FontWeight.w500,
-              letterSpacing: -0.48,
-              height: 1.1,
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'รายวิชาของฉัน',
+                  style: TextStyle(
+                    color: _HomeColors.primaryText,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.48,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+
+              _SquareIconButton(
+                icon: _isDeleteMode
+                    ? Icons.close_rounded
+                    : Icons.more_vert_rounded,
+                onPressed: () {
+                  setState(() {
+                    _isDeleteMode = !_isDeleteMode;
+                    _selectedSubjects.clear();
+                  });
+                },
+              ),
+            ],
           ),
 
           const SizedBox(height: 3),
@@ -217,67 +268,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 11),
 
-          // ====================================================
-          // Search
-          // ====================================================
-          SizedBox(
-            height: 47,
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-
-              style: const TextStyle(
-                color: _HomeColors.primaryText,
-                fontSize: 15,
-              ),
-
-              cursorColor: _HomeColors.accent,
-
-              decoration: InputDecoration(
-                hintText: 'ค้นหารายวิชา',
-
-                hintStyle: const TextStyle(
-                  color: _HomeColors.mutedText,
-                  fontSize: 15,
-                ),
-
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: _HomeColors.secondaryText,
-                  size: 22,
-                ),
-
-                filled: true,
-
-                fillColor: _HomeColors.searchBackground,
-
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-
-                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
-                ),
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-
-                  borderSide: const BorderSide(color: _HomeColors.searchBorder),
-                ),
-
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-
-                  borderSide: const BorderSide(
-                    color: _HomeColors.accent,
-                    width: 1.4,
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 47,
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    style: const TextStyle(
+                      color: _HomeColors.primaryText,
+                      fontSize: 15,
+                    ),
+                    cursorColor: _HomeColors.accent,
+                    decoration: InputDecoration(
+                      hintText: 'ค้นหารายวิชา',
+                      hintStyle: const TextStyle(
+                        color: _HomeColors.mutedText,
+                        fontSize: 15,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: _HomeColors.secondaryText,
+                        size: 22,
+                      ),
+                      filled: true,
+                      fillColor: _HomeColors.searchBackground,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(
+                          color: _HomeColors.searchBorder,
+                        ),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(
+                          color: _HomeColors.searchBorder,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(
+                          color: _HomeColors.accent,
+                          width: 1.4,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+
+              const SizedBox(width: 8),
+
+              _SmallActionButton(
+                icon: Icons.sort_rounded,
+                onPressed: _showSortDialog,
+              ),
+            ],
           ),
         ],
       ),
@@ -357,40 +408,182 @@ class _HomeScreenState extends State<HomeScreen> {
     // รายการรายวิชา
     // ==========================================================
 
-    return RefreshIndicator(
-      color: _HomeColors.accent,
+    return Stack(
+      children: [
+        RefreshIndicator(
+          color: _HomeColors.accent,
 
-      onRefresh: () async {
-        await Future.wait([_loadSubjects(), _loadCurrentSession()]);
-      },
+          onRefresh: () async {
+            await Future.wait([_loadSubjects(), _loadCurrentSession()]);
+          },
 
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
 
-        padding: const EdgeInsets.fromLTRB(30, 25, 30, 110),
-
-        itemCount: visibleSubjects.length,
-
-        itemBuilder: (context, index) {
-          final subject = visibleSubjects[index];
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-
-            child: SubjectCard(
-              subject: subject,
-
-              isActive: _activeSubjectCode == subject.subjectCode,
-              onReturn: _refreshHomeData,
+            padding: EdgeInsets.fromLTRB(
+              30,
+              25,
+              30,
+              _isDeleteMode && _selectedSubjects.isNotEmpty ? 170 : 110,
             ),
-          );
-        },
-      ),
+
+            itemCount: visibleSubjects.length,
+
+            itemBuilder: (context, index) {
+              final subject = visibleSubjects[index];
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+
+                child: Row(
+                  children: [
+                    if (_isDeleteMode)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Checkbox(
+                          value: _selectedSubjects.contains(
+                            subject.subjectCode,
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedSubjects.add(subject.subjectCode);
+                              } else {
+                                _selectedSubjects.remove(subject.subjectCode);
+                              }
+                            });
+                          },
+                          activeColor: _HomeColors.accent,
+                          checkColor: Colors.white,
+                          side: const BorderSide(
+                            color: _HomeColors.secondaryText,
+                          ),
+                        ),
+                      ),
+
+                    Expanded(
+                      child: SubjectCard(
+                        subject: subject,
+                        isActive: _activeSubjectCode == subject.subjectCode,
+                        onReturn: _refreshHomeData,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        if (_isDeleteMode && _selectedSubjects.isNotEmpty)
+          Positioned(
+            left: 30,
+            right: 30,
+            bottom: 25,
+            child: SizedBox(
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: _deleteSelectedSubjects,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  'ลบวิชาที่เลือก (${_selectedSubjects.length})',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   Future<void> _refreshHomeData() async {
     await Future.wait([_loadSubjects(), _loadCurrentSession()]);
+  }
+
+  Future<void> _deleteSelectedSubjects() async {
+    if (_selectedSubjects.isEmpty) return;
+
+    final count = _selectedSubjects.length;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _HomeColors.dialogBackground,
+          title: const Text(
+            'ยืนยันการลบรายวิชา',
+            style: TextStyle(color: _HomeColors.primaryText),
+          ),
+          content: Text(
+            'ต้องการลบ $count รายวิชาที่เลือกหรือไม่?\n\nข้อมูลห้องเรียนและข้อมูลอารมณ์ของรายวิชาเหล่านี้จะถูกลบด้วย',
+            style: const TextStyle(color: _HomeColors.secondaryText),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text(
+                'ยกเลิก',
+                style: TextStyle(color: _HomeColors.secondaryText),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              child: const Text(
+                'ลบ',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final selectedCodes = List<String>.from(_selectedSubjects);
+
+    try {
+      for (final subjectCode in selectedCodes) {
+        await _subjectService.deleteSubject(subjectCode);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _selectedSubjects.clear();
+        _isDeleteMode = false;
+      });
+
+      await _refreshHomeData();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ลบ $count รายวิชาเรียบร้อยแล้ว')));
+    } catch (error) {
+      debugPrint('เกิดข้อผิดพลาดในการลบรายวิชา: $error');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ไม่สามารถลบรายวิชาได้')));
+    }
   }
   // ============================================================
   // Current Session
@@ -434,6 +627,89 @@ class _HomeScreenState extends State<HomeScreen> {
         _activeSubjectCode = null;
       });
     }
+  }
+
+  // ============================================================
+  // SORT DIALOG
+  // ============================================================
+
+  void _showSortDialog() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1729),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 25),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'เรียงลำดับ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                _SortOption(
+                  icon: Icons.schedule_rounded,
+                  title: 'ล่าสุดก่อน',
+                  selected: _sortMode == 'ล่าสุดก่อน',
+                  onTap: () {
+                    _changeSort('ล่าสุดก่อน');
+                    Navigator.pop(context);
+                  },
+                ),
+
+                _SortOption(
+                  icon: Icons.history_rounded,
+                  title: 'เก่าสุดก่อน',
+                  selected: _sortMode == 'เก่าสุดก่อน',
+                  onTap: () {
+                    _changeSort('เก่าสุดก่อน');
+                    Navigator.pop(context);
+                  },
+                ),
+
+                _SortOption(
+                  icon: Icons.sort_by_alpha_rounded,
+                  title: 'ชื่อวิชา A-Z',
+                  selected: _sortMode == 'ชื่อวิชา A-Z',
+                  onTap: () {
+                    _changeSort('ชื่อวิชา A-Z');
+                    Navigator.pop(context);
+                  },
+                ),
+
+                _SortOption(
+                  icon: Icons.sort_by_alpha_rounded,
+                  title: 'ชื่อวิชา Z-A',
+                  selected: _sortMode == 'ชื่อวิชา Z-A',
+                  onTap: () {
+                    _changeSort('ชื่อวิชา Z-A');
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _changeSort(String mode) {
+    setState(() {
+      _sortMode = mode;
+    });
   }
 
   // ============================================================
@@ -501,9 +777,103 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ================================================================
-// Bottom Navigation
-// ================================================================
+class _SquareIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _SquareIconButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _HomeColors.buttonSurface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: _HomeColors.buttonSurface,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: _HomeColors.secondaryText, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _SmallActionButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.035),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: onPressed,
+        child: Container(
+          width: 48,
+          height: 47,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: _HomeColors.searchBorder),
+          ),
+          child: const Icon(
+            Icons.sort_rounded,
+            color: _HomeColors.secondaryText,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SortOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SortOption({
+    required this.icon,
+    required this.title,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+
+      leading: Icon(
+        icon,
+        color: selected ? _HomeColors.accent : _HomeColors.secondaryText,
+      ),
+
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+      ),
+
+      trailing: Icon(
+        selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
+        color: selected ? _HomeColors.accent : _HomeColors.mutedText,
+      ),
+
+      onTap: onTap,
+    );
+  }
+}
 
 class _HomeBottomNavigation extends StatelessWidget {
   final int currentIndex;

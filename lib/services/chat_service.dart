@@ -6,10 +6,15 @@ class ChatService {
 
   Future<String> sendMessage({
     required String message,
+    
     List<Map<String, dynamic>>? history,
+
     Map<String, dynamic>? emotionData,
+
     String? subjectCode,
+
     List<Map<String, dynamic>>? lessonMaterials,
+
     String model = 'gpt-oss-120b',
   }) async {
     try {

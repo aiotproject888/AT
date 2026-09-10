@@ -1029,7 +1029,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
       final urlResponse = await http.post(
         Uri.parse('$_backendBaseUrl/api/materials/upload-url'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'fileName': fileName, 'contentType': contentType}),
+        body: jsonEncode({
+          'fileName': fileName,
+          'fileSize': bytes.length,
+          'contentType': contentType,
+        }),
       );
 
       if (urlResponse.statusCode != 200) {
@@ -1113,6 +1117,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           body: jsonEncode({
             'storageKey': storageKey,
             'fileName': fileName,
+            'fileSize': bytes.length,
             'contentType': contentType,
           }),
         );

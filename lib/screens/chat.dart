@@ -92,7 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingAttachment = false;
   String _attachmentLoadingText = 'กำลังโหลดข้อมูล...';
 
-  String _selectedModel = 'gpt-oss-120b';
+  String _selectedModel = 'openai/gpt-oss-120b';
 
   void _showAttachmentLoading(String text) {
     if (!mounted) return;
@@ -1654,6 +1654,8 @@ class _ChatScreenState extends State<ChatScreen> {
         subjectCode: widget.subjectCode,
 
         lessonMaterials: materialsForAI,
+
+        model: _selectedModel,
       );
 
       if (!mounted) {
@@ -1767,13 +1769,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
               const SizedBox(height: 16),
 
-              // ====================================================
-              // GPT-OSS 20B
-              // ====================================================
+      
               _buildAIModelOption(
                 model: 'gpt-oss-120b',
                 name: 'GPT-OSS 120B',
-                description: '',
+                //description: '',
                 icon: Icons.psychology_rounded,
               ),
 
@@ -1783,22 +1783,27 @@ class _ChatScreenState extends State<ChatScreen> {
               // Gemini
               // ====================================================
               _buildAIModelOption(
-                model: 'gemini',
-                name: 'Gemini',
-                description: 'โมเดล AI จาก Google',
+                model: 'qwen3.8-27b',
+                name: 'Qwen 3.8 27B',
+                //description: 'โมเดล AI จาก Google',
                 icon: Icons.auto_awesome_rounded,
               ),
 
               const SizedBox(height: 8),
 
-              // ====================================================
-              // Gemma
-              // ====================================================
+      
               _buildAIModelOption(
-                model: 'gemma',
-                name: 'Gemma',
-                description: 'โมเดล AI ขนาดเล็กจาก Google',
+                model: 'lfm-2.5-2.6b',
+                name: 'LFM2.5-2.6B',
+                //description: 'โมเดล AI ขนาดเล็กจาก Google',
                 icon: Icons.smart_toy_rounded,
+              ),
+              const SizedBox(height: 8),
+              _buildAIModelOption(
+                model: 'nemotron-3-super-120b-a12b',
+                name: 'Nemotron 3 Super',
+                //description: 'โมเดล AI ขนาดเล็กจาก Google',
+                icon: Icons.memory_rounded,
               ),
             ],
           ),
@@ -1811,7 +1816,7 @@ class _ChatScreenState extends State<ChatScreen> {
 Widget _buildAIModelOption({
   required String model,
   required String name,
-  required String description,
+  //required String description,
   required IconData icon,
 }) {
   final bool isSelected = _selectedModel == model;
@@ -1867,10 +1872,10 @@ Widget _buildAIModelOption({
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: const TextStyle(color: Colors.white54, fontSize: 10.5),
-                ),
+                //Text(
+                //  description,
+                //  style: const TextStyle(color: Colors.white54, fontSize: 10.5),
+                //),
               ],
             ),
           ),
