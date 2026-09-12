@@ -26,6 +26,10 @@ class _MaterialColors {
   static const faintText = Color(0x4DFFFFFF);
 
   static const danger = Color(0xFFFF7777);
+
+  static const navigation = Color(0xFF191820);
+  static const navigationBorder = Color(0x26FFFFFF);
+  static const searchBorder = Color(0x40FFFFFF);
 }
 
 class MaterialScreen extends StatefulWidget {
@@ -288,6 +292,37 @@ class _MaterialScreenState extends State<MaterialScreen> {
     );
   }
 
+  void _onDashboardNavigationTap(int index) {
+    switch (index) {
+      case 0: Navigator.pop(context);
+        return;
+
+      case 1:
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => MaterialScreen(
+              subjectName: widget.subjectName,
+              subjectCode: widget.subjectCode,
+            ),
+          ),
+        );
+        return;
+
+      case 2:
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => ChatScreen(
+              subjectCode: widget.subjectCode,
+              sessionId: _sessionId,
+            ),
+          ),
+        );
+        return;
+    }
+  }
+
   // ============================================================
   // BUILD
   // ============================================================
@@ -328,6 +363,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
                           const SizedBox(height: 14),
                           _buildCategoryTabs(),
                           const SizedBox(height: 18),
+                          _UploadButton(onPressed: _showUploadDialog),
+                          const SizedBox(height: 10),
                           _buildFileHeader(),
                           const SizedBox(height: 10),
                           _buildFileList(),
@@ -342,7 +379,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
+      bottomNavigationBar: _DashboardBottomNavigation(
+        currentIndex: 1,
+        onTap: _onDashboardNavigationTap,
+      ),
     );
   }
 
@@ -385,8 +425,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        _UploadButton(onPressed: _showUploadDialog),
+
+        //const SizedBox(width: 10),
       ],
     );
   }
@@ -809,56 +849,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
             style: const TextStyle(
               color: _MaterialColors.mutedText,
               fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // BOTTOM NAVIGATION
-  // ============================================================
-
-  Widget _buildBottomNavigation() {
-    return Container(
-      height: 96,
-      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171522),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.dashboard_outlined,
-              activeIcon: Icons.dashboard_rounded,
-              label: 'Dashboard',
-              selected: false,
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.menu_book_outlined,
-              activeIcon: Icons.menu_book_rounded,
-              label: 'สื่อการสอน',
-              selected: true,
-              onTap: () {},
-            ),
-          ),
-          Expanded(
-            child: _NavigationItem(
-              icon: Icons.chat_bubble_outline_rounded,
-              activeIcon: Icons.chat_bubble_rounded,
-              label: 'แชทบอท',
-              selected: false,
-              onTap: _openChatbot,
             ),
           ),
         ],
@@ -2270,18 +2260,19 @@ class _UploadButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onPressed,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: const SizedBox(
+          width: double.infinity,
+          height: 40,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 5),
+              Icon(Icons.add_rounded, color: Colors.white, size: 22),
+              SizedBox(width: 8),
               Text(
                 'อัปโหลดไฟล์',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -2353,72 +2344,126 @@ class _FileActionButton extends StatelessWidget {
   }
 }
 
-// ================================================================
-// NAVIGATION ITEM
-// ================================================================
+// ============================================================
+// Dashboard Bottom Navigation
+// ============================================================
 
-class _NavigationItem extends StatelessWidget {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+class _DashboardBottomNavigation extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
-  const _NavigationItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.selected,
+  const _DashboardBottomNavigation({
+    required this.currentIndex,
     required this.onTap,
   });
 
+  static const _items = [
+    _DashboardNavigationData(
+      Icons.dashboard_outlined,
+      Icons.dashboard_rounded,
+      'Dashboard',
+    ),
+    _DashboardNavigationData(
+      Icons.menu_book_outlined,
+      Icons.menu_book_rounded,
+      'สื่อการสอน',
+    ),
+    _DashboardNavigationData(
+      Icons.chat_bubble_outline,
+      Icons.chat_bubble_rounded,
+      'แชทบอท',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            height: 66,
-            decoration: BoxDecoration(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.055)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: selected
-                  ? Border.all(color: Colors.white.withValues(alpha: 0.06))
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  selected ? activeIcon : icon,
-                  size: 24,
-                  color: selected
-                      ? Colors.white
-                      : _MaterialColors.secondaryText,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? Colors.white : _MaterialColors.mutedText,
-                    fontSize: 10.5,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
+      decoration: const BoxDecoration(
+        color: _MaterialColors.navigation,
+        border: Border(
+          top: BorderSide(color: _MaterialColors.navigationBorder),
+        ),
+      ),
+      child: Row(
+        children: List.generate(_items.length, (index) {
+          final item = _items[index];
+
+          final selected = currentIndex == index;
+
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index == _items.length - 1 ? 0 : 7,
+              ),
+              child: InkWell(
+                onTap: () => onTap(index),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: const Color(0x40191820),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? _MaterialColors.searchBorder
+                          : const Color(0x1A928B8B),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x40000000),
+                        offset: Offset(0, 4),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? item.activeIcon : item.icon,
+                        size: 24,
+                        color: selected
+                            ? _MaterialColors.primaryText
+                            : _MaterialColors.secondaryText,
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      Text(
+                        item.label,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: selected
+                              ? _MaterialColors.primaryText
+                              : _MaterialColors.secondaryText,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
+}
+
+// ============================================================
+// Dashboard Navigation Data
+// ============================================================
+
+class _DashboardNavigationData {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _DashboardNavigationData(this.icon, this.activeIcon, this.label);
 }
 
 // ================================================================
