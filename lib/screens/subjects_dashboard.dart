@@ -12,39 +12,14 @@ import '../services/subject_service.dart';
 import '../widgets/emotion_card.dart';
 import '../services/dashboard_pdf_connector.dart';
 import 'chat.dart';
+import '../constants/app_colors.dart';
 
 // ============================================================
 // Dashboard Colors
 // ============================================================
 
 class _DashboardColors {
-  static const background = Color(0xFF0E0D18);
-
-  static const accent = Color(0xFF6C52E5);
-  static const cyan = Color(0xFF22D3EE);
-  static const green = Color(0xFF1BAF7A);
-
-  static const surface = Color(0x0AFFFFFF);
-  static const surfaceBorder = Color(0x12FFFFFF);
-  static const innerSurface = Color(0x08FFFFFF);
-
-  static const buttonSurface = Color(0x0DFFFFFF);
-  static const buttonBorder = Color(0x1AFFFFFF);
-
-  static const accentSurface = Color(0x266C52E5);
-  static const greenSurface = Color(0x261BAF7A);
-
-  static const primaryText = Color(0xFFFFFFFF);
-  static const secondaryText = Color(0x99FFFFFF);
-  static const mutedText = Color(0x73FFFFFF);
-  static const faintText = Color(0x4DFFFFFF);
-
-  static const danger = Color(0xFFFF7777);
-  static const dangerButton = Color(0xFFD94848);
-
-  static const navigation = Color(0xFF191820);
-  static const navigationBorder = Color(0x26FFFFFF);
-  static const searchBorder = Color(0x40FFFFFF);
+  
 }
 
 enum _SubjectManagementAction { edit, delete }
@@ -761,7 +736,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 const Text(
                   'จัดการรายวิชา',
                   style: TextStyle(
-                    color: _DashboardColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
@@ -774,7 +749,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _DashboardColors.faintText,
+                    color: AppColors.faintText,
                     fontSize: 11,
                   ),
                 ),
@@ -815,9 +790,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                       Navigator.pop(sheetContext);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: _DashboardColors.secondaryText,
+                      foregroundColor: AppColors.secondaryText,
                       side: const BorderSide(
-                        color: _DashboardColors.buttonBorder,
+                        color: AppColors.buttonBorder,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(13),
@@ -859,15 +834,15 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     bool destructive = false,
   }) {
     final color = destructive
-        ? _DashboardColors.danger
-        : _DashboardColors.accent;
+        ? AppColors.danger
+        : AppColors.accent;
 
     final background = destructive
         ? const Color(0x1FFF5A5A)
-        : _DashboardColors.accentSurface;
+        : AppColors.accentSurface;
 
     return Material(
-      color: _DashboardColors.buttonSurface,
+      color: AppColors.subtleSurface,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         onTap: onTap,
@@ -876,7 +851,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           constraints: const BoxConstraints(minHeight: 68),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           decoration: BoxDecoration(
-            border: Border.all(color: _DashboardColors.buttonBorder),
+            border: Border.all(color: AppColors.buttonBorder),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Row(
@@ -903,7 +878,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                       style: TextStyle(
                         color: destructive
                             ? color
-                            : _DashboardColors.primaryText,
+                            : AppColors.primaryText,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -916,7 +891,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                       style: TextStyle(
                         color: destructive
                             ? color.withOpacity(0.70)
-                            : _DashboardColors.faintText,
+                            : AppColors.faintText,
                         fontSize: 10,
                       ),
                     ),
@@ -926,7 +901,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
               Icon(
                 Icons.chevron_right_rounded,
-                color: destructive ? color : _DashboardColors.mutedText,
+                color: destructive ? color : AppColors.mutedText,
                 size: 20,
               ),
             ],
@@ -991,7 +966,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                         const Text(
                           'แก้ไขข้อมูลรายวิชา',
                           style: TextStyle(
-                            color: _DashboardColors.primaryText,
+                            color: AppColors.primaryText,
                             fontSize: 20,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1002,7 +977,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                         const Text(
                           'แก้ไขข้อมูลของรายวิชานี้',
                           style: TextStyle(
-                            color: _DashboardColors.faintText,
+                            color: AppColors.faintText,
                             fontSize: 11,
                           ),
                         ),
@@ -1041,7 +1016,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           Text(
                             errorMessage,
                             style: const TextStyle(
-                              color: _DashboardColors.danger,
+                              color: AppColors.danger,
                               fontSize: 11,
                             ),
                           ),
@@ -1058,9 +1033,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                                 },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor:
-                                      _DashboardColors.secondaryText,
+                                      AppColors.secondaryText,
                                   side: const BorderSide(
-                                    color: _DashboardColors.buttonBorder,
+                                    color: AppColors.buttonBorder,
                                   ),
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
@@ -1086,8 +1061,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
-                                  backgroundColor: _DashboardColors.accent,
-                                  foregroundColor: _DashboardColors.primaryText,
+                                  backgroundColor: AppColors.accent,
+                                  foregroundColor: AppColors.primaryText,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
                                   ),
@@ -1179,7 +1154,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         Text(
           label,
           style: const TextStyle(
-            color: _DashboardColors.secondaryText,
+            color: AppColors.secondaryText,
             fontSize: 11,
           ),
         ),
@@ -1190,31 +1165,31 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           height: 44,
           child: TextField(
             controller: controller,
-            cursorColor: _DashboardColors.accent,
+            cursorColor: AppColors.accent,
             style: const TextStyle(
-              color: _DashboardColors.primaryText,
+              color: AppColors.primaryText,
               fontSize: 13,
             ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: _DashboardColors.buttonSurface,
+              fillColor: AppColors.subtleSurface,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
                 borderSide: const BorderSide(
-                  color: _DashboardColors.buttonBorder,
+                  color: AppColors.buttonBorder,
                 ),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
                 borderSide: const BorderSide(
-                  color: _DashboardColors.buttonBorder,
+                  color: AppColors.buttonBorder,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
                 borderSide: const BorderSide(
-                  color: _DashboardColors.accent,
+                  color: AppColors.accent,
                   width: 1.3,
                 ),
               ),
@@ -1238,7 +1213,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           backgroundColor: const Color(0xFF211C32),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: _DashboardColors.buttonBorder),
+            side: const BorderSide(color: AppColors.buttonBorder),
           ),
           icon: Container(
             width: 48,
@@ -1250,13 +1225,13 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             ),
             child: const Icon(
               Icons.delete_outline_rounded,
-              color: _DashboardColors.danger,
+              color: AppColors.danger,
             ),
           ),
           title: const Text(
             'ลบรายวิชานี้?',
             style: TextStyle(
-              color: _DashboardColors.primaryText,
+              color: AppColors.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
@@ -1267,7 +1242,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             'และไม่สามารถย้อนกลับจากหน้านี้ได้',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: _DashboardColors.secondaryText,
+              color: AppColors.secondaryText,
               fontSize: 12,
               height: 1.5,
             ),
@@ -1279,8 +1254,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 Navigator.pop(dialogContext, false);
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: _DashboardColors.secondaryText,
-                side: const BorderSide(color: _DashboardColors.buttonBorder),
+                foregroundColor: AppColors.secondaryText,
+                side: const BorderSide(color: AppColors.buttonBorder),
               ),
               child: const Text('ยกเลิก'),
             ),
@@ -1291,7 +1266,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               },
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: _DashboardColors.dangerButton,
+                backgroundColor: AppColors.dangerButton,
                 foregroundColor: Colors.white,
               ),
               child: const Text('ลบรายวิชา'),
@@ -1375,7 +1350,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _DashboardColors.background,
+      backgroundColor: AppColors.background,
 
       bottomNavigationBar: _DashboardBottomNavigation(
         currentIndex: 0,
@@ -1390,7 +1365,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             colors: [
               Color(0xFF29344D),
               Color(0xFF19142E),
-              _DashboardColors.background,
+              AppColors.background,
             ],
             stops: [0, 0.35, 1],
           ),
@@ -1472,7 +1447,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   right: 0,
                   child: LinearProgressIndicator(
                     minHeight: 2,
-                    color: _DashboardColors.accent,
+                    color: AppColors.accent,
                     backgroundColor: Colors.transparent,
                   ),
                 ),
@@ -1516,7 +1491,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 const Text(
                   'แดชบอร์ด',
                   style: TextStyle(
-                    color: _DashboardColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1528,7 +1503,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   '${_formatThaiDate(_selectedDate ?? DateTime.now())}$history',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _DashboardColors.faintText,
+                    color: AppColors.faintText,
                     fontSize: 11,
                   ),
                 ),
@@ -1577,7 +1552,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _DashboardColors.accentSurface,
+              color: AppColors.accentSurface,
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text('🧠', style: TextStyle(fontSize: 16)),
@@ -1595,7 +1570,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _DashboardColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1610,7 +1585,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _DashboardColors.faintText,
+                    color: AppColors.faintText,
                     fontSize: 10,
                   ),
                 ),
@@ -1628,8 +1603,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: _isClassActive
-                    ? _DashboardColors.greenSurface
-                    : _DashboardColors.accentSurface,
+                    ? AppColors.greenSurface
+                    : AppColors.accentSurface,
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
@@ -1639,7 +1614,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                       height: 12,
                       child: CircularProgressIndicator(
                         strokeWidth: 1.5,
-                        color: _DashboardColors.primaryText,
+                        color: AppColors.primaryText,
                       ),
                     )
                   : Row(
@@ -1650,8 +1625,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           height: 5,
                           decoration: BoxDecoration(
                             color: _isClassActive
-                                ? _DashboardColors.green
-                                : _DashboardColors.accent,
+                                ? AppColors.green
+                                : AppColors.accent,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -1662,8 +1637,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           _isClassActive ? 'กำลังสอน' : 'เปิดห้อง',
                           style: TextStyle(
                             color: _isClassActive
-                                ? _DashboardColors.green
-                                : _DashboardColors.accent,
+                                ? AppColors.green
+                                : AppColors.accent,
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1698,7 +1673,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected
-                ? _DashboardColors.accentSurface
+                ? AppColors.accentSurface
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
           ),
@@ -1706,8 +1681,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             title,
             style: TextStyle(
               color: selected
-                  ? _DashboardColors.primaryText
-                  : _DashboardColors.secondaryText,
+                  ? AppColors.primaryText
+                  : AppColors.secondaryText,
               fontSize: 12.5,
               fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
             ),
@@ -1733,9 +1708,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             height: 42,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: _DashboardColors.buttonSurface,
+              color: AppColors.subtleSurface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _DashboardColors.buttonBorder),
+              border: Border.all(color: AppColors.buttonBorder),
             ),
             child: Row(
               children: [
@@ -1783,9 +1758,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _DashboardColors.innerSurface,
+                color: AppColors.innerSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _DashboardColors.surfaceBorder),
+                border: Border.all(color: AppColors.surfaceBorder),
               ),
               child: EmotionDonutChart(emotionData: emotionData),
             ),
@@ -1798,9 +1773,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _DashboardColors.innerSurface,
+                color: AppColors.innerSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _DashboardColors.surfaceBorder),
+                border: Border.all(color: AppColors.surfaceBorder),
               ),
               child: _emotionTrendChart(),
             ),
@@ -1818,9 +1793,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _DashboardColors.innerSurface,
+        color: AppColors.innerSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _DashboardColors.surfaceBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Row(
         children: [
@@ -1829,10 +1804,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _DashboardColors.accentSurface,
+              color: AppColors.accentSurface,
               borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: _DashboardColors.accent, size: 18),
+            child: Icon(icon, color: AppColors.accent, size: 18),
           ),
 
           const SizedBox(width: 9),
@@ -1844,7 +1819,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: _DashboardColors.faintText,
+                    color: AppColors.faintText,
                     fontSize: 10,
                   ),
                 ),
@@ -1854,7 +1829,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 Text(
                   value,
                   style: const TextStyle(
-                    color: _DashboardColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1883,7 +1858,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       return const Center(
         child: Text(
           'รอการประเมิน',
-          style: TextStyle(color: _DashboardColors.faintText, fontSize: 12),
+          style: TextStyle(color: AppColors.faintText, fontSize: 12),
         ),
       );
     }
@@ -1904,21 +1879,21 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             HorizontalRangeAnnotation(
               y1: 0.0,
               y2: 1.0,
-              color: _DashboardColors.green.withOpacity(0.12),
+              color: AppColors.green.withOpacity(0.12),
             ),
 
             // กลาง
             HorizontalRangeAnnotation(
               y1: -0.0,
               y2: 0.0,
-              color: _DashboardColors.cyan.withOpacity(0.05),
+              color: AppColors.cyan.withOpacity(0.05),
             ),
 
             // แย่
             HorizontalRangeAnnotation(
               y1: -1.0,
               y2: 0.0,
-              color: _DashboardColors.danger.withOpacity(0.10),
+              color: AppColors.danger.withOpacity(0.10),
             ),
           ],
         ),
@@ -1984,7 +1959,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 return Text(
                   text,
                   style: const TextStyle(
-                    color: _DashboardColors.mutedText,
+                    color: AppColors.mutedText,
                     fontSize: 10,
                   ),
                 );
@@ -2018,7 +1993,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   child: Text(
                     text,
                     style: const TextStyle(
-                      color: _DashboardColors.mutedText,
+                      color: AppColors.mutedText,
                       fontSize: 9,
                     ),
                   ),
@@ -2070,11 +2045,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                 // ยังคงใช้คะแนนเดิม -1 / 0 / 1
                 if (spot.y > 0) {
-                  dotColor = _DashboardColors.green;
+                  dotColor = AppColors.green;
                 } else if (spot.y < 0) {
-                  dotColor = _DashboardColors.danger;
+                  dotColor = AppColors.danger;
                 } else {
-                  dotColor = _DashboardColors.cyan;
+                  dotColor = AppColors.cyan;
                 }
 
                 return FlDotCirclePainter(
@@ -2089,7 +2064,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             // พื้นที่บาง ๆ ใต้เส้น
             belowBarData: BarAreaData(
               show: true,
-              color: _DashboardColors.accent.withOpacity(0.04),
+              color: AppColors.accent.withOpacity(0.04),
             ),
           ),
         ],
@@ -2163,15 +2138,15 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                 CircularProgressIndicator(
                   value: _engagementPercentage / 100,
                   strokeWidth: 5,
-                  backgroundColor: _DashboardColors.buttonBorder,
-                  color: _DashboardColors.accent,
+                  backgroundColor: AppColors.buttonBorder,
+                  color: AppColors.accent,
                 ),
 
                 Center(
                   child: Text(
                     '$_engagementPercentage%',
                     style: const TextStyle(
-                      color: _DashboardColors.primaryText,
+                      color: AppColors.primaryText,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2195,7 +2170,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                             'จาก $_totalStudents '
                             'คนกดครบ',
                   style: const TextStyle(
-                    color: _DashboardColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -2210,7 +2185,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                       ? 'นักเรียนกดบันทึกครบแล้ว'
                       : '$pending คนยังบันทึกข้อมูลไม่ครบ',
                   style: const TextStyle(
-                    color: _DashboardColors.faintText,
+                    color: AppColors.faintText,
                     fontSize: 10,
                   ),
                 ),
@@ -2259,10 +2234,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
               label: const Text('PDF'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: _DashboardColors.faintText,
-                disabledForegroundColor: _DashboardColors.faintText,
-                backgroundColor: _DashboardColors.buttonSurface,
-                side: const BorderSide(color: _DashboardColors.buttonBorder),
+                foregroundColor: AppColors.faintText,
+                disabledForegroundColor: AppColors.faintText,
+                backgroundColor: AppColors.subtleSurface,
+                side: const BorderSide(color: AppColors.buttonBorder),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -2286,8 +2261,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
               label: const Text('Analyze'),
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: _DashboardColors.accent,
-                foregroundColor: _DashboardColors.primaryText,
+                backgroundColor: AppColors.accent,
+                foregroundColor: AppColors.primaryText,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -2338,7 +2313,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                     children: [
                       Icon(
                         Icons.calendar_month_outlined,
-                        color: _DashboardColors.accent,
+                        color: AppColors.accent,
                       ),
 
                       SizedBox(width: 12),
@@ -2349,7 +2324,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           Text(
                             'เลือกวันที่',
                             style: TextStyle(
-                              color: _DashboardColors.primaryText,
+                              color: AppColors.primaryText,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
@@ -2358,7 +2333,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           Text(
                             'ดูข้อมูลการเรียนย้อนหลัง',
                             style: TextStyle(
-                              color: _DashboardColors.faintText,
+                              color: AppColors.faintText,
                               fontSize: 12,
                             ),
                           ),
@@ -2373,17 +2348,17 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: _DashboardColors.accentSurface,
+                      color: AppColors.accentSurface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _DashboardColors.accent.withOpacity(0.25),
+                        color: AppColors.accent.withOpacity(0.25),
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.event_outlined,
-                          color: _DashboardColors.secondaryText,
+                          color: AppColors.secondaryText,
                           size: 20,
                         ),
 
@@ -2392,7 +2367,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                         Text(
                           _formatThaiDate(selectedDate),
                           style: const TextStyle(
-                            color: _DashboardColors.primaryText,
+                            color: AppColors.primaryText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -2405,7 +2380,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       colorScheme: const ColorScheme.dark(
-                        primary: _DashboardColors.accent,
+                        primary: AppColors.accent,
                         surface: Color(0xFF19162A),
                       ),
                     ),
@@ -2431,9 +2406,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _DashboardColors.primaryText,
+                            foregroundColor: AppColors.primaryText,
                             side: const BorderSide(
-                              color: _DashboardColors.buttonBorder,
+                              color: AppColors.buttonBorder,
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -2454,8 +2429,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                           },
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
-                            backgroundColor: _DashboardColors.accent,
-                            foregroundColor: _DashboardColors.primaryText,
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.primaryText,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -2506,9 +2481,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   BoxDecoration _cardDecoration(double radius) {
     return BoxDecoration(
-      color: _DashboardColors.surface,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: _DashboardColors.surfaceBorder),
+      border: Border.all(color: AppColors.surfaceBorder),
     );
   }
 }
@@ -2529,7 +2504,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: _DashboardColors.mutedText,
+          color: AppColors.mutedText,
           fontSize: 10,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.7,
@@ -2564,8 +2539,8 @@ class _SquareIconButton extends StatelessWidget {
         onPressed: onPressed,
         style: IconButton.styleFrom(
           backgroundColor: accent
-              ? _DashboardColors.accentSurface
-              : _DashboardColors.buttonSurface,
+              ? AppColors.accentSurface
+              : AppColors.subtleSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -2574,8 +2549,8 @@ class _SquareIconButton extends StatelessWidget {
           icon,
           size: 16,
           color: accent
-              ? _DashboardColors.accent
-              : _DashboardColors.secondaryText,
+              ? AppColors.accent
+              : AppColors.secondaryText,
         ),
       ),
     );
@@ -2598,9 +2573,9 @@ class _MiniBars extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _bar(15, _DashboardColors.accent),
-          _bar(24, _DashboardColors.cyan),
-          _bar(20, _DashboardColors.green),
+          _bar(15, AppColors.accent),
+          _bar(24, AppColors.cyan),
+          _bar(20, AppColors.green),
         ],
       ),
     );
@@ -2655,9 +2630,9 @@ class _DashboardBottomNavigation extends StatelessWidget {
       height: 100,
       padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
       decoration: const BoxDecoration(
-        color: _DashboardColors.navigation,
+        color: AppColors.navigation,
         border: Border(
-          top: BorderSide(color: _DashboardColors.navigationBorder),
+          top: BorderSide(color: AppColors.navigationBorder),
         ),
       ),
       child: Row(
@@ -2682,7 +2657,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: selected
-                          ? _DashboardColors.searchBorder
+                          ? AppColors.searchBorder
                           : const Color(0x1A928B8B),
                     ),
                     boxShadow: const [
@@ -2700,8 +2675,8 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         selected ? item.activeIcon : item.icon,
                         size: 24,
                         color: selected
-                            ? _DashboardColors.primaryText
-                            : _DashboardColors.secondaryText,
+                            ? AppColors.primaryText
+                            : AppColors.secondaryText,
                       ),
 
                       const SizedBox(height: 5),
@@ -2711,8 +2686,8 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         maxLines: 1,
                         style: TextStyle(
                           color: selected
-                              ? _DashboardColors.primaryText
-                              : _DashboardColors.secondaryText,
+                              ? AppColors.primaryText
+                              : AppColors.secondaryText,
                           fontSize: 11,
                         ),
                       ),

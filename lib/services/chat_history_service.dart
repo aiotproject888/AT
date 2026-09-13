@@ -42,9 +42,6 @@ class ChatHistoryService {
         throw Exception('Chatbot แบบ classroom ต้องมี subjectCode');
       }
 
-      if (sessionId == null || sessionId.isEmpty) {
-        throw Exception('Chatbot แบบ classroom ต้องมี sessionId');
-      }
     }
 
     // สร้าง document ID อัตโนมัติ

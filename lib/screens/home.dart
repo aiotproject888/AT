@@ -5,29 +5,10 @@ import '../services/subject_service.dart';
 import '../widgets/subjects_card.dart';
 import '../services/session_service.dart';
 import 'chat.dart';
+import '../constants/app_colors.dart';
 
 class _HomeColors {
-  // Background
-  static const background = Color(0xFF0E0D18);
-  static const accent = Color(0xFF6C52E5);
-  static const navigation = Color(0xFF191820);
-
-  // Search
-  static const searchBackground = Color(0x33D9D9D9);
-  static const searchBorder = Color(0x40FFFFFF);
-  static const navigationBorder = Color(0x26FFFFFF);
-
-  // Dialog
-  static const dialogBackground = Color(0xBF23222F);
-  static const dialogBorder = Color(0x40F8F6F6);
-
-  static const buttonSurface = Color(0x40191820);
-
-  // Text
-  static const primaryText = Color(0xFFFFFFFF);
-  static const secondaryText = Color(0x99FFFFFF);
-  static const mutedText = Color(0x73FFFFFF);
-  static const faintText = Color(0x4DFFFFFF);
+  
 }
 
 class HomeScreen extends StatefulWidget {
@@ -155,24 +136,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _HomeColors.background,
+      backgroundColor: AppColors.background,
 
       // ========================================================
       // Floating Action Button
       // ========================================================
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      floatingActionButton: currentIndex == 0
+      floatingActionButton: currentIndex == 0 && !_isDeleteMode
           ? Padding(
               padding: const EdgeInsets.only(right: 18, bottom: 12),
               child: FloatingActionButton(
                 mini: true,
                 backgroundColor: Colors.transparent,
-                foregroundColor: _HomeColors.primaryText,
+                foregroundColor: AppColors.primaryText,
                 elevation: 0,
                 highlightElevation: 0,
                 hoverElevation: 0,
-                splashColor: _HomeColors.accent.withOpacity(0.18),
+                splashColor: AppColors.accent.withOpacity(0.18),
                 onPressed: _showAddSubjectDialog,
                 child: const Icon(Icons.add, size: 34),
               ),
@@ -198,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
             colors: [
               Color(0xFF45337C),
               Color(0xFF20183A),
-              _HomeColors.background,
+              AppColors.background,
             ],
             stops: [0.0, 0.42, 1.0],
           ),
@@ -232,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'รายวิชาของฉัน',
                   style: TextStyle(
-                    color: _HomeColors.primaryText,
+                    color: AppColors.primaryText,
                     fontSize: 24,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.48,
@@ -260,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text(
             'ยินดีต้อนรับ',
             style: TextStyle(
-              color: _HomeColors.secondaryText,
+              color:AppColors.secondaryText,
               fontSize: 15,
               height: 1.2,
             ),
@@ -280,40 +261,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     style: const TextStyle(
-                      color: _HomeColors.primaryText,
+                      color: AppColors.primaryText,
                       fontSize: 15,
                     ),
-                    cursorColor: _HomeColors.accent,
+                    cursorColor:AppColors.accent,
                     decoration: InputDecoration(
                       hintText: 'ค้นหารายวิชา',
                       hintStyle: const TextStyle(
-                        color: _HomeColors.mutedText,
+                        color: AppColors.mutedText,
                         fontSize: 15,
                       ),
                       prefixIcon: const Icon(
                         Icons.search_rounded,
-                        color: _HomeColors.secondaryText,
+                        color: AppColors.secondaryText,
                         size: 22,
                       ),
                       filled: true,
-                      fillColor: _HomeColors.searchBackground,
+                      fillColor: AppColors.searchBackground,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(15),
                         borderSide: const BorderSide(
-                          color: _HomeColors.searchBorder,
+                          color: AppColors.searchBorder,
                         ),
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(15),
                         borderSide: const BorderSide(
-                          color: _HomeColors.searchBorder,
+                          color: AppColors.searchBorder,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(15),
                         borderSide: const BorderSide(
-                          color: _HomeColors.accent,
+                          color: AppColors.accent,
                           width: 1.4,
                         ),
                       ),
@@ -348,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Center(
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: _HomeColors.accent,
+          color: AppColors.accent,
         ),
       );
     }
@@ -365,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _loadError!,
               style: const TextStyle(
-                color: _HomeColors.secondaryText,
+                color: AppColors.secondaryText,
                 fontSize: 15,
               ),
             ),
@@ -379,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               label: const Text('ลองใหม่'),
 
-              style: TextButton.styleFrom(foregroundColor: _HomeColors.accent),
+              style: TextButton.styleFrom(foregroundColor:AppColors.accent),
             ),
           ],
         ),
@@ -411,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         RefreshIndicator(
-          color: _HomeColors.accent,
+          color: AppColors.accent,
 
           onRefresh: () async {
             await Future.wait([_loadSubjects(), _loadCurrentSession()]);
@@ -453,10 +434,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                             });
                           },
-                          activeColor: _HomeColors.accent,
+                          activeColor: AppColors.accent,
                           checkColor: Colors.white,
                           side: const BorderSide(
-                            color: _HomeColors.secondaryText,
+                            color:AppColors.secondaryText,
                           ),
                         ),
                       ),
@@ -519,14 +500,14 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: _HomeColors.dialogBackground,
+          backgroundColor: AppColors.dialogBackground,
           title: const Text(
             'ยืนยันการลบรายวิชา',
-            style: TextStyle(color: _HomeColors.primaryText),
+            style: TextStyle(color: AppColors.primaryText),
           ),
           content: Text(
             'ต้องการลบ $count รายวิชาที่เลือกหรือไม่?\n\nข้อมูลห้องเรียนและข้อมูลอารมณ์ของรายวิชาเหล่านี้จะถูกลบด้วย',
-            style: const TextStyle(color: _HomeColors.secondaryText),
+            style: const TextStyle(color: AppColors.secondaryText),
           ),
           actions: [
             TextButton(
@@ -535,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: const Text(
                 'ยกเลิก',
-                style: TextStyle(color: _HomeColors.secondaryText),
+                style: TextStyle(color: AppColors.secondaryText),
               ),
             ),
             TextButton(
@@ -786,7 +767,7 @@ class _SquareIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _HomeColors.buttonSurface,
+      color: AppColors.darkButtonSurface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onPressed,
@@ -795,10 +776,10 @@ class _SquareIconButton extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: _HomeColors.buttonSurface,
+            color: AppColors.darkButtonSurface,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: _HomeColors.secondaryText, size: 20),
+          child: Icon(icon, color: AppColors.secondaryText, size: 20),
         ),
       ),
     );
@@ -824,11 +805,11 @@ class _SmallActionButton extends StatelessWidget {
           height: 47,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: _HomeColors.searchBorder),
+            border: Border.all(color: AppColors.searchBorder),
           ),
           child: const Icon(
             Icons.sort_rounded,
-            color: _HomeColors.secondaryText,
+            color: AppColors.secondaryText,
             size: 20,
           ),
         ),
@@ -857,7 +838,7 @@ class _SortOption extends StatelessWidget {
 
       leading: Icon(
         icon,
-        color: selected ? _HomeColors.accent : _HomeColors.secondaryText,
+        color: selected ? AppColors.accent : AppColors.secondaryText,
       ),
 
       title: Text(
@@ -867,7 +848,7 @@ class _SortOption extends StatelessWidget {
 
       trailing: Icon(
         selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
-        color: selected ? _HomeColors.accent : _HomeColors.mutedText,
+        color: selected ? AppColors.accent : AppColors.mutedText,
       ),
 
       onTap: onTap,
@@ -903,9 +884,9 @@ class _HomeBottomNavigation extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
 
       decoration: const BoxDecoration(
-        color: _HomeColors.navigation,
+        color: AppColors.navigation,
 
-        border: Border(top: BorderSide(color: _HomeColors.navigationBorder)),
+        border: Border(top: BorderSide(color: AppColors.navigationBorder)),
       ),
 
       child: Row(
@@ -937,7 +918,7 @@ class _HomeBottomNavigation extends StatelessWidget {
 
                     border: Border.all(
                       color: selected
-                          ? _HomeColors.searchBorder
+                          ? AppColors.searchBorder
                           : const Color(0x1A928B8B),
                     ),
 
@@ -962,8 +943,8 @@ class _HomeBottomNavigation extends StatelessWidget {
                         size: 24,
 
                         color: selected
-                            ? _HomeColors.primaryText
-                            : _HomeColors.secondaryText,
+                            ? AppColors.primaryText
+                            : AppColors.secondaryText,
                       ),
 
                       const SizedBox(height: 5),
@@ -975,8 +956,8 @@ class _HomeBottomNavigation extends StatelessWidget {
 
                         style: TextStyle(
                           color: selected
-                              ? _HomeColors.primaryText
-                              : _HomeColors.secondaryText,
+                              ? AppColors.primaryText
+                              : AppColors.secondaryText,
 
                           fontSize: 11,
                         ),
@@ -1025,7 +1006,7 @@ class _EmptySubjects extends StatelessWidget {
             'ยังไม่มีรายวิชา',
 
             style: TextStyle(
-              color: _HomeColors.faintText,
+              color: AppColors.faintText,
 
               fontSize: 24,
 
@@ -1040,7 +1021,7 @@ class _EmptySubjects extends StatelessWidget {
           Text(
             'กดปุ่ม + เพื่อเพิ่มรายวิชา',
 
-            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
+            style: TextStyle(color: AppColors.faintText, fontSize: 15),
           ),
         ],
       ),
@@ -1065,7 +1046,7 @@ class _NoSearchResults extends StatelessWidget {
           Icon(
             Icons.search_off_rounded,
 
-            color: _HomeColors.faintText,
+            color: AppColors.faintText,
 
             size: 34,
           ),
@@ -1075,7 +1056,7 @@ class _NoSearchResults extends StatelessWidget {
           Text(
             'ไม่พบรายวิชาที่ค้นหา',
 
-            style: TextStyle(color: _HomeColors.faintText, fontSize: 15),
+            style: TextStyle(color: AppColors.faintText, fontSize: 15),
           ),
         ],
       ),
@@ -1138,11 +1119,11 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
         padding: const EdgeInsets.fromLTRB(28, 22, 28, 30),
 
         decoration: BoxDecoration(
-          color: _HomeColors.dialogBackground,
+          color: AppColors.dialogBackground,
 
           borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
 
-          border: Border.all(color: _HomeColors.dialogBorder),
+          border: Border.all(color: AppColors.dialogBorder),
         ),
 
         child: SingleChildScrollView(
@@ -1156,7 +1137,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
                 'เพิ่มรายวิชาใหม่',
 
                 style: TextStyle(
-                  color: _HomeColors.primaryText,
+                  color: AppColors.primaryText,
 
                   fontSize: 20,
 
@@ -1170,7 +1151,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
                 'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
 
                 style: TextStyle(
-                  color: _HomeColors.secondaryText,
+                  color: AppColors.secondaryText,
 
                   fontSize: 15,
                 ),
@@ -1371,7 +1352,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
 
-      style: const TextStyle(color: _HomeColors.secondaryText, fontSize: 15),
+      style: const TextStyle(color: AppColors.secondaryText, fontSize: 15),
     );
   }
 }
@@ -1395,7 +1376,7 @@ class _SubjectTextField extends StatelessWidget {
 
         style: const TextStyle(color: Color(0xFF24222B), fontSize: 14),
 
-        cursorColor: _HomeColors.accent,
+        cursorColor: AppColors.accent,
 
         decoration: InputDecoration(
           filled: true,
@@ -1422,7 +1403,7 @@ class _SubjectTextField extends StatelessWidget {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(5),
 
-            borderSide: const BorderSide(color: _HomeColors.accent, width: 1.4),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
           ),
         ),
       ),

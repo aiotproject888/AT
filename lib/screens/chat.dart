@@ -12,34 +12,7 @@ import '../services/chat_history_service.dart';
 import '../models/chat_message.dart';
 import '../widgets/message_bubble.dart';
 import '../services/emotion_service.dart';
-
-class _ChatColors {
-  static const background = Color(0xFF0E0D18);
-  static const accent = Color(0xFF6C52E5);
-  static const cyan = Color(0xFF22D3EE);
-
-  static const green = Color(0xFF1BAF7A);
-  static const greenText = Color(0xFF3DD99A);
-
-  static const surface = Color(0x0FFFFFFF);
-  static const subtleSurface = Color(0x0DFFFFFF);
-  static const inputSurface = Color(0x0FFFFFFF);
-
-  static const surfaceBorder = Color(0x17FFFFFF);
-  static const inputBorder = Color(0x1AFFFFFF);
-
-  static const accentSurface = Color(0x1A6C52E5);
-  static const accentBorder = Color(0x476C52E5);
-
-  static const greenSurface = Color(0x261BAF7A);
-  static const greenBorder = Color(0x4D1BAF7A);
-
-  static const primaryText = Color(0xFFFFFFFF);
-  static const secondaryText = Color(0xD9FFFFFF);
-  static const mutedText = Color(0x8CFFFFFF);
-  static const faintText = Color(0x66FFFFFF);
-  static const veryFaintText = Color(0x4DFFFFFF);
-}
+import '../constants/app_colors.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic>? emotionData;
@@ -50,12 +23,15 @@ class ChatScreen extends StatefulWidget {
 
   final bool autoAttachEmotion;
 
+  final String? conversationId;
+
   const ChatScreen({
     super.key,
     this.emotionData,
     this.subjectCode,
     this.sessionId,
     this.autoAttachEmotion = false,
+    this.conversationId,
   });
 
   @override
@@ -75,6 +51,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool isSending = false;
   bool _isLoadingHistory = true;
 
+  DateTime? _historySelectedDate;
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _historyConversations = [];
+
+  bool _isLoadingConversationHistory = false;
+
   Map<String, dynamic>? _emotionData;
   bool _isLoadingEmotion = false;
 
@@ -92,7 +74,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingAttachment = false;
   String _attachmentLoadingText = 'กำลังโหลดข้อมูล...';
 
-  String _selectedModel = 'openai/gpt-oss-120b';
+  String _selectedModel = 'gpt-oss-120b';
 
   void _showAttachmentLoading(String text) {
     if (!mounted) return;
@@ -208,7 +190,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ============================================================
- 
 
   Future<void> _loadSelectedEmotionData({
     required bool beforeSelected,
@@ -373,7 +354,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   CheckboxListTile(
                     value: beforeSelected,
-                    activeColor: _ChatColors.accent,
+                    activeColor: AppColors.accent,
                     checkColor: Colors.white,
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
@@ -393,7 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   CheckboxListTile(
                     value: afterSelected,
-                    activeColor: _ChatColors.accent,
+                    activeColor: AppColors.accent,
                     checkColor: Colors.white,
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
@@ -425,7 +406,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _ChatColors.accent,
+                    backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: (!beforeSelected && !afterSelected)
@@ -593,12 +574,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: _ChatColors.accent.withOpacity(0.18),
+                      color: AppColors.accent.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: const Icon(
                       Icons.menu_book_rounded,
-                      color: _ChatColors.cyan,
+                      color: AppColors.cyan,
                       size: 20,
                     ),
                   ),
@@ -637,7 +618,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 child: Padding(
                                   padding: EdgeInsets.all(25),
                                   child: CircularProgressIndicator(
-                                    color: _ChatColors.accent,
+                                    color: AppColors.accent,
                                   ),
                                 ),
                               )
@@ -700,7 +681,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                                     dense: true,
                                     value: isSelected,
-                                    activeColor: _ChatColors.accent,
+                                    activeColor: AppColors.accent,
                                     checkColor: Colors.white,
                                     controlAffinity:
                                         ListTileControlAffinity.leading,
@@ -711,7 +692,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                               )
                                           ? Icons.picture_as_pdf_rounded
                                           : Icons.description_rounded,
-                                      color: _ChatColors.cyan,
+                                      color: AppColors.cyan,
                                       size: 21,
                                     ),
                                     title: Text(
@@ -757,9 +738,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                   icon: const Icon(Icons.upload_file_rounded, size: 18),
                   label: const Text('อัปโหลดไฟล์ใหม่'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: _ChatColors.cyan,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.cyan),
                 ),
                 TextButton(
                   onPressed: () {
@@ -1175,9 +1154,9 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _ChatColors.accentSurface,
+        color: AppColors.accentSurface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: _ChatColors.accentBorder),
+        border: Border.all(color: AppColors.accentBorder),
       ),
       child: Row(
         children: [
@@ -1186,14 +1165,14 @@ class _ChatScreenState extends State<ChatScreen> {
             height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _ChatColors.accent.withOpacity(0.25),
+              color: AppColors.accent.withOpacity(0.25),
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(
               fileType == 'PDF'
                   ? Icons.picture_as_pdf_rounded
                   : Icons.description_rounded,
-              color: _ChatColors.cyan,
+              color: AppColors.cyan,
               size: 18,
             ),
           ),
@@ -1499,6 +1478,358 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _loadChatHistoryByDate(DateTime selectedDate) async {
+    try {
+      debugPrint('========== LOAD CHAT HISTORY BY DATE ==========');
+      debugPrint('Selected date: $selectedDate');
+
+      final conversations = await _historyService.getConversations();
+
+      final DateTime startOfDay = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+      );
+
+      final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final bool isClassroom =
+          widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      filteredConversations = [];
+
+      for (final conversation in conversations) {
+        final data = conversation.data();
+
+        // ----------------------------------------------------------
+        // ตรวจสอบวันที่สร้าง Conversation
+        // ----------------------------------------------------------
+
+        final createdAt = data['createdAt'];
+
+        if (createdAt is! Timestamp) {
+          continue;
+        }
+
+        final DateTime conversationDate = createdAt.toDate();
+
+        if (conversationDate.isBefore(startOfDay) ||
+            !conversationDate.isBefore(endOfDay)) {
+          continue;
+        }
+
+        // ----------------------------------------------------------
+        // Classroom / General
+        // ----------------------------------------------------------
+
+        final String type = data['type']?.toString() ?? '';
+
+        if (isClassroom) {
+          final String conversationSubjectCode =
+              data['subjectCode']?.toString() ?? '';
+
+          if (type != 'classroom') {
+            continue;
+          }
+
+          if (conversationSubjectCode != widget.subjectCode) {
+            continue;
+          }
+        } else {
+          if (type != 'general') {
+            continue;
+          }
+        }
+
+        filteredConversations.add(conversation);
+      }
+
+      if (filteredConversations.isEmpty) {
+        if (!mounted) return;
+
+        await showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: AppColors.dialogBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: AppColors.accent),
+                  SizedBox(width: 10),
+                  Text(
+                    'ไม่พบข้อมูล',
+                    style: TextStyle(
+                      color: AppColors.primaryText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'วันที่ ${_formatThaiDate(selectedDate)}\nไม่มีประวัติการสนทนา',
+                style: const TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 14,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'ตกลง',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+
+        return;
+      }
+
+      // ตรงนี้เอา filteredConversations
+      // ไปแสดงใน Dialog / BottomSheet ของประวัติ
+    } catch (e) {
+      debugPrint('โหลดประวัติตามวันที่ไม่สำเร็จ: $e');
+    }
+  }
+
+  Future<void> _showConversationHistory() async {
+    DateTime selectedDate = DateTime.now();
+
+    final pickedDate = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              top: false,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.88,
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF19162A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // เส้นด้านบน
+                      Container(
+                        width: 45,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // หัวข้อ
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_month_outlined,
+                            color: AppColors.accent,
+                          ),
+
+                          SizedBox(width: 12),
+
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'เลือกวันที่',
+                                style: TextStyle(
+                                  color: AppColors.primaryText,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'ดูประวัติการสนทนาย้อนหลัง',
+                                style: TextStyle(
+                                  color: AppColors.faintText,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // วันที่เลือก
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.accent.withOpacity(0.25),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.event_outlined,
+                              color: AppColors.secondaryText,
+                              size: 20,
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Text(
+                              _formatThaiDate(selectedDate),
+                              style: const TextStyle(
+                                color: AppColors.primaryText,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ปฏิทิน
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: const ColorScheme.dark(
+                            primary: AppColors.accent,
+                            surface: Color(0xFF19162A),
+                          ),
+                        ),
+                        child: CalendarDatePicker(
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          onDateChanged: (date) {
+                            setModalState(() {
+                              selectedDate = date;
+                            });
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // ปุ่มเลือกวันที่
+                      const SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.secondaryText,
+                                  side: const BorderSide(
+                                    color: AppColors.surfaceBorder,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'ยกเลิก',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context, selectedDate);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: AppColors.accent,
+                                  foregroundColor: AppColors.primaryText,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'ดูประวัติการสนทนา',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (pickedDate == null) return;
+
+    await _loadChatHistoryByDate(pickedDate);
+  }
+
+  String _formatThaiDate(DateTime date) {
+    const months = [
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม',
+    ];
+
+    return '${date.day} '
+        '${months[date.month - 1]} '
+        '${date.year + 543}';
+  }
+
   // ============================================================
   // สร้าง Conversation ใน Firestore
   // ============================================================
@@ -1713,185 +2044,183 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showAIModelPicker() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xff1E1B2E),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ====================================================
-              // Header
-              // ====================================================
-              Row(
-                children: [
-                  const Icon(
-                    Icons.smart_toy_rounded,
-                    color: Color(0xff8B7CF6),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'เลือก AI สำหรับการสนทนา',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white54,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              const Text(
-                'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-
-              const SizedBox(height: 16),
-
-      
-              _buildAIModelOption(
-                model: 'gpt-oss-120b',
-                name: 'GPT-OSS 120B',
-                //description: '',
-                icon: Icons.psychology_rounded,
-              ),
-
-              const SizedBox(height: 8),
-
-              // ====================================================
-              // Gemini
-              // ====================================================
-              _buildAIModelOption(
-                model: 'qwen3.8-27b',
-                name: 'Qwen 3.8 27B',
-                //description: 'โมเดล AI จาก Google',
-                icon: Icons.auto_awesome_rounded,
-              ),
-
-              const SizedBox(height: 8),
-
-      
-              _buildAIModelOption(
-                model: 'lfm-2.5-2.6b',
-                name: 'LFM2.5-2.6B',
-                //description: 'โมเดล AI ขนาดเล็กจาก Google',
-                icon: Icons.smart_toy_rounded,
-              ),
-              const SizedBox(height: 8),
-              _buildAIModelOption(
-                model: 'nemotron-3-super-120b-a12b',
-                name: 'Nemotron 3 Super',
-                //description: 'โมเดล AI ขนาดเล็กจาก Google',
-                icon: Icons.memory_rounded,
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Widget _buildAIModelOption({
-  required String model,
-  required String name,
-  //required String description,
-  required IconData icon,
-}) {
-  final bool isSelected = _selectedModel == model;
-
-  return InkWell(
-    onTap: () {
-      setState(() {
-        _selectedModel = model;
-      });
-
-      Navigator.pop(context);
-
-      debugPrint('Selected AI Model: $_selectedModel');
-    },
-    borderRadius: BorderRadius.circular(14),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xff6C52E5).withOpacity(0.18)
-            : const Color(0xff151222),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isSelected ? const Color(0xff8B7CF6) : Colors.white10,
-        ),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xff1E1B2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Row(
-        children: [
-          // AI Icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xff6C52E5).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(icon, color: const Color(0xff8B7CF6), size: 21),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Name + Description
-          Expanded(
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                // ====================================================
+                // Header
+                // ====================================================
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.smart_toy_rounded,
+                      color: Color(0xff8B7CF6),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'เลือก AI สำหรับการสนทนา',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                //Text(
-                //  description,
-                //  style: const TextStyle(color: Colors.white54, fontSize: 10.5),
-                //),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildAIModelOption(
+                  model: 'gpt-oss-120b',
+                  name: 'GPT-OSS 120B',
+                  //description: '',
+                  icon: Icons.psychology_rounded,
+                ),
+
+                const SizedBox(height: 8),
+
+                // ====================================================
+                // Gemini
+                // ====================================================
+                _buildAIModelOption(
+                  model: 'qwen3.8-27b',
+                  name: 'Qwen 3.8 27B',
+                  //description: 'โมเดล AI จาก Google',
+                  icon: Icons.auto_awesome_rounded,
+                ),
+
+                const SizedBox(height: 8),
+
+                _buildAIModelOption(
+                  model: 'lfm-2.5-2.6b',
+                  name: 'LFM2.5-2.6B',
+                  //description: 'โมเดล AI ขนาดเล็กจาก Google',
+                  icon: Icons.smart_toy_rounded,
+                ),
+                const SizedBox(height: 8),
+                _buildAIModelOption(
+                  model: 'nemotron-3-super-120b-a12b',
+                  name: 'Nemotron 3 Super',
+                  //description: 'โมเดล AI ขนาดเล็กจาก Google',
+                  icon: Icons.memory_rounded,
+                ),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
 
-          // Check
-          if (isSelected)
-            const Icon(
-              Icons.check_circle_rounded,
-              color: Color(0xff8B7CF6),
-              size: 21,
+  Widget _buildAIModelOption({
+    required String model,
+    required String name,
+    //required String description,
+    required IconData icon,
+  }) {
+    final bool isSelected = _selectedModel == model;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedModel = model;
+        });
+
+        Navigator.pop(context);
+
+        debugPrint('Selected AI Model: $_selectedModel');
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xff6C52E5).withOpacity(0.18)
+              : const Color(0xff151222),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? const Color(0xff8B7CF6) : Colors.white10,
+          ),
+        ),
+        child: Row(
+          children: [
+            // AI Icon
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xff6C52E5).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, color: const Color(0xff8B7CF6), size: 21),
             ),
-        ],
+
+            const SizedBox(width: 12),
+
+            // Name + Description
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  //Text(
+                  //  description,
+                  //  style: const TextStyle(color: Colors.white54, fontSize: 10.5),
+                  //),
+                ],
+              ),
+            ),
+
+            // Check
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xff8B7CF6),
+                size: 21,
+              ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ============================================================
   // App Bar
@@ -1919,9 +2248,9 @@ Widget _buildAIModelOption({
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           children: [
-            _SquareButton(
+            _SquareIconButton(
               icon: Icons.arrow_back_ios_new_rounded,
-              onTap: () {
+              onPressed: () {
                 Navigator.pop(context);
               },
             ),
@@ -1936,7 +2265,7 @@ Widget _buildAIModelOption({
                   const Text(
                     'EmotiTeach AI',
                     style: TextStyle(
-                      color: _ChatColors.primaryText,
+                      color: AppColors.primaryText,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1949,34 +2278,23 @@ Widget _buildAIModelOption({
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: _ChatColors.veryFaintText,
+                      color: AppColors.veryFaintText,
                       fontSize: 10,
                     ),
                   ),
                 ],
               ),
             ),
-
-            Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [_ChatColors.accent, _ChatColors.cyan],
-                ),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Text('🤖', style: TextStyle(fontSize: 17)),
+            _SquareIconButton(
+              icon: Icons.calendar_month_outlined,
+              accent: true,
+              onPressed: _showConversationHistory,
             ),
           ],
         ),
       ),
     );
   }
-
 
   Widget _buildLessonMaterialSelector() {
     if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
@@ -2100,16 +2418,16 @@ Widget _buildAIModelOption({
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: _ChatColors.subtleSurface,
+        color: AppColors.subtleSurface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: _ChatColors.inputBorder),
+        border: Border.all(color: AppColors.inputBorder),
       ),
       child: Row(
         children: [
           Icon(
             _isLoadingMaterials ? Icons.sync_rounded : Icons.menu_book_rounded,
             size: 16,
-            color: _ChatColors.cyan,
+            color: AppColors.cyan,
           ),
 
           const SizedBox(width: 8),
@@ -2119,10 +2437,7 @@ Widget _buildAIModelOption({
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _ChatColors.mutedText,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: AppColors.mutedText, fontSize: 10),
             ),
           ),
         ],
@@ -2144,7 +2459,7 @@ Widget _buildAIModelOption({
           padding: const EdgeInsets.only(bottom: 14),
           child: MessageBubble(
             message: messages[index],
-            primaryColor: _ChatColors.accent,
+            primaryColor: AppColors.accent,
           ),
         );
       },
@@ -2165,7 +2480,7 @@ Widget _buildAIModelOption({
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 1.8,
-              color: _ChatColors.cyan,
+              color: AppColors.cyan,
             ),
           ),
 
@@ -2173,7 +2488,7 @@ Widget _buildAIModelOption({
 
           Text(
             'กำลังวิเคราะห์ข้อมูล...',
-            style: TextStyle(color: _ChatColors.mutedText, fontSize: 11),
+            style: TextStyle(color: AppColors.mutedText, fontSize: 11),
           ),
         ],
       ),
@@ -2213,9 +2528,9 @@ Widget _buildAIModelOption({
               height: 31,
               padding: const EdgeInsets.symmetric(horizontal: 13),
               decoration: BoxDecoration(
-                color: _ChatColors.subtleSurface,
+                color: AppColors.subtleSurface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _ChatColors.inputBorder),
+                border: Border.all(color: AppColors.inputBorder),
               ),
               child: Row(
                 children: [
@@ -2226,7 +2541,7 @@ Widget _buildAIModelOption({
                   Text(
                     chip['label']!,
                     style: const TextStyle(
-                      color: _ChatColors.mutedText,
+                      color: AppColors.mutedText,
                       fontSize: 10.5,
                     ),
                   ),
@@ -2280,9 +2595,9 @@ Widget _buildAIModelOption({
       ),
       child: Row(
         children: [
-          _SquareButton(
+          _SquareIconButton(
             icon: Icons.smart_toy_rounded,
-            onTap: _showAIModelPicker,
+            onPressed: _showAIModelPicker,
           ),
 
           const SizedBox(width: 9),
@@ -2292,9 +2607,9 @@ Widget _buildAIModelOption({
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: _ChatColors.inputSurface,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: _ChatColors.inputBorder),
+                border: Border.all(color: AppColors.inputBorder),
               ),
               alignment: Alignment.center,
               child: TextField(
@@ -2305,7 +2620,7 @@ Widget _buildAIModelOption({
                   sendMessage();
                 },
                 style: const TextStyle(
-                  color: _ChatColors.primaryText,
+                  color: AppColors.primaryText,
                   fontSize: 12.5,
                 ),
                 decoration: const InputDecoration(
@@ -2329,10 +2644,10 @@ Widget _buildAIModelOption({
             height: 36,
             child: Material(
               color: isSending
-                  ? _ChatColors.accent.withOpacity(0.45)
-                  : _ChatColors.accent,
+                  ? AppColors.accent.withOpacity(0.45)
+                  : AppColors.accent,
               borderRadius: BorderRadius.circular(11),
-              shadowColor: _ChatColors.accent.withOpacity(0.4),
+              shadowColor: AppColors.accent.withOpacity(0.4),
               elevation: 7,
               child: InkWell(
                 onTap: isSending
@@ -2344,7 +2659,7 @@ Widget _buildAIModelOption({
                 child: const Icon(
                   Icons.send_rounded,
                   size: 16,
-                  color: _ChatColors.primaryText,
+                  color: AppColors.primaryText,
                 ),
               ),
             ),
@@ -2399,7 +2714,7 @@ Widget _buildAIModelOption({
                     height: 42,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
-                      color: _ChatColors.accent,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -2438,7 +2753,7 @@ Widget _buildAIModelOption({
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _ChatColors.background,
+      backgroundColor: AppColors.background,
 
       resizeToAvoidBottomInset: true,
 
@@ -2450,7 +2765,7 @@ Widget _buildAIModelOption({
             colors: [
               Color(0xFF31245C),
               Color(0xFF171329),
-              _ChatColors.background,
+              AppColors.background,
             ],
             stops: [0, 0.40, 1],
           ),
@@ -2506,28 +2821,39 @@ Widget _buildAIModelOption({
 // Square Button
 // ============================================================
 
-class _SquareButton extends StatelessWidget {
+class _SquareIconButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback onPressed;
+  final bool accent;
 
-  const _SquareButton({required this.icon, required this.onTap});
+  const _SquareIconButton({
+    required this.icon,
+    required this.onPressed,
+    this.accent = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 36,
-      height: 36,
-      child: Material(
-        color: _ChatColors.subtleSurface,
-        borderRadius: BorderRadius.circular(11),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(11),
-          child: Icon(icon, size: 18, color: _ChatColors.mutedText),
+      width: 34,
+      height: 34,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: accent
+              ? AppColors.accentSurface
+              : AppColors.subtleSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        icon: Icon(
+          icon,
+          size: 16,
+          color: accent ? AppColors.accent : AppColors.secondaryText,
         ),
       ),
     );
   }
 }
-
-

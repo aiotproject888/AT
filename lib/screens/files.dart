@@ -9,27 +9,10 @@ import 'package:http/http.dart' as http;
 import 'chat.dart';
 import '../services/emotion_service.dart';
 import '../services/session_service.dart';
+import '../constants/app_colors.dart';
 
 class _MaterialColors {
-  static const background = Color(0xFF0E0D18);
-  static const accent = Color(0xFF6C52E5);
-  static const cyan = Color(0xFF22D3EE);
-  static const green = Color(0xFF1BAF7A);
-
-  static const surface = Color(0x0AFFFFFF);
-  static const surfaceBorder = Color(0x12FFFFFF);
-  static const innerSurface = Color(0x08FFFFFF);
-
-  static const primaryText = Color(0xFFFFFFFF);
-  static const secondaryText = Color(0x99FFFFFF);
-  static const mutedText = Color(0x73FFFFFF);
-  static const faintText = Color(0x4DFFFFFF);
-
-  static const danger = Color(0xFFFF7777);
-
-  static const navigation = Color(0xFF191820);
-  static const navigationBorder = Color(0x26FFFFFF);
-  static const searchBorder = Color(0x40FFFFFF);
+  
 }
 
 class MaterialScreen extends StatefulWidget {
@@ -260,7 +243,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     height: 42,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
-                      color: _MaterialColors.accent,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -330,7 +313,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _MaterialColors.background,
+      backgroundColor: AppColors.background,
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
@@ -339,7 +322,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
             colors: [
               Color(0xFF29344D),
               Color(0xFF19142E),
-              _MaterialColors.background,
+              AppColors.background,
             ],
             stops: [0, 0.35, 1],
           ),
@@ -407,7 +390,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               const Text(
                 'สื่อการสอน',
                 style: TextStyle(
-                  color: _MaterialColors.primaryText,
+                  color: AppColors.primaryText,
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                 ),
@@ -418,7 +401,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _MaterialColors.secondaryText,
+                  color: AppColors.secondaryText,
                   fontSize: 12,
                 ),
               ),
@@ -459,9 +442,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _MaterialColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _MaterialColors.surfaceBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Column(
         children: [
@@ -509,13 +492,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
               const Icon(
                 Icons.update_rounded,
                 size: 15,
-                color: _MaterialColors.mutedText,
+                color: AppColors.mutedText,
               ),
               const SizedBox(width: 7),
               const Text(
                 'อัปเดตล่าสุด',
                 style: TextStyle(
-                  color: _MaterialColors.mutedText,
+                  color: AppColors.mutedText,
                   fontSize: 11,
                 ),
               ),
@@ -546,9 +529,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: _MaterialColors.innerSurface,
+              color: AppColors.innerSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _MaterialColors.surfaceBorder),
+              border: Border.all(color: AppColors.surfaceBorder),
             ),
             child: TextField(
               controller: _searchController,
@@ -558,17 +541,17 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 });
               },
               style: const TextStyle(color: Colors.white, fontSize: 13),
-              cursorColor: _MaterialColors.accent,
+              cursorColor: AppColors.accent,
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: _MaterialColors.mutedText,
+                  color: AppColors.mutedText,
                   size: 21,
                 ),
                 hintText: 'ค้นหาไฟล์...',
                 hintStyle: TextStyle(
-                  color: _MaterialColors.faintText,
+                  color: AppColors.faintText,
                   fontSize: 13,
                 ),
                 contentPadding: EdgeInsets.symmetric(vertical: 14),
@@ -610,13 +593,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: selected
-                    ? _MaterialColors.accent.withValues(alpha: 0.25)
+                    ? AppColors.accent.withValues(alpha: 0.25)
                     : Colors.white.withValues(alpha: 0.035),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selected
-                      ? _MaterialColors.accent.withValues(alpha: 0.65)
-                      : _MaterialColors.surfaceBorder,
+                      ? AppColors.accent.withValues(alpha: 0.65)
+                      : AppColors.surfaceBorder,
                 ),
               ),
               child: Center(
@@ -625,7 +608,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   style: TextStyle(
                     color: selected
                         ? Colors.white
-                        : _MaterialColors.secondaryText,
+                        : AppColors.secondaryText,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -663,7 +646,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           child: Text(
             '${_filteredFiles.length}',
             style: const TextStyle(
-              color: _MaterialColors.secondaryText,
+              color: AppColors.secondaryText,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -673,7 +656,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         Text(
           _sortMode,
           style: const TextStyle(
-            color: _MaterialColors.mutedText,
+            color: AppColors.mutedText,
             fontSize: 10,
           ),
         ),
@@ -690,7 +673,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 45),
         child: Center(
-          child: CircularProgressIndicator(color: _MaterialColors.accent),
+          child: CircularProgressIndicator(color: AppColors.accent),
         ),
       );
     }
@@ -717,9 +700,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _MaterialColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: _MaterialColors.surfaceBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Row(
         children: [
@@ -745,7 +728,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     Text(
                       file.extension,
                       style: const TextStyle(
-                        color: _MaterialColors.mutedText,
+                        color: AppColors.mutedText,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -754,7 +737,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     Text(
                       file.size,
                       style: const TextStyle(
-                        color: _MaterialColors.mutedText,
+                        color: AppColors.mutedText,
                         fontSize: 9.5,
                       ),
                     ),
@@ -764,7 +747,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                         file.date,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: _MaterialColors.mutedText,
+                          color: AppColors.mutedText,
                           fontSize: 9.5,
                         ),
                       ),
@@ -804,7 +787,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
       padding: EdgeInsets.symmetric(horizontal: 5),
       child: Text(
         '•',
-        style: TextStyle(color: _MaterialColors.faintText, fontSize: 8),
+        style: TextStyle(color: AppColors.faintText, fontSize: 8),
       ),
     );
   }
@@ -820,16 +803,16 @@ class _MaterialScreenState extends State<MaterialScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 45, horizontal: 20),
       decoration: BoxDecoration(
-        color: _MaterialColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _MaterialColors.surfaceBorder),
+        border: Border.all(color: AppColors.surfaceBorder),
       ),
       child: Column(
         children: [
           const Icon(
             Icons.folder_open_rounded,
             size: 42,
-            color: _MaterialColors.mutedText,
+            color: AppColors.mutedText,
           ),
           const SizedBox(height: 12),
           Text(
@@ -847,7 +830,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 : 'กดปุ่ม "อัปโหลดไฟล์" เพื่อเพิ่มสื่อการสอน',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: _MaterialColors.mutedText,
+              color: AppColors.mutedText,
               fontSize: 11,
             ),
           ),
@@ -900,7 +883,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   child: Text(
                     'เลือกวิธีเพิ่มไฟล์ที่ต้องการ',
                     style: TextStyle(
-                      color: _MaterialColors.mutedText,
+                      color: AppColors.mutedText,
                       fontSize: 11,
                     ),
                   ),
@@ -1635,12 +1618,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 ListTile(
                   leading: const Icon(
                     Icons.delete_outline_rounded,
-                    color: _MaterialColors.danger,
+                    color:AppColors.danger,
                   ),
                   title: const Text(
                     'ลบไฟล์',
                     style: TextStyle(
-                      color: _MaterialColors.danger,
+                      color: AppColors.danger,
                       fontSize: 13,
                     ),
                   ),
@@ -1693,7 +1676,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ปิด',
-                style: TextStyle(color: _MaterialColors.accent),
+                style: TextStyle(color: AppColors.accent),
               ),
             ),
           ],
@@ -1722,7 +1705,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           content: Text(
             'ต้องการลบ "${file.name}" หรือไม่',
             style: const TextStyle(
-              color: _MaterialColors.secondaryText,
+              color: AppColors.secondaryText,
               fontSize: 13,
             ),
           ),
@@ -1733,7 +1716,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ยกเลิก',
-                style: TextStyle(color: _MaterialColors.secondaryText),
+                style: TextStyle(color: AppColors.secondaryText),
               ),
             ),
             TextButton(
@@ -1743,7 +1726,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               },
               child: const Text(
                 'ลบ',
-                style: TextStyle(color: _MaterialColors.danger),
+                style: TextStyle(color: AppColors.danger),
               ),
             ),
           ],
@@ -2111,7 +2094,7 @@ class _OverviewItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 19, color: _MaterialColors.accent),
+        Icon(icon, size: 19, color: AppColors.accent),
         const SizedBox(height: 7),
         Text(
           value,
@@ -2129,7 +2112,7 @@ class _OverviewItem extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: _MaterialColors.mutedText,
+            color: AppColors.mutedText,
             fontSize: 8.5,
           ),
         ),
@@ -2159,16 +2142,16 @@ class _FileIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: _MaterialColors.accent.withValues(alpha: 0.13),
+        color: AppColors.accent.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(13),
         border: Border.all(
-          color: _MaterialColors.accent.withValues(alpha: 0.22),
+          color: AppColors.accent.withValues(alpha: 0.22),
         ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: _MaterialColors.accent, size: size * 0.42),
+          Icon(icon, color: AppColors.accent, size: size * 0.42),
           const SizedBox(height: 1),
           Text(
             extension,
@@ -2202,12 +2185,12 @@ class _StatusChip extends StatelessWidget {
     final bool extracted = status == 'อ่านเนื้อหาแล้ว';
 
     final Color color = ready
-        ? _MaterialColors.green
+        ? AppColors.green
         : reading
-        ? _MaterialColors.cyan
+        ? AppColors.cyan
         : extracted
-        ? _MaterialColors.green
-        : _MaterialColors.mutedText;
+        ? AppColors.green
+        : AppColors.mutedText;
 
     final IconData icon = ready
         ? Icons.check_circle_rounded
@@ -2255,7 +2238,7 @@ class _UploadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _MaterialColors.accent,
+      color: AppColors.accent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -2307,9 +2290,9 @@ class _SmallActionButton extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: _MaterialColors.surfaceBorder),
+            border: Border.all(color: AppColors.surfaceBorder),
           ),
-          child: Icon(icon, color: _MaterialColors.secondaryText, size: 20),
+          child: Icon(icon, color: AppColors.secondaryText, size: 20),
         ),
       ),
     );
@@ -2337,7 +2320,7 @@ class _FileActionButton extends StatelessWidget {
         child: SizedBox(
           width: 32,
           height: 32,
-          child: Icon(icon, color: _MaterialColors.secondaryText, size: 16),
+          child: Icon(icon, color: AppColors.secondaryText, size: 16),
         ),
       ),
     );
@@ -2381,9 +2364,9 @@ class _DashboardBottomNavigation extends StatelessWidget {
       height: 100,
       padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
       decoration: const BoxDecoration(
-        color: _MaterialColors.navigation,
+        color: AppColors.navigation,
         border: Border(
-          top: BorderSide(color: _MaterialColors.navigationBorder),
+          top: BorderSide(color: AppColors.navigationBorder),
         ),
       ),
       child: Row(
@@ -2408,7 +2391,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: selected
-                          ? _MaterialColors.searchBorder
+                          ? AppColors.searchBorder
                           : const Color(0x1A928B8B),
                     ),
                     boxShadow: const [
@@ -2426,8 +2409,8 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         selected ? item.activeIcon : item.icon,
                         size: 24,
                         color: selected
-                            ? _MaterialColors.primaryText
-                            : _MaterialColors.secondaryText,
+                            ? AppColors.primaryText
+                            : AppColors.secondaryText,
                       ),
 
                       const SizedBox(height: 5),
@@ -2437,8 +2420,8 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         maxLines: 1,
                         style: TextStyle(
                           color: selected
-                              ? _MaterialColors.primaryText
-                              : _MaterialColors.secondaryText,
+                              ? AppColors.primaryText
+                              : AppColors.secondaryText,
                           fontSize: 11,
                         ),
                       ),
@@ -2495,7 +2478,7 @@ class _UploadOption extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: _MaterialColors.surfaceBorder),
+            border: Border.all(color: AppColors.surfaceBorder),
           ),
           child: Row(
             children: [
@@ -2503,10 +2486,10 @@ class _UploadOption extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: _MaterialColors.accent.withValues(alpha: 0.13),
+                  color: AppColors.accent.withValues(alpha: 0.13),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: _MaterialColors.accent),
+                child: Icon(icon, color: AppColors.accent),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2525,7 +2508,7 @@ class _UploadOption extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: _MaterialColors.mutedText,
+                        color: AppColors.mutedText,
                         fontSize: 9.5,
                       ),
                     ),
@@ -2534,7 +2517,7 @@ class _UploadOption extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: _MaterialColors.mutedText,
+                color:AppColors.mutedText,
               ),
             ],
           ),
@@ -2568,8 +2551,8 @@ class _SortOption extends StatelessWidget {
       leading: Icon(
         icon,
         color: selected
-            ? _MaterialColors.accent
-            : _MaterialColors.secondaryText,
+            ? AppColors.accent
+            : AppColors.secondaryText,
       ),
       title: Text(
         title,
@@ -2577,7 +2560,7 @@ class _SortOption extends StatelessWidget {
       ),
       trailing: Icon(
         selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
-        color: selected ? _MaterialColors.accent : _MaterialColors.mutedText,
+        color: selected ? AppColors.accent : AppColors.mutedText,
       ),
       onTap: onTap,
     );
@@ -2606,7 +2589,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                color: _MaterialColors.mutedText,
+                color: AppColors.mutedText,
                 fontSize: 10,
               ),
             ),
@@ -2650,7 +2633,7 @@ class _SquareIconButton extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _MaterialColors.surfaceBorder),
+            border: Border.all(color: AppColors.surfaceBorder),
           ),
           child: Icon(icon, color: Colors.white, size: 17),
         ),
