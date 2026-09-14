@@ -193,6 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadSelectedEmotionData({
     required bool beforeSelected,
+    required bool duringSelected,
     required bool afterSelected,
   }) async {
     if (widget.subjectCode == null || widget.subjectCode!.trim().isEmpty) {
@@ -222,6 +223,14 @@ class _ChatScreenState extends State<ChatScreen> {
           subjectCode: widget.subjectCode!,
           date: selectedDate,
           type: 'before_class',
+        );
+      }
+
+      if (duringSelected) {
+        beforeData = await _emotionService.getEmotionSummaryForAI(
+          subjectCode: widget.subjectCode!,
+          date: selectedDate,
+          type: 'during_class',
         );
       }
 
@@ -278,6 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // ==========================================================
 
       combinedData['includeBeforeClass'] = beforeSelected;
+      combinedData['includeBeforeClass'] = duringSelected;
       combinedData['includeAfterClass'] = afterSelected;
 
       setState(() {
@@ -287,6 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       debugPrint('========== EMOTION ATTACHED ==========');
       debugPrint('Before class: $beforeSelected');
+      debugPrint('Before class: $duringSelected');
       debugPrint('After class: $afterSelected');
       debugPrint('Total responses: $totalResponses');
       debugPrint('Data: $_emotionData');
@@ -298,6 +309,8 @@ class _ChatScreenState extends State<ChatScreen> {
         attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนและหลังเรียนแล้ว';
       } else if (beforeSelected) {
         attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนแล้ว';
+      } else if (duringSelected) {
+        attachedText = 'แนบข้อมูลอารมณ์ระหว่างเรียนแล้ว';
       } else if (afterSelected) {
         attachedText = 'แนบข้อมูลอารมณ์หลังเรียนแล้ว';
       }
@@ -332,6 +345,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _showEmotionSelectionDialog() async {
     bool beforeSelected = false;
+    bool duringSelected = false;
     bool afterSelected = false;
 
     await showDialog(
@@ -368,6 +382,26 @@ class _ChatScreenState extends State<ChatScreen> {
                     onChanged: (value) {
                       setDialogState(() {
                         beforeSelected = value ?? false;
+                      });
+                    },
+                  ),
+
+                  CheckboxListTile(
+                    value: duringSelected,
+                    activeColor: AppColors.accent,
+                    checkColor: Colors.white,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'ระหว่างเรียน',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      'ข้อมูลอารมณ์ระหว่างเริ่มเรียน',
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        duringSelected = value ?? false;
                       });
                     },
                   ),
@@ -416,7 +450,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
                           await _loadSelectedEmotionData(
                             beforeSelected: beforeSelected,
+                            duringSelected: duringSelected,
                             afterSelected: afterSelected,
+
                           );
                         },
                   child: const Text('ยืนยัน'),
@@ -740,6 +776,34 @@ class _ChatScreenState extends State<ChatScreen> {
                   label: const Text('อัปโหลดไฟล์ใหม่'),
                   style: TextButton.styleFrom(foregroundColor: AppColors.cyan),
                 ),
+
+                // ปุ่มยืนยันการแนบ
+                TextButton(
+                  onPressed: selectedIds.isEmpty
+                      ? null
+                      : () {
+                          setState(() {
+                            _selectedLessonMaterials = materials
+                                .where(
+                                  (material) => selectedIds.contains(
+                                    material['id']?.toString(),
+                                  ),
+                                )
+                                .toList();
+                          });
+
+                          Navigator.pop(dialogContext);
+                        },
+                  child: const Text(
+                    'ยืนยันการแนบ',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                // ปุ่มยกเลิก
                 TextButton(
                   onPressed: () {
                     Navigator.pop(dialogContext);
@@ -1140,86 +1204,198 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
 
   Widget _buildChatUploadedFile() {
-    if (_chatUploadedFile == null) {
+    final hasLessonMaterials = _selectedLessonMaterials.isNotEmpty;
+    final hasUploadedFile = _chatUploadedFile != null;
+
+    if (!hasLessonMaterials && !hasUploadedFile) {
       return const SizedBox.shrink();
     }
 
-    final String fileName =
-        _chatUploadedFile!['fileName']?.toString() ?? 'ไฟล์';
+    return Column(
+      children: [
+        // ============================================================
+        // ไฟล์สื่อการสอนจากห้องเรียน
+        // ============================================================
+        if (hasLessonMaterials)
+          ..._selectedLessonMaterials.map((material) {
+            final String fileName = material['fileName']?.toString() ?? 'ไฟล์';
 
-    final String fileType =
-        _chatUploadedFile!['fileType']?.toString().toUpperCase() ?? '';
+            final String fileType =
+                material['fileType']?.toString().toUpperCase() ?? '';
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.accentSurface,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.accentBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(
-              fileType == 'PDF'
-                  ? Icons.picture_as_pdf_rounded
-                  : Icons.description_rounded,
-              color: AppColors.cyan,
-              size: 18,
-            ),
-          ),
-
-          const SizedBox(width: 10),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
+            return Container(
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.accentSurface,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: AppColors.accentBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(
+                      fileType == 'PDF'
+                          ? Icons.picture_as_pdf_rounded
+                          : Icons.description_rounded,
+                      color: AppColors.cyan,
+                      size: 18,
+                    ),
                   ),
+
+                  const SizedBox(width: 10),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fileName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        const SizedBox(height: 3),
+
+                        const Text(
+                          'แนบสื่อการสอนแล้ว · AI สามารถใช้เนื้อหาได้',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 9.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  IconButton(
+                    onPressed: isSending
+                        ? null
+                        : () {
+                            final id = material['id']?.toString();
+
+                            setState(() {
+                              _selectedLessonMaterials.removeWhere(
+                                (item) => item['id']?.toString() == id,
+                              );
+                            });
+                          },
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Colors.white60,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+        // ============================================================
+        // ไฟล์ที่อัปโหลดใหม่
+        // ============================================================
+        if (hasUploadedFile)
+          Builder(
+            builder: (context) {
+              final String fileName =
+                  _chatUploadedFile!['fileName']?.toString() ?? 'ไฟล์';
+
+              final String fileType =
+                  _chatUploadedFile!['fileType']?.toString().toUpperCase() ??
+                  '';
+
+              return Container(
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
                 ),
-
-                const SizedBox(height: 3),
-
-                Text(
-                  'แนบไฟล์แล้ว · AI สามารถใช้เนื้อหาได้',
-                  style: const TextStyle(color: Colors.white60, fontSize: 9.5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSurface,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: AppColors.accentBorder),
                 ),
-              ],
-            ),
-          ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(
+                        fileType == 'PDF'
+                            ? Icons.picture_as_pdf_rounded
+                            : Icons.description_rounded,
+                        color: AppColors.cyan,
+                        size: 18,
+                      ),
+                    ),
 
-          IconButton(
-            onPressed: isSending
-                ? null
-                : () {
-                    setState(() {
-                      _chatUploadedFile = null;
-                    });
-                  },
-            icon: const Icon(
-              Icons.close_rounded,
-              size: 18,
-              color: Colors.white60,
-            ),
+                    const SizedBox(width: 10),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+
+                          const SizedBox(height: 3),
+
+                          const Text(
+                            'แนบไฟล์แล้ว · AI สามารถใช้เนื้อหาได้',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    IconButton(
+                      onPressed: isSending
+                          ? null
+                          : () {
+                              setState(() {
+                                _chatUploadedFile = null;
+                              });
+                            },
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: Colors.white60,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ],
-      ),
+      ],
     );
   }
 

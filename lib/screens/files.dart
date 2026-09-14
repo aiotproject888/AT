@@ -5,15 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import 'chat.dart';
 import '../services/emotion_service.dart';
 import '../services/session_service.dart';
 import '../constants/app_colors.dart';
 
-class _MaterialColors {
-  
-}
+class _MaterialColors {}
 
 class MaterialScreen extends StatefulWidget {
   final String subjectName;
@@ -277,7 +276,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
   void _onDashboardNavigationTap(int index) {
     switch (index) {
-      case 0: Navigator.pop(context);
+      case 0:
+        Navigator.pop(context);
         return;
 
       case 1:
@@ -348,6 +348,60 @@ class _MaterialScreenState extends State<MaterialScreen> {
                           const SizedBox(height: 18),
                           _UploadButton(onPressed: _showUploadDialog),
                           const SizedBox(height: 10),
+
+                          // ============================================================
+                          // FILE / AI LIMIT INFO
+                          // ============================================================
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.accent.withValues(alpha: 0.20),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.lightbulb_outline_rounded,
+                                  color: Color.fromARGB(255, 255, 241, 114),
+                                  size: 19,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'แนะนำไฟล์ไม่เกิน 50,000 ตัวอักษร เพื่อให้ AI อ่านเนื้อหาได้ครบถ้วน',
+                                        style: TextStyle(
+                                          color: AppColors.secondaryText,
+                                          fontSize: 10,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'ขนาดไฟล์สูงสุด 50 MB ต่อ ไฟล์',
+                                        style: TextStyle(
+                                          color: AppColors.mutedText,
+                                          fontSize: 9.5,
+                                        ),
+                                      ),
+
+                                      //const SizedBox(height: 4),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
                           _buildFileHeader(),
                           const SizedBox(height: 10),
                           _buildFileList(),
@@ -497,10 +551,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               const SizedBox(width: 7),
               const Text(
                 'อัปเดตล่าสุด',
-                style: TextStyle(
-                  color: AppColors.mutedText,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: AppColors.mutedText, fontSize: 11),
               ),
               const Spacer(),
               Text(
@@ -550,10 +601,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   size: 21,
                 ),
                 hintText: 'ค้นหาไฟล์...',
-                hintStyle: TextStyle(
-                  color: AppColors.faintText,
-                  fontSize: 13,
-                ),
+                hintStyle: TextStyle(color: AppColors.faintText, fontSize: 13),
                 contentPadding: EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -606,9 +654,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 child: Text(
                   _categories[index],
                   style: TextStyle(
-                    color: selected
-                        ? Colors.white
-                        : AppColors.secondaryText,
+                    color: selected ? Colors.white : AppColors.secondaryText,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -655,10 +701,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         const Spacer(),
         Text(
           _sortMode,
-          style: const TextStyle(
-            color: AppColors.mutedText,
-            fontSize: 10,
-          ),
+          style: const TextStyle(color: AppColors.mutedText, fontSize: 10),
         ),
       ],
     );
@@ -697,87 +740,93 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // ============================================================
 
   Widget _buildFileCard(_MaterialFile file) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        children: [
-          _FileIcon(icon: file.icon, extension: file.extension),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  file.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        _viewFile(file);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: AppColors.surfaceBorder),
+        ),
+        child: Row(
+          children: [
+            _FileIcon(icon: file.icon, extension: file.extension),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    file.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Text(
-                      file.extension,
-                      style: const TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Text(
+                        file.extension,
+                        style: const TextStyle(
+                          color: AppColors.mutedText,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    _dot(),
-                    Text(
-                      file.size,
-                      style: const TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                    _dot(),
-                    Flexible(
-                      child: Text(
-                        file.date,
-                        overflow: TextOverflow.ellipsis,
+                      _dot(),
+                      Text(
+                        file.size,
                         style: const TextStyle(
                           color: AppColors.mutedText,
                           fontSize: 9.5,
                         ),
                       ),
-                    ),
-                  ],
+                      _dot(),
+                      Flexible(
+                        child: Text(
+                          file.date,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.mutedText,
+                            fontSize: 9.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  _StatusChip(status: file.status),
+                ],
+              ),
+            ),
+            const SizedBox(width: 7),
+            Column(
+              children: [
+                _FileActionButton(
+                  icon: Icons.download_rounded,
+                  onPressed: () {
+                    _downloadFile(file);
+                  },
                 ),
-                const SizedBox(height: 7),
-                _StatusChip(status: file.status),
+                const SizedBox(height: 5),
+                _FileActionButton(
+                  icon: Icons.more_vert_rounded,
+                  onPressed: () {
+                    _showFileMenu(file);
+                  },
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 7),
-          Column(
-            children: [
-              _FileActionButton(
-                icon: Icons.download_rounded,
-                onPressed: () {
-                  _downloadFile(file);
-                },
-              ),
-              const SizedBox(height: 5),
-              _FileActionButton(
-                icon: Icons.more_vert_rounded,
-                onPressed: () {
-                  _showFileMenu(file);
-                },
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -829,10 +878,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 ? 'ลองค้นหาด้วยชื่อไฟล์อื่น'
                 : 'กดปุ่ม "อัปโหลดไฟล์" เพื่อเพิ่มสื่อการสอน',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.mutedText,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: AppColors.mutedText, fontSize: 11),
           ),
         ],
       ),
@@ -882,10 +928,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'เลือกวิธีเพิ่มไฟล์ที่ต้องการ',
-                    style: TextStyle(
-                      color: AppColors.mutedText,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: AppColors.mutedText, fontSize: 11),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -1618,14 +1661,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 ListTile(
                   leading: const Icon(
                     Icons.delete_outline_rounded,
-                    color:AppColors.danger,
+                    color: AppColors.danger,
                   ),
                   title: const Text(
                     'ลบไฟล์',
-                    style: TextStyle(
-                      color: AppColors.danger,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: AppColors.danger, fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1815,6 +1855,87 @@ class _MaterialScreenState extends State<MaterialScreen> {
     _showComingSoon('ระบบดาวน์โหลดไฟล์จะเชื่อมต่อในขั้นตอนถัดไป');
   }
 
+  Future<void> _viewFile(_MaterialFile file) async {
+    if (file.extension.toLowerCase() != 'PDF'.toLowerCase()) {
+      _showComingSoon('ขณะนี้รองรับการดูไฟล์ PDF ภายในแอป');
+      return;
+    }
+
+    if (file.storageKey.isEmpty) {
+      _showError('ไม่พบข้อมูลไฟล์');
+      return;
+    }
+
+    _showLoading('กำลังเปิดไฟล์...');
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/api/materials/download-url'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'storageKey': file.storageKey}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('ไม่สามารถเปิดไฟล์ได้');
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (data['success'] != true) {
+        throw Exception(data['message'] ?? 'ไม่สามารถเปิดไฟล์ได้');
+      }
+
+      final downloadUrl = data['downloadUrl']?.toString();
+
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        throw Exception('ไม่พบ URL ของไฟล์');
+      }
+
+      final fileResponse = await http.get(Uri.parse(downloadUrl));
+
+      if (fileResponse.statusCode != 200) {
+        throw Exception('ไม่สามารถโหลดไฟล์ได้ (${fileResponse.statusCode})');
+      }
+
+      if (fileResponse.bodyBytes.isEmpty) {
+        throw Exception('ไฟล์ที่โหลดมาไม่มีข้อมูล');
+      }
+
+      // ตรวจสอบว่าเป็น PDF จริง
+      final bytes = fileResponse.bodyBytes;
+
+      if (bytes.length < 5 ||
+          bytes[0] != 0x25 || // %
+          bytes[1] != 0x50 || // P
+          bytes[2] != 0x44 || // D
+          bytes[3] != 0x46 || // F
+          bytes[4] != 0x2D) {
+        // -
+        throw Exception('ไฟล์ที่ได้รับไม่ใช่ไฟล์ PDF');
+      }
+
+      if (!mounted) return;
+
+      _hideLoading();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => _PdfViewerScreen(
+            fileName: file.name,
+            bytes: bytes,
+          ),
+        ),
+      );
+    } catch (error) {
+      _hideLoading();
+
+      if (mounted) {
+        _showError('ไม่สามารถเปิดไฟล์ได้\n$error');
+      }
+    }
+  }
+
   // ============================================================
   // ACTIVE SESSION
   // ============================================================
@@ -1897,6 +2018,31 @@ class _MaterialScreenState extends State<MaterialScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _PdfViewerScreen extends StatelessWidget {
+  final String fileName;
+  final Uint8List bytes;
+
+  const _PdfViewerScreen({required this.fileName, required this.bytes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        foregroundColor: Colors.white,
+        title: Text(
+          fileName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+      body: SfPdfViewer.memory(bytes),
     );
   }
 }
@@ -2111,10 +2257,7 @@ class _OverviewItem extends StatelessWidget {
           '$title · $subtitle',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppColors.mutedText,
-            fontSize: 8.5,
-          ),
+          style: const TextStyle(color: AppColors.mutedText, fontSize: 8.5),
         ),
       ],
     );
@@ -2144,9 +2287,7 @@ class _FileIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.accent.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: AppColors.accent.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.22)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -2247,7 +2388,7 @@ class _UploadButton extends StatelessWidget {
           width: double.infinity,
           height: 40,
           child: Row(
-             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.add_rounded, color: Colors.white, size: 22),
               SizedBox(width: 8),
@@ -2365,9 +2506,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
       decoration: const BoxDecoration(
         color: AppColors.navigation,
-        border: Border(
-          top: BorderSide(color: AppColors.navigationBorder),
-        ),
+        border: Border(top: BorderSide(color: AppColors.navigationBorder)),
       ),
       child: Row(
         children: List.generate(_items.length, (index) {
@@ -2517,7 +2656,7 @@ class _UploadOption extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color:AppColors.mutedText,
+                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -2550,9 +2689,7 @@ class _SortOption extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         icon,
-        color: selected
-            ? AppColors.accent
-            : AppColors.secondaryText,
+        color: selected ? AppColors.accent : AppColors.secondaryText,
       ),
       title: Text(
         title,
@@ -2588,10 +2725,7 @@ class _DetailRow extends StatelessWidget {
             width: 75,
             child: Text(
               title,
-              style: const TextStyle(
-                color: AppColors.mutedText,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: AppColors.mutedText, fontSize: 10),
             ),
           ),
           Expanded(

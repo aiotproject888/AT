@@ -7,9 +7,7 @@ import '../services/session_service.dart';
 import 'chat.dart';
 import '../constants/app_colors.dart';
 
-class _HomeColors {
-  
-}
+class _HomeColors {}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -60,11 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     switch (_sortMode) {
       case 'ล่าสุดก่อน':
-        // รายการใน subjects ถูกเก็บตามลำดับล่าสุดอยู่แล้ว
-        break;
+        return result.reversed.toList();
 
       case 'เก่าสุดก่อน':
-        return result.reversed.toList();
+        return result;
 
       case 'ชื่อวิชา A-Z':
         result.sort(
@@ -241,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text(
             'ยินดีต้อนรับ',
             style: TextStyle(
-              color:AppColors.secondaryText,
+              color: AppColors.secondaryText,
               fontSize: 15,
               height: 1.2,
             ),
@@ -264,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.primaryText,
                       fontSize: 15,
                     ),
-                    cursorColor:AppColors.accent,
+                    cursorColor: AppColors.accent,
                     decoration: InputDecoration(
                       hintText: 'ค้นหารายวิชา',
                       hintStyle: const TextStyle(
@@ -360,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               label: const Text('ลองใหม่'),
 
-              style: TextButton.styleFrom(foregroundColor:AppColors.accent),
+              style: TextButton.styleFrom(foregroundColor: AppColors.accent),
             ),
           ],
         ),
@@ -437,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           activeColor: AppColors.accent,
                           checkColor: Colors.white,
                           side: const BorderSide(
-                            color:AppColors.secondaryText,
+                            color: AppColors.secondaryText,
                           ),
                         ),
                       ),
@@ -1043,13 +1040,7 @@ class _NoSearchResults extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
 
         children: [
-          Icon(
-            Icons.search_off_rounded,
-
-            color: AppColors.faintText,
-
-            size: 34,
-          ),
+          Icon(Icons.search_off_rounded, color: AppColors.faintText, size: 34),
 
           SizedBox(height: 10),
 
@@ -1150,11 +1141,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
               const Text(
                 'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
 
-                style: TextStyle(
-                  color: AppColors.secondaryText,
-
-                  fontSize: 15,
-                ),
+                style: TextStyle(color: AppColors.secondaryText, fontSize: 15),
               ),
 
               const SizedBox(height: 18),
