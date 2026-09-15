@@ -7,7 +7,6 @@ import '../services/session_service.dart';
 import 'chat.dart';
 import '../constants/app_colors.dart';
 
-class _HomeColors {}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -198,120 +197,114 @@ class _HomeScreenState extends State<HomeScreen> {
   // Header
   // ============================================================
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 14, 30, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'รายวิชาของฉัน',
-                  style: TextStyle(
-                    color: AppColors.primaryText,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.48,
-                    height: 1.1,
-                  ),
+Widget _buildHeader() {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'รายวิชาของฉัน',
+                style: TextStyle(
+                  color: AppColors.primaryText,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                 ),
               ),
-
-              _SquareIconButton(
-                icon: _isDeleteMode
-                    ? Icons.close_rounded
-                    : Icons.more_vert_rounded,
-                onPressed: () {
-                  setState(() {
-                    _isDeleteMode = !_isDeleteMode;
-                    _selectedSubjects.clear();
-                  });
-                },
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 3),
-
-          const Text(
-            'ยินดีต้อนรับ',
-            style: TextStyle(
-              color: AppColors.secondaryText,
-              fontSize: 15,
-              height: 1.2,
             ),
+
+            _SquareIconButton(
+              icon: _isDeleteMode
+                  ? Icons.close_rounded
+                  : Icons.more_horiz_rounded,
+              onPressed: () {
+                setState(() {
+                  _isDeleteMode = !_isDeleteMode;
+                  _selectedSubjects.clear();
+                });
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 4),
+
+        const Text(
+          'จัดการรายวิชาและเริ่มต้นการสอนของคุณ',
+          style: TextStyle(
+            color: AppColors.secondaryText,
+            fontSize: 14,
           ),
+        ),
 
-          const SizedBox(height: 11),
+        const SizedBox(height: 18),
 
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 47,
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    style: const TextStyle(
-                      color: AppColors.primaryText,
-                      fontSize: 15,
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  style: const TextStyle(
+                    color: AppColors.primaryText,
+                    fontSize: 15,
+                  ),
+                  cursorColor: AppColors.accent,
+                  decoration: InputDecoration(
+                    hintText: 'ค้นหารายวิชา',
+                    hintStyle: const TextStyle(
+                      color: AppColors.mutedText,
+                      fontSize: 14,
                     ),
-                    cursorColor: AppColors.accent,
-                    decoration: InputDecoration(
-                      hintText: 'ค้นหารายวิชา',
-                      hintStyle: const TextStyle(
-                        color: AppColors.mutedText,
-                        fontSize: 15,
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.mutedText,
+                      size: 21,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppColors.surfaceBorder,
                       ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.secondaryText,
-                        size: 22,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.searchBackground,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(
-                          color: AppColors.searchBorder,
-                        ),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(
-                          color: AppColors.searchBorder,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(
-                          color: AppColors.accent,
-                          width: 1.4,
-                        ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppColors.accent,
+                        width: 1.3,
                       ),
                     ),
                   ),
                 ),
               ),
+            ),
 
-              const SizedBox(width: 8),
+            const SizedBox(width: 10),
 
-              _SmallActionButton(
-                icon: Icons.sort_rounded,
-                onPressed: _showSortDialog,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            _SmallActionButton(
+              icon: Icons.tune_rounded,
+              onPressed: _showSortDialog,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   // ============================================================
   // Subject Body
