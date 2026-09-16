@@ -18,9 +18,7 @@ import '../constants/app_colors.dart';
 // Dashboard Colors
 // ============================================================
 
-class _DashboardColors {
-  
-}
+class _DashboardColors {}
 
 enum _SubjectManagementAction { edit, delete }
 
@@ -791,9 +789,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.secondaryText,
-                      side: const BorderSide(
-                        color: AppColors.buttonBorder,
-                      ),
+                      side: const BorderSide(color: AppColors.buttonBorder),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(13),
                       ),
@@ -833,9 +829,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     required VoidCallback onTap,
     bool destructive = false,
   }) {
-    final color = destructive
-        ? AppColors.danger
-        : AppColors.accent;
+    final color = destructive ? AppColors.danger : AppColors.accent;
 
     final background = destructive
         ? const Color(0x1FFF5A5A)
@@ -876,9 +870,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                     Text(
                       title,
                       style: TextStyle(
-                        color: destructive
-                            ? color
-                            : AppColors.primaryText,
+                        color: destructive ? color : AppColors.primaryText,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1032,8 +1024,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                                   Navigator.pop(sheetContext);
                                 },
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor:
-                                      AppColors.secondaryText,
+                                  foregroundColor: AppColors.secondaryText,
                                   side: const BorderSide(
                                     color: AppColors.buttonBorder,
                                   ),
@@ -1153,10 +1144,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.secondaryText,
-            fontSize: 11,
-          ),
+          style: const TextStyle(color: AppColors.secondaryText, fontSize: 11),
         ),
 
         const SizedBox(height: 6),
@@ -1166,25 +1154,18 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           child: TextField(
             controller: controller,
             cursorColor: AppColors.accent,
-            style: const TextStyle(
-              color: AppColors.primaryText,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
             decoration: InputDecoration(
               filled: true,
               fillColor: AppColors.subtleSurface,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
-                borderSide: const BorderSide(
-                  color: AppColors.buttonBorder,
-                ),
+                borderSide: const BorderSide(color: AppColors.buttonBorder),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
-                borderSide: const BorderSide(
-                  color: AppColors.buttonBorder,
-                ),
+                borderSide: const BorderSide(color: AppColors.buttonBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(11),
@@ -1672,17 +1653,13 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           duration: const Duration(milliseconds: 180),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.accentSurface
-                : Colors.transparent,
+            color: selected ? AppColors.accentSurface : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
           ),
           child: Text(
             title,
             style: TextStyle(
-              color: selected
-                  ? AppColors.primaryText
-                  : AppColors.secondaryText,
+              color: selected ? AppColors.primaryText : AppColors.secondaryText,
               fontSize: 12.5,
               fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
             ),
@@ -1841,7 +1818,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       ),
     );
   }
-
 
   Widget _emotionTrendChart() {
     final beforeScore = _calculateEmotionScore(beforeEmotionDistribution);
@@ -2223,12 +2199,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   academicYear: _subject.year,
                   semester: _subject.semester,
                   selectedDate: _selectedDate ?? DateTime.now(),
-                  beforeRespondents: beforeStudentCount,
-                  afterRespondents: afterStudentCount,
-                  beforePositivePercent: beforePositivePercentage,
-                  afterPositivePercent: afterPositivePercentage,
-                  beforeDistribution: beforeEmotionDistribution,
-                  afterDistribution: afterEmotionDistribution,
                 );
               },
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
@@ -2548,9 +2518,7 @@ class _SquareIconButton extends StatelessWidget {
         icon: Icon(
           icon,
           size: 16,
-          color: accent
-              ? AppColors.accent
-              : AppColors.secondaryText,
+          color: accent ? AppColors.accent : AppColors.secondaryText,
         ),
       ),
     );
@@ -2631,9 +2599,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 8, 7, 14),
       decoration: const BoxDecoration(
         color: AppColors.navigation,
-        border: Border(
-          top: BorderSide(color: AppColors.navigationBorder),
-        ),
+        border: Border(top: BorderSide(color: AppColors.navigationBorder)),
       ),
       child: Row(
         children: List.generate(_items.length, (index) {

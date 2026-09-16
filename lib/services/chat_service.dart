@@ -6,14 +6,13 @@ class ChatService {
 
   Future<String> sendMessage({
     required String message,
-    
     List<Map<String, dynamic>>? history,
-
     Map<String, dynamic>? emotionData,
-
     String? subjectCode,
-
     List<Map<String, dynamic>>? lessonMaterials,
+
+    // ใช้สำหรับ Report AI โดยเฉพาะ
+    bool reportAnalysis = false,
 
     String model = 'gpt-oss-120b',
   }) async {
@@ -24,6 +23,8 @@ class ChatService {
         body: jsonEncode({
           'message': message,
 
+          // Chat ปกติยังส่ง history ตามเดิม
+          // แต่ Report AI ฝั่ง backend จะไม่ใช้ history
           'history': history ?? [],
 
           'emotionData': emotionData,
@@ -33,6 +34,9 @@ class ChatService {
           'lessonMaterials': lessonMaterials ?? [],
 
           'model': model,
+
+          // สำคัญสำหรับ Report AI
+          'reportAnalysis': reportAnalysis,
         }),
       );
 
