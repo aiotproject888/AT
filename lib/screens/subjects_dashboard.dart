@@ -1733,7 +1733,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             children: [
               Expanded(
                 child: _summaryItem(
-                  'Students',
+                  'จำนวนนักศึกษา',
                   studentCount.toString(),
                   Icons.people_outline,
                 ),
@@ -1743,7 +1743,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
               Expanded(
                 child: _summaryItem(
-                  'Positive',
+                  'อารมณ์ด้านบวก',
                   '$positivePercentage%',
                   Icons.sentiment_satisfied_alt_outlined,
                 ),

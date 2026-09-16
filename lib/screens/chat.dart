@@ -115,7 +115,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
 
-    if (widget.autoAttachEmotion && widget.emotionData != null) {
+    if (widget.emotionData != null) {
       _emotionData = Map<String, dynamic>.from(widget.emotionData!);
     }
 
@@ -146,7 +146,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final selectedDate = DateTime.now();
 
-      final emotionData = await _emotionService.getEmotionSummaryForAI(
+      final beforeData = await _emotionService.getEmotionSummaryForAI(
         subjectCode: widget.subjectCode!,
         date: selectedDate,
         type: 'before_class',
@@ -156,40 +156,84 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
+      // ============================================================
+      // เริ่มจากข้อมูลเดิม
+      // ============================================================
+
+      final Map<String, dynamic> combinedData = {};
+
+      if (_emotionData != null) {
+        combinedData.addAll(_emotionData!);
+      }
+
+      // เพิ่มก่อนเรียน โดยไม่ลบข้อมูลเดิม
+      combinedData['beforeClass'] = beforeData;
+
+      // ============================================================
+      // คำนวณจำนวนใหม่ทั้งหมด
+      // ============================================================
+
+      int totalResponses = 0;
+
+      final before = combinedData['beforeClass'];
+      final during = combinedData['duringClass'];
+      final after = combinedData['afterClass'];
+
+      if (before is Map<String, dynamic>) {
+        totalResponses +=
+            int.tryParse(before['totalResponses']?.toString() ?? '0') ?? 0;
+      }
+
+      if (during is Map<String, dynamic>) {
+        totalResponses +=
+            int.tryParse(during['totalResponses']?.toString() ?? '0') ?? 0;
+      }
+
+      if (after is Map<String, dynamic>) {
+        totalResponses +=
+            int.tryParse(after['totalResponses']?.toString() ?? '0') ?? 0;
+      }
+
+      combinedData['includeBeforeClass'] = combinedData['beforeClass'] != null;
+
+      combinedData['includeDuringClass'] = combinedData['duringClass'] != null;
+
+      combinedData['includeAfterClass'] = combinedData['afterClass'] != null;
+
+      combinedData['totalResponses'] = totalResponses;
+
       setState(() {
-        _emotionData = emotionData;
+        _emotionData = combinedData;
         _isLoadingEmotion = false;
       });
 
       debugPrint('========== EMOTION ATTACHED ==========');
-      debugPrint('$_emotionData');
+      debugPrint('Data: $_emotionData');
       debugPrint('======================================');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('แนบข้อมูลอารมณ์เรียบร้อยแล้ว'),
+          content: Text('แนบข้อมูลอารมณ์ก่อนเรียนเรียบร้อยแล้ว'),
           duration: Duration(seconds: 2),
         ),
       );
     } catch (error) {
-      debugPrint('โหลดข้อมูล Emotion ไม่สำเร็จ: $error');
-
       if (!mounted) {
         return;
       }
 
       setState(() {
         _isLoadingEmotion = false;
-        _emotionData = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error')),
+        SnackBar(
+          content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error'),
+          duration: const Duration(seconds: 3),
+        ),
       );
     }
   }
-
-  // ============================================================
 
   Future<void> _loadSelectedEmotionData({
     required bool beforeSelected,
@@ -212,11 +256,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final selectedDate = DateTime.now();
 
       Map<String, dynamic>? beforeData;
+      Map<String, dynamic>? duringData;
       Map<String, dynamic>? afterData;
 
-      // ==========================================================
-      // ก่อนเรียน
-      // ==========================================================
+      // ============================================================
+      // โหลดข้อมูลตามช่วงที่เลือก
+      // ============================================================
 
       if (beforeSelected) {
         beforeData = await _emotionService.getEmotionSummaryForAI(
@@ -227,16 +272,12 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       if (duringSelected) {
-        beforeData = await _emotionService.getEmotionSummaryForAI(
+        duringData = await _emotionService.getEmotionSummaryForAI(
           subjectCode: widget.subjectCode!,
           date: selectedDate,
           type: 'during_class',
         );
       }
-
-      // ==========================================================
-      // หลังเรียน
-      // ==========================================================
 
       if (afterSelected) {
         afterData = await _emotionService.getEmotionSummaryForAI(
@@ -246,73 +287,135 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
 
-      if (!mounted) {
-        return;
-      }
-
-      // ==========================================================
-      // สร้างข้อมูลสำหรับส่ง AI
-      // ==========================================================
+      // ============================================================
+      // เริ่มจากข้อมูลเดิมก่อน
+      // เพื่อไม่ให้ข้อมูลที่แนบไปแล้วถูกลบ
+      // ============================================================
 
       final Map<String, dynamic> combinedData = {};
 
-      if (beforeData != null) {
+      if (_emotionData != null) {
+        combinedData.addAll(_emotionData!);
+      }
+
+      // ============================================================
+      // เพิ่มข้อมูลใหม่เข้าไป
+      // ============================================================
+
+      if (beforeSelected && beforeData != null) {
         combinedData['beforeClass'] = beforeData;
       }
 
-      if (afterData != null) {
+      if (duringSelected && duringData != null) {
+        combinedData['duringClass'] = duringData;
+      }
+
+      if (afterSelected && afterData != null) {
         combinedData['afterClass'] = afterData;
       }
 
-      // ==========================================================
-      // รวมจำนวน Responses
-      // ==========================================================
+      // ============================================================
+      // ตรวจสอบว่ามีข้อมูลแต่ละช่วงอยู่จริงหรือไม่
+      // ============================================================
+
+      final bool hasBefore = combinedData['beforeClass'] != null;
+
+      final bool hasDuring = combinedData['duringClass'] != null;
+
+      final bool hasAfter = combinedData['afterClass'] != null;
+
+      // ============================================================
+      // รวมจำนวน responses
+      // ============================================================
 
       int totalResponses = 0;
 
-      if (beforeData != null) {
-        totalResponses +=
-            int.tryParse(beforeData['totalResponses']?.toString() ?? '0') ?? 0;
+      if (hasBefore) {
+        final data = combinedData['beforeClass'];
+
+        if (data is Map<String, dynamic>) {
+          totalResponses +=
+              int.tryParse(data['totalResponses']?.toString() ?? '0') ?? 0;
+        }
       }
 
-      if (afterData != null) {
-        totalResponses +=
-            int.tryParse(afterData['totalResponses']?.toString() ?? '0') ?? 0;
+      if (hasDuring) {
+        final data = combinedData['duringClass'];
+
+        if (data is Map<String, dynamic>) {
+          totalResponses +=
+              int.tryParse(data['totalResponses']?.toString() ?? '0') ?? 0;
+        }
       }
+
+      if (hasAfter) {
+        final data = combinedData['afterClass'];
+
+        if (data is Map<String, dynamic>) {
+          totalResponses +=
+              int.tryParse(data['totalResponses']?.toString() ?? '0') ?? 0;
+        }
+      }
+
+      // ============================================================
+      // เก็บสถานะว่าแนบช่วงไหนไว้บ้าง
+      // ============================================================
+
+      combinedData['includeBeforeClass'] = hasBefore;
+      combinedData['includeDuringClass'] = hasDuring;
+      combinedData['includeAfterClass'] = hasAfter;
 
       combinedData['totalResponses'] = totalResponses;
 
-      // ==========================================================
-      // เก็บข้อมูลว่าผู้ใช้เลือกอะไร
-      // ==========================================================
+      // ============================================================
+      // อัปเดตข้อมูล
+      // ============================================================
 
-      combinedData['includeBeforeClass'] = beforeSelected;
-      combinedData['includeBeforeClass'] = duringSelected;
-      combinedData['includeAfterClass'] = afterSelected;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _emotionData = combinedData;
         _isLoadingEmotion = false;
       });
 
+      // ============================================================
+      // Debug
+      // ============================================================
+
       debugPrint('========== EMOTION ATTACHED ==========');
-      debugPrint('Before class: $beforeSelected');
-      debugPrint('Before class: $duringSelected');
-      debugPrint('After class: $afterSelected');
+      debugPrint('Before: $hasBefore');
+      debugPrint('During: $hasDuring');
+      debugPrint('After: $hasAfter');
       debugPrint('Total responses: $totalResponses');
       debugPrint('Data: $_emotionData');
       debugPrint('======================================');
 
-      String attachedText = 'แนบข้อมูลอารมณ์แล้ว';
+      // ============================================================
+      // ข้อความแจ้งเตือน
+      // ============================================================
 
-      if (beforeSelected && afterSelected) {
-        attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนและหลังเรียนแล้ว';
-      } else if (beforeSelected) {
-        attachedText = 'แนบข้อมูลอารมณ์ก่อนเรียนแล้ว';
-      } else if (duringSelected) {
-        attachedText = 'แนบข้อมูลอารมณ์ระหว่างเรียนแล้ว';
-      } else if (afterSelected) {
-        attachedText = 'แนบข้อมูลอารมณ์หลังเรียนแล้ว';
+      final List<String> attachedParts = [];
+
+      if (beforeSelected) {
+        attachedParts.add('ก่อนเรียน');
+      }
+
+      if (duringSelected) {
+        attachedParts.add('ระหว่างเรียน');
+      }
+
+      if (afterSelected) {
+        attachedParts.add('หลังเรียน');
+      }
+
+      String attachedText;
+
+      if (attachedParts.isEmpty) {
+        attachedText = 'ไม่ได้เลือกข้อมูลอารมณ์';
+      } else {
+        attachedText = 'แนบข้อมูลอารมณ์${attachedParts.join(' + ')}แล้ว';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -322,19 +425,19 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     } catch (error) {
-      debugPrint('โหลดข้อมูล Emotion ไม่สำเร็จ: $error');
-
       if (!mounted) {
         return;
       }
 
       setState(() {
         _isLoadingEmotion = false;
-        _emotionData = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error')),
+        SnackBar(
+          content: Text('ไม่สามารถโหลดข้อมูลอารมณ์ได้: $error'),
+          duration: const Duration(seconds: 3),
+        ),
       );
     }
   }
@@ -443,7 +546,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: (!beforeSelected && !afterSelected)
+                  onPressed:
+                      (!beforeSelected && !duringSelected && !afterSelected)
                       ? null
                       : () async {
                           Navigator.pop(dialogContext);
@@ -452,7 +556,6 @@ class _ChatScreenState extends State<ChatScreen> {
                             beforeSelected: beforeSelected,
                             duringSelected: duringSelected,
                             afterSelected: afterSelected,
-
                           );
                         },
                   child: const Text('ยืนยัน'),
@@ -468,32 +571,26 @@ class _ChatScreenState extends State<ChatScreen> {
   // ============================================================
   // Emotion Status
   // ============================================================
-
   Widget _buildEmotionStatus() {
     if (_isLoadingEmotion) {
       return Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0x1A6C52E5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x476C52E5)),
+          color: Colors.blue.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.blue.withOpacity(0.2)),
         ),
         child: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: 15,
               height: 15,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Color(0xFF6C52E5),
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            SizedBox(width: 9),
-            Text(
-              'กำลังโหลดข้อมูลอารมณ์...',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
+            SizedBox(width: 8),
+            Text('กำลังโหลดข้อมูลอารมณ์...'),
           ],
         ),
       );
@@ -503,48 +600,131 @@ class _ChatScreenState extends State<ChatScreen> {
       return const SizedBox.shrink();
     }
 
-    final total = _emotionData!['totalResponses'] ?? 0;
+    // ============================================================
+    // ตรวจสอบว่ามีข้อมูลช่วงไหนถูกแนบไว้บ้าง
+    // ============================================================
+
+    final bool hasBefore =
+        _emotionData!['beforeClass'] != null ||
+        _emotionData!['type']?.toString() == 'before_class';
+
+    final bool hasDuring =
+        _emotionData!['duringClass'] != null ||
+        _emotionData!['type']?.toString() == 'during_class';
+
+    final bool hasAfter =
+        _emotionData!['afterClass'] != null ||
+        _emotionData!['type']?.toString() == 'after_class';
+
+    final int totalResponses =
+        int.tryParse(_emotionData!['totalResponses']?.toString() ?? '0') ?? 0;
+
+    // ============================================================
+    // ยังไม่มีข้อมูลเลย
+    // ============================================================
+
+    if (!hasBefore && !hasDuring && !hasAfter) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF5C5C).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFF5C5C).withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 17,
+              color: Color(0xFFFF5C5C),
+            ),
+            const SizedBox(width: 7),
+            const Text(
+              'ไม่มีข้อมูล',
+              style: TextStyle(
+                color: Color(0xFFFF5C5C),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _buildRemoveEmotionButton(),
+          ],
+        ),
+      );
+    }
+
+    // ============================================================
+    // สร้างชื่อช่วงที่แนบ
+    // ============================================================
+
+    final List<String> attachedPeriods = [];
+
+    if (hasBefore) {
+      attachedPeriods.add('ก่อนเรียน');
+    }
+
+    if (hasDuring) {
+      attachedPeriods.add('ระหว่างเรียน');
+    }
+
+    if (hasAfter) {
+      attachedPeriods.add('หลังเรียน');
+    }
+
+    final String attachedText = 'แนบข้อมูล: ${attachedPeriods.join(' • ')}';
+
+    // ============================================================
+    // แสดงสถานะข้อมูลที่แนบ
+    // ============================================================
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0x261BAF7A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x4D1BAF7A)),
+        color: Colors.green.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.green.withOpacity(0.2)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
-            Icons.bar_chart_rounded,
-            color: Color(0xFF3DD99A),
-            size: 18,
+            Icons.check_circle_outline_rounded,
+            size: 17,
+            color: Colors.green,
           ),
-
-          const SizedBox(width: 8),
-
-          Expanded(
+          const SizedBox(width: 7),
+          Flexible(
             child: Text(
-              'แนบข้อมูลอารมณ์แล้ว · $total responses',
-              style: const TextStyle(color: Color(0xFF3DD99A), fontSize: 12),
+              '$attachedText · $totalResponses responses',
+              style: const TextStyle(
+                color: Colors.green,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _emotionData = null;
-              });
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(
-              Icons.close_rounded,
-              color: Colors.white54,
-              size: 17,
-            ),
-          ),
+          const SizedBox(width: 8),
+          _buildRemoveEmotionButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRemoveEmotionButton() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _emotionData = null;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: const Padding(
+        padding: EdgeInsets.all(2),
+        child: Icon(Icons.close_rounded, size: 16, color: Colors.grey),
       ),
     );
   }
@@ -2219,42 +2399,99 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _showAIModelPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xff1E1B2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ====================================================
-                // Header
-                // ====================================================
-                Row(
+void _showAIModelPicker() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withOpacity(0.65),
+    builder: (context) {
+      return SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.88,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1B192A),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ==================================================
+              // Handle
+              // ==================================================
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+
+              // ==================================================
+              // Header
+              // ==================================================
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  24,
+                  18,
+                  18,
+                  8,
+                ),
+                child: Row(
                   children: [
-                    const Icon(
-                      Icons.smart_toy_rounded,
-                      color: Color(0xff8B7CF6),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'เลือก AI สำหรับการสนทนา',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C52E5)
+                            .withOpacity(0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFF9B87FF),
+                        size: 25,
                       ),
                     ),
+
+                    const SizedBox(width: 14),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'เลือก AI สำหรับการสนทนา',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+
+                          const SizedBox(height: 5),
+
+                          Text(
+                            'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.55),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     IconButton(
                       onPressed: () {
                         Navigator.pop(context);
@@ -2262,141 +2499,214 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: const Icon(
                         Icons.close_rounded,
                         color: Colors.white54,
+                        size: 27,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // ==================================================
+              // Model List
+              // ==================================================
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    20,
+                    8,
+                    20,
+                    12,
+                  ),
+                  child: Column(
+                    children: [
+                      _buildAIModelOption(
+                        model: 'gpt-oss-120b',
+                        name: 'GPT-OSS 120B',
+                        provider: 'OpenAI',
+                        logo: 'assets/images/GPT_Logo.png',
+                        recommended: true,
+                      ),
+
+                      _buildAIModelOption(
+                        model: 'qwen3.8-27b',
+                        name: 'Qwen 3.8 27B',
+                        provider: 'Qwen',
+                        logo: 'assets/images/QWEN_Logo.webp',
+                      ),
+
+                      _buildAIModelOption(
+                        model: 'lfm-2.5-2.6b',
+                        name: 'LFM2.5-2.6B',
+                        provider: 'Liquid AI',
+                        logo: 'assets/images/LIQUID_Logo.png',
+                      ),
+
+                      _buildAIModelOption(
+                        model: 'nemotron-3-super-120b-a12b',
+                        name: 'Nemotron 3 Super',
+                        provider: 'NVIDIA',
+                        logo: 'assets/images/NVIDIA_Logo.png',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildAIModelOption({
+  required String model,
+  required String name,
+  required String provider,
+  required String logo,
+  bool recommended = false,
+}) {
+  final bool isSelected = _selectedModel == model;
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        _selectedModel = model;
+      });
+
+      Navigator.pop(context);
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: isSelected
+            ? const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Color(0xFF30275E),
+                  Color(0xFF3A286A),
+                ],
+              )
+            : null,
+        color: isSelected
+            ? null
+            : const Color(0xFF12101D),
+        border: Border.all(
+          color: isSelected
+              ? const Color(0xFF806BFF)
+              : Colors.white.withOpacity(0.08),
+          width: isSelected ? 1.4 : 1,
+        ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF6C52E5)
+                      .withOpacity(0.15),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          // ==================================================
+          // Logo
+          // ==================================================
+          Container(
+            width: 58,
+            height: 58,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 255, 255, 255),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Image.asset(
+              logo,
+              fit: BoxFit.contain,
+            ),
+          ),
+
+          const SizedBox(width: 14),
+          
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
 
-                const Text(
-                  'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-
-                const SizedBox(height: 16),
-
-                _buildAIModelOption(
-                  model: 'gpt-oss-120b',
-                  name: 'GPT-OSS 120B',
-                  //description: '',
-                  icon: Icons.psychology_rounded,
-                ),
-
-                const SizedBox(height: 8),
-
-                // ====================================================
-                // Gemini
-                // ====================================================
-                _buildAIModelOption(
-                  model: 'qwen3.8-27b',
-                  name: 'Qwen 3.8 27B',
-                  //description: 'โมเดล AI จาก Google',
-                  icon: Icons.auto_awesome_rounded,
-                ),
-
-                const SizedBox(height: 8),
-
-                _buildAIModelOption(
-                  model: 'lfm-2.5-2.6b',
-                  name: 'LFM2.5-2.6B',
-                  //description: 'โมเดล AI ขนาดเล็กจาก Google',
-                  icon: Icons.smart_toy_rounded,
-                ),
-                const SizedBox(height: 8),
-                _buildAIModelOption(
-                  model: 'nemotron-3-super-120b-a12b',
-                  name: 'Nemotron 3 Super',
-                  //description: 'โมเดล AI ขนาดเล็กจาก Google',
-                  icon: Icons.memory_rounded,
+                Text(
+                  provider,
+                  style: TextStyle(
+                    color: isSelected
+                        ? const Color(0xFFB7AAFF)
+                        : Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
           ),
-        );
-      },
-    );
-  }
 
-  Widget _buildAIModelOption({
-    required String model,
-    required String name,
-    //required String description,
-    required IconData icon,
-  }) {
-    final bool isSelected = _selectedModel == model;
+          const SizedBox(width: 10),
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedModel = model;
-        });
-
-        Navigator.pop(context);
-
-        debugPrint('Selected AI Model: $_selectedModel');
-      },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xff6C52E5).withOpacity(0.18)
-              : const Color(0xff151222),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? const Color(0xff8B7CF6) : Colors.white10,
+          // ==================================================
+          // Selection
+          // ==================================================
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected
+                  ? const Color(0xFF806BFF)
+                  : Colors.transparent,
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF806BFF)
+                    : Colors.white30,
+                width: 1.5,
+              ),
+            ),
+            child: isSelected
+                ? const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  )
+                : null,
           ),
-        ),
-        child: Row(
-          children: [
-            // AI Icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xff6C52E5).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, color: const Color(0xff8B7CF6), size: 21),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Name + Description
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  //Text(
-                  //  description,
-                  //  style: const TextStyle(color: Colors.white54, fontSize: 10.5),
-                  //),
-                ],
-              ),
-            ),
-
-            // Check
-            if (isSelected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: Color(0xff8B7CF6),
-                size: 21,
-              ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ============================================================
   // App Bar

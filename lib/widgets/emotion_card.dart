@@ -411,9 +411,7 @@ class _NoDataWidget extends StatelessWidget {
 }
 
 
-// ======================================================
-// EmotionDonutChart เดิม
-// ======================================================
+
 
 class EmotionDonutChart extends StatelessWidget {
   final Map<String, int> emotionData;
@@ -423,9 +421,36 @@ class EmotionDonutChart extends StatelessWidget {
     required this.emotionData,
   });
 
-  static const Color purple = Color(0xff7C5CFC);
-  static const Color blue = Color(0xff4F8CFF);
-  static const Color pink = Color(0xffD66BFF);
+  Color _getEmotionColor(String emotion) {
+  switch (emotion) {
+    case 'รู้สึกสนใจ':
+      return const Color(0xFFFF9800); // ส้ม
+
+    case 'รู้สึกตื่นเต้น':
+      return const Color(0xFFF44336); // แดง
+
+    case 'รู้สึกสนุกสนาน':
+      return const Color(0xFFFFC107); // เหลือง
+
+    case 'รู้สึกเฉยๆ':
+      return const Color(0xFF9E9E9E); // เทา
+
+    case 'รู้สึกเบื่อหน่าย':
+      return const Color(0xFF795548); // น้ำตาล
+
+    case 'รู้สึกกลัว':
+      return const Color(0xFF1A237E); // น้ำเงินเข้ม
+
+    case 'รู้สึกวิตกกังวล':
+      return const Color(0xFF7B1FA2); // ม่วง
+
+    case 'รู้สึกเครียด':
+      return const Color(0xFF4F6F52); // เขียวเข้มอมเทา
+
+    default:
+      return const Color(0xFF9E9E9E); // ไม่ระบุ
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -448,37 +473,22 @@ class EmotionDonutChart extends StatelessWidget {
 
     final sections = <PieChartSectionData>[];
 
-    final colors = [
-      purple,
-      blue,
-      pink,
-      Colors.orange,
-      Colors.green,
-      Colors.red,
-      Colors.cyan,
-      Colors.yellow,
-    ];
-
-    int index = 0;
 
     emotionData.forEach((emotion, count) {
-      final percentage = (count / total) * 100;
 
       sections.add(
         PieChartSectionData(
           value: count.toDouble(),
-          title: '${percentage.round()}%',
+          title: '$count คน',
           radius: 55,
           titleStyle: const TextStyle(
             color: Colors.white,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
-          color: colors[index % colors.length],
+         color: _getEmotionColor(emotion),
         ),
       );
-
-      index++;
     });
 
     return Row(
@@ -513,11 +523,7 @@ class EmotionDonutChart extends StatelessWidget {
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: colors[
-                            emotionData.keys
-                                    .toList()
-                                    .indexOf(entry.key) %
-                                colors.length],
+                        color: _getEmotionColor(entry.key),
                         shape: BoxShape.circle,
                       ),
                     ),

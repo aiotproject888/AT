@@ -8,9 +8,7 @@ class SessionService {
     'current_session',
   );
 
-  // =====================================================
-  // เริ่ม Session
-  // =====================================================
+  static const Duration inactivityLimit = Duration(hours: 3);
 
   Future<String> startSession({required String subjectCode}) async {
     // ปิด Session ที่ active อยู่ก่อน
@@ -32,7 +30,12 @@ class SessionService {
       'status': 'active',
       'startTime': FieldValue.serverTimestamp(),
       'endTime': null,
+
+      // ใช้สำหรับตรวจสอบว่า Session มีการ Activity ล่าสุดเมื่อไร
+      'lastActivityTime': FieldValue.serverTimestamp(),
     });
+
+
 
     final sessionId = sessionRef.id;
 
@@ -40,11 +43,98 @@ class SessionService {
     await _currentSessionRef.set({
       'sessionId': sessionId,
       'subjectCode': subjectCode,
-      //'type': 'before_class',
       'status': 'active',
+      'lastActivityTime': ServerValue.timestamp,
     });
 
     return sessionId;
+  }
+
+
+  // อัปเดตเวลาการใช้งานล่าสุด
+  Future<void> updateLastActivity(String sessionId) async {
+    try {
+      // อัปเดตใน Firestore
+      await _firestore
+          .collection('class_sessions')
+          .doc(sessionId)
+          .update({
+        'lastActivityTime': FieldValue.serverTimestamp(),
+      });
+
+      // อัปเดตใน RTDB ด้วย
+      final currentSnapshot = await _currentSessionRef.get();
+
+      if (currentSnapshot.exists &&
+          currentSnapshot.value != null) {
+        final data = Map<String, dynamic>.from(
+          currentSnapshot.value as Map,
+        );
+
+        if (data['sessionId'] == sessionId &&
+            data['status'] == 'active') {
+          await _currentSessionRef.update({
+            'lastActivityTime': ServerValue.timestamp,
+          });
+        }
+      }
+    } catch (e) {
+      print(
+        'อัปเดต Activity ของ Session $sessionId ไม่สำเร็จ: $e',
+      );
+    }
+  }
+
+  // ตรวจสอบ Session ว่าหมดอายุจากการไม่มี Activity หรือไม่
+  Future<bool> checkAndAutoCloseSession(
+    String sessionId,
+  ) async {
+    try {
+      final doc = await _firestore
+          .collection('class_sessions')
+          .doc(sessionId)
+          .get();
+
+      if (!doc.exists) {
+        return false;
+      }
+
+      final data = doc.data();
+
+      if (data == null || data['status'] != 'active') {
+        return false;
+      }
+
+      final lastActivity = data['lastActivityTime'];
+
+      // ถ้ายังไม่มี lastActivityTime
+      // ให้ถือว่ายังไม่ต้องปิด
+      if (lastActivity is! Timestamp) {
+        return false;
+      }
+
+      final lastActivityTime = lastActivity.toDate();
+
+      final now = DateTime.now();
+
+      final inactiveDuration =
+          now.difference(lastActivityTime);
+
+      // ถ้าไม่มี Activity ครบ 3 ชั่วโมง
+      if (inactiveDuration >= inactivityLimit) {
+        await endSession(sessionId);
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print(
+        'ตรวจสอบ Auto Close Session $sessionId ไม่สำเร็จ: $e',
+      );
+
+      return false;
+    }
   }
 
   // =====================================================
@@ -84,11 +174,24 @@ class SessionService {
   // ดึง Session ที่กำลัง Active
   // =====================================================
 
-  Future<Map<String, dynamic>?> getActiveSession(String subjectCode) async {
+   // =====================================================
+  // ดึง Session ที่กำลัง Active
+  // พร้อมตรวจสอบ Auto Close
+  // =====================================================
+
+  Future<Map<String, dynamic>?> getActiveSession(
+    String subjectCode,
+  ) async {
     final snapshot = await _firestore
         .collection('class_sessions')
-        .where('subjectCode', isEqualTo: subjectCode)
-        .where('status', isEqualTo: 'active')
+        .where(
+          'subjectCode',
+          isEqualTo: subjectCode,
+        )
+        .where(
+          'status',
+          isEqualTo: 'active',
+        )
         .limit(1)
         .get();
 
@@ -98,7 +201,19 @@ class SessionService {
 
     final doc = snapshot.docs.first;
 
-    return {'sessionId': doc.id, ...doc.data()};
+    // ตรวจสอบว่าไม่มี Activity เกิน 3 ชั่วโมงหรือไม่
+    final autoClosed =
+        await checkAndAutoCloseSession(doc.id);
+
+    // ถ้าถูกปิดอัตโนมัติแล้ว
+    if (autoClosed) {
+      return null;
+    }
+
+    return {
+      'sessionId': doc.id,
+      ...doc.data(),
+    };
   }
 
   // =====================================================

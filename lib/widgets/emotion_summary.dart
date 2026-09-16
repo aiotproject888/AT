@@ -17,22 +17,123 @@ class EmotionSummary extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final String type =
-        data['type']?.toString() ?? 'before_class';
+    // ------------------------------------------------------------
+    // อ่านจำนวน responses ของแต่ละช่วง
+    // ------------------------------------------------------------
 
-    final String date =
-        data['date']?.toString() ?? '';
+    final beforeData = data['beforeClass'];
+    final duringData = data['duringClass'];
+    final afterData = data['afterClass'];
 
-    final int totalResponses =
-        (data['totalResponses'] as num?)?.toInt() ?? 0;
+    final bool hasBefore = beforeData != null;
+    final bool hasDuring = duringData != null;
+    final bool hasAfter = afterData != null;
 
-    final String classType =
-        type == 'before_class'
-            ? 'ก่อนเรียน'
-            : type == 'after_class'
-                ? 'หลังเรียน'
-                : type;
+    int getTotalResponses(dynamic section) {
+      if (section is Map) {
+        final value = section['totalResponses'];
 
+        if (value is num) {
+          return value.toInt();
+        }
+
+        return int.tryParse(value?.toString() ?? '0') ?? 0;
+      }
+
+      return 0;
+    }
+
+    final int beforeResponses = getTotalResponses(beforeData);
+    final int duringResponses = getTotalResponses(duringData);
+    final int afterResponses = getTotalResponses(afterData);
+
+    // ------------------------------------------------------------
+    // รองรับข้อมูลแบบเก่า
+    // กรณี emotionData ยังเป็นข้อมูลช่วงเดียว
+    // ------------------------------------------------------------
+
+    if (!hasBefore && !hasDuring && !hasAfter) {
+      final String type =
+          data['type']?.toString() ?? 'before_class';
+
+      final int totalResponses =
+          (data['totalResponses'] as num?)?.toInt() ?? 0;
+
+      String classType;
+
+      switch (type) {
+        case 'before_class':
+          classType = 'ก่อนเรียน';
+          break;
+
+        case 'during_class':
+          classType = 'ระหว่างเรียน';
+          break;
+
+        case 'after_class':
+          classType = 'หลังเรียน';
+          break;
+
+        default:
+          classType = type;
+      }
+
+      return _buildEmotionCard(
+        context,
+        [
+          _EmotionItem(
+            title: classType,
+            responses: totalResponses,
+          ),
+        ],
+      );
+    }
+
+    // ------------------------------------------------------------
+    // ข้อมูลแบบใหม่
+    // แสดงเฉพาะช่วงที่มีการแนบข้อมูล
+    // ------------------------------------------------------------
+
+    final List<_EmotionItem> items = [];
+
+    if (hasBefore) {
+      items.add(
+        _EmotionItem(
+          title: 'ก่อนเรียน',
+          responses: beforeResponses,
+        ),
+      );
+    }
+
+    if (hasDuring) {
+      items.add(
+        _EmotionItem(
+          title: 'ระหว่างเรียน',
+          responses: duringResponses,
+        ),
+      );
+    }
+
+    if (hasAfter) {
+      items.add(
+        _EmotionItem(
+          title: 'หลังเรียน',
+          responses: afterResponses,
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildEmotionCard(context, items);
+  }
+
+  Widget _buildEmotionCard(
+    BuildContext context,
+    List<_EmotionItem> items,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
@@ -47,6 +148,7 @@ class EmotionSummary extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 38,
@@ -79,17 +181,18 @@ class EmotionSummary extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 3),
+                const SizedBox(height: 6),
 
-                Text(
-                  '$classType'
-                  '${date.isNotEmpty ? ' • $date' : ''}'
-                  ' • $totalResponses responses',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 11,
+                ...items.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(
+                      '${item.title} · ${item.responses} responses',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -99,4 +202,14 @@ class EmotionSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EmotionItem {
+  final String title;
+  final int responses;
+
+  const _EmotionItem({
+    required this.title,
+    required this.responses,
+  });
 }
