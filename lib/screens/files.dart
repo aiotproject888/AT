@@ -12,8 +12,6 @@ import '../services/emotion_service.dart';
 import '../services/session_service.dart';
 import '../constants/app_colors.dart';
 
-class _MaterialColors {}
-
 class MaterialScreen extends StatefulWidget {
   final String subjectName;
   final String subjectCode;
