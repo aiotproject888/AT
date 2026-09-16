@@ -2333,18 +2333,26 @@ class _ChatScreenState extends State<ChatScreen> {
         debugPrint('บันทึกข้อความ User ไม่สำเร็จ: $e');
       }
 
+      final history = messages.where((m) => m.text.trim().isNotEmpty).toList();
+
+      if (history.isNotEmpty && !history.last.isAI) {
+        history.removeLast();
+      }
+
+      final historyForAI = history
+          .map(
+            (m) => {'role': m.isAI ? 'assistant' : 'user', 'content': m.text},
+          )
+          .toList();
+
       final String answer = await _chatService.sendMessage(
         message: userMessage,
-
+        history: historyForAI,
         emotionData: attachedEmotionData,
-
         subjectCode: widget.subjectCode,
-
         lessonMaterials: materialsForAI,
-
         model: _selectedModel,
       );
-
       if (!mounted) {
         return;
       }
@@ -2399,314 +2407,288 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-void _showAIModelPicker() {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.65),
-    builder: (context) {
-      return SafeArea(
-        top: false,
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.88,
-          ),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1B192A),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
+  void _showAIModelPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.65),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ==================================================
-              // Handle
-              // ==================================================
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1B192A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ==================================================
+                // Handle
+                // ==================================================
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
 
-              // ==================================================
-              // Header
-              // ==================================================
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  24,
-                  18,
-                  18,
-                  8,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6C52E5)
-                            .withOpacity(0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Color(0xFF9B87FF),
-                        size: 25,
-                      ),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'เลือก AI สำหรับการสนทนา',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-
-                          const SizedBox(height: 5),
-
-                          Text(
-                            'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.55),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: Colors.white54,
-                        size: 27,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // ==================================================
-              // Model List
-              // ==================================================
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    20,
-                    8,
-                    20,
-                    12,
-                  ),
-                  child: Column(
+                // ==================================================
+                // Header
+                // ==================================================
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 18, 18, 8),
+                  child: Row(
                     children: [
-                      _buildAIModelOption(
-                        model: 'gpt-oss-120b',
-                        name: 'GPT-OSS 120B',
-                        provider: 'OpenAI',
-                        logo: 'assets/images/GPT_Logo.png',
-                        recommended: true,
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6C52E5).withOpacity(0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Color(0xFF9B87FF),
+                          size: 25,
+                        ),
                       ),
 
-                      _buildAIModelOption(
-                        model: 'qwen3.8-27b',
-                        name: 'Qwen 3.8 27B',
-                        provider: 'Qwen',
-                        logo: 'assets/images/QWEN_Logo.webp',
+                      const SizedBox(width: 14),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'เลือก AI สำหรับการสนทนา',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+
+                            const SizedBox(height: 5),
+
+                            Text(
+                              'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.55),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
-                      _buildAIModelOption(
-                        model: 'lfm-2.5-2.6b',
-                        name: 'LFM2.5-2.6B',
-                        provider: 'Liquid AI',
-                        logo: 'assets/images/LIQUID_Logo.png',
-                      ),
-
-                      _buildAIModelOption(
-                        model: 'nemotron-3-super-120b-a12b',
-                        name: 'Nemotron 3 Super',
-                        provider: 'NVIDIA',
-                        logo: 'assets/images/NVIDIA_Logo.png',
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white54,
+                          size: 27,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
 
-Widget _buildAIModelOption({
-  required String model,
-  required String name,
-  required String provider,
-  required String logo,
-  bool recommended = false,
-}) {
-  final bool isSelected = _selectedModel == model;
+                const SizedBox(height: 10),
 
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        _selectedModel = model;
-      });
-
-      Navigator.pop(context);
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: isSelected
-            ? const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color(0xFF30275E),
-                  Color(0xFF3A286A),
-                ],
-              )
-            : null,
-        color: isSelected
-            ? null
-            : const Color(0xFF12101D),
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFF806BFF)
-              : Colors.white.withOpacity(0.08),
-          width: isSelected ? 1.4 : 1,
-        ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF6C52E5)
-                      .withOpacity(0.15),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          // ==================================================
-          // Logo
-          // ==================================================
-          Container(
-            width: 58,
-            height: 58,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 255, 255, 255),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Image.asset(
-              logo,
-              fit: BoxFit.contain,
-            ),
-          ),
-
-          const SizedBox(width: 14),
-          
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                // ==================================================
+                // Model List
+                // ==================================================
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Column(
+                      children: [
+                        _buildAIModelOption(
+                          model: 'gpt-oss-120b',
+                          name: 'GPT-OSS 120B',
+                          provider: 'OpenAI',
+                          logo: 'assets/images/GPT_Logo.png',
+                          recommended: true,
                         ),
-                      ),
+
+                        _buildAIModelOption(
+                          model: 'qwen3.8-27b',
+                          name: 'Qwen 3.8 27B',
+                          provider: 'Qwen',
+                          logo: 'assets/images/QWEN_Logo.webp',
+                        ),
+
+                        _buildAIModelOption(
+                          model: 'lfm-2.5-2.6b',
+                          name: 'LFM2.5-2.6B',
+                          provider: 'Liquid AI',
+                          logo: 'assets/images/LIQUID_Logo.png',
+                        ),
+
+                        _buildAIModelOption(
+                          model: 'nemotron-3-super-120b-a12b',
+                          name: 'Nemotron 3 Super',
+                          provider: 'NVIDIA',
+                          logo: 'assets/images/NVIDIA_Logo.png',
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  provider,
-                  style: TextStyle(
-                    color: isSelected
-                        ? const Color(0xFFB7AAFF)
-                        : Colors.white38,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
 
-          const SizedBox(width: 10),
+  Widget _buildAIModelOption({
+    required String model,
+    required String name,
+    required String provider,
+    required String logo,
+    bool recommended = false,
+  }) {
+    final bool isSelected = _selectedModel == model;
 
-          // ==================================================
-          // Selection
-          // ==================================================
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected
-                  ? const Color(0xFF806BFF)
-                  : Colors.transparent,
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF806BFF)
-                    : Colors.white30,
-                width: 1.5,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedModel = model;
+        });
+
+        Navigator.pop(context);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: isSelected
+              ? const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF30275E), Color(0xFF3A286A)],
+                )
+              : null,
+          color: isSelected ? null : const Color(0xFF12101D),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF806BFF)
+                : Colors.white.withOpacity(0.08),
+            width: isSelected ? 1.4 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF6C52E5).withOpacity(0.15),
+                    blurRadius: 18,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            // ==================================================
+            // Logo
+            // ==================================================
+            Container(
+              width: 58,
+              height: 58,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 255, 255, 255),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Image.asset(logo, fit: BoxFit.contain),
+            ),
+
+            const SizedBox(width: 14),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    provider,
+                    style: TextStyle(
+                      color: isSelected
+                          ? const Color(0xFFB7AAFF)
+                          : Colors.white38,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: isSelected
-                ? const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  )
-                : null,
-          ),
-        ],
+
+            const SizedBox(width: 10),
+
+            // ==================================================
+            // Selection
+            // ==================================================
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? const Color(0xFF806BFF)
+                    : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF806BFF) : Colors.white30,
+                  width: 1.5,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    )
+                  : null,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ============================================================
   // App Bar
