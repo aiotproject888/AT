@@ -1715,16 +1715,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   Icons.people_outline,
                 ),
               ),
-
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: _summaryItem(
-                  'อารมณ์ด้านบวก',
-                  '$positivePercentage%',
-                  Icons.sentiment_satisfied_alt_outlined,
-                ),
-              ),
             ],
           ),
 
