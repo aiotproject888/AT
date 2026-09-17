@@ -457,11 +457,11 @@ class _ChatScreenState extends State<ChatScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: const Color(0xff1E1B2E),
+              backgroundColor: AppColors.dialogBackground,
               title: const Text(
                 'แนบข้อมูลอารมณ์',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -472,15 +472,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   CheckboxListTile(
                     value: beforeSelected,
                     activeColor: AppColors.accent,
-                    checkColor: Colors.white,
+                    checkColor: AppColors.onAccent,
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'ก่อนเรียน',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์ก่อนเริ่มเรียน',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -492,15 +492,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   CheckboxListTile(
                     value: duringSelected,
                     activeColor: AppColors.accent,
-                    checkColor: Colors.white,
+                    checkColor: AppColors.onAccent,
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'ระหว่างเรียน',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์ระหว่างเริ่มเรียน',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -512,15 +512,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   CheckboxListTile(
                     value: afterSelected,
                     activeColor: AppColors.accent,
-                    checkColor: Colors.white,
+                    checkColor: AppColors.onAccent,
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'หลังเรียน',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์หลังเรียน',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -537,14 +537,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                   child: const Text(
                     'ยกเลิก',
-                    style: TextStyle(color: Colors.white60),
+                    style: TextStyle(color: AppColors.secondaryText),
                   ),
                 ),
 
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.onAccent,
                   ),
                   onPressed:
                       (!beforeSelected && !duringSelected && !afterSelected)
@@ -577,9 +577,9 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.08),
+          color: AppColors.cyanSurface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.blue.withOpacity(0.2)),
+          border: Border.all(color: AppColors.cyanBorder),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -628,9 +628,9 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFFF5C5C).withOpacity(0.08),
+          color: AppColors.dangerSoftSurface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFFF5C5C).withOpacity(0.2)),
+          border: Border.all(color: AppColors.dangerBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -638,13 +638,13 @@ class _ChatScreenState extends State<ChatScreen> {
             const Icon(
               Icons.info_outline_rounded,
               size: 17,
-              color: Color(0xFFFF5C5C),
+              color: AppColors.danger,
             ),
             const SizedBox(width: 7),
             const Text(
               'ไม่มีข้อมูล',
               style: TextStyle(
-                color: Color(0xFFFF5C5C),
+                color: AppColors.danger,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -684,9 +684,9 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.08),
+        color: AppColors.greenSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
+        border: Border.all(color: AppColors.greenBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -694,14 +694,14 @@ class _ChatScreenState extends State<ChatScreen> {
           const Icon(
             Icons.check_circle_outline_rounded,
             size: 17,
-            color: Colors.green,
+            color: AppColors.greenText,
           ),
           const SizedBox(width: 7),
           Flexible(
             child: Text(
               '$attachedText · $totalResponses responses',
               style: const TextStyle(
-                color: Colors.green,
+                color: AppColors.greenText,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -724,7 +724,7 @@ class _ChatScreenState extends State<ChatScreen> {
       borderRadius: BorderRadius.circular(20),
       child: const Padding(
         padding: EdgeInsets.all(2),
-        child: Icon(Icons.close_rounded, size: 16, color: Colors.grey),
+        child: Icon(Icons.close_rounded, size: 16, color: AppColors.mutedText),
       ),
     );
   }
@@ -780,7 +780,7 @@ class _ChatScreenState extends State<ChatScreen> {
             final materials = _lessonMaterials;
 
             return AlertDialog(
-              backgroundColor: const Color(0xff1E1B2E),
+              backgroundColor: AppColors.dialogBackground,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -790,7 +790,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.18),
+                      color: AppColors.strongAccentSurface,
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: const Icon(
@@ -804,7 +804,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Text(
                       'แนบสื่อการสอน',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.primaryText,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -823,7 +823,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       Text(
                         'ไฟล์ในห้องเรียน ${widget.subjectCode}',
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: AppColors.secondaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -849,7 +849,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     children: const [
                                       Icon(
                                         Icons.folder_open_rounded,
-                                        color: Colors.white38,
+                                        color: AppColors.faintText,
                                         size: 40,
                                       ),
                                       SizedBox(height: 10),
@@ -857,7 +857,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         'ยังไม่มีไฟล์ที่พร้อมให้ AI ใช้งาน',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: Colors.white70,
+                                          color: AppColors.secondaryText,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -866,7 +866,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         'อัปโหลดไฟล์ใหม่ได้จากปุ่มด้านล่าง',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: Colors.white38,
+                                          color: AppColors.faintText,
                                           fontSize: 10.5,
                                         ),
                                       ),
@@ -878,7 +878,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 shrinkWrap: true,
                                 itemCount: materials.length,
                                 separatorBuilder: (_, __) => const Divider(
-                                  color: Colors.white10,
+                                  color: AppColors.lightSurfaceBorder,
                                   height: 1,
                                 ),
                                 itemBuilder: (context, index) {
@@ -898,7 +898,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     dense: true,
                                     value: isSelected,
                                     activeColor: AppColors.accent,
-                                    checkColor: Colors.white,
+                                    checkColor: AppColors.onAccent,
                                     controlAffinity:
                                         ListTileControlAffinity.leading,
                                     secondary: Icon(
@@ -916,7 +916,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.primaryText,
                                         fontSize: 12.5,
                                       ),
                                     ),
@@ -925,7 +925,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                           ? 'พร้อมให้ AI วิเคราะห์'
                                           : '$fileType · พร้อมให้ AI วิเคราะห์',
                                       style: const TextStyle(
-                                        color: Colors.white54,
+                                        color: AppColors.mutedText,
                                         fontSize: 10.5,
                                       ),
                                     ),
@@ -990,7 +990,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                   child: const Text(
                     'ยกเลิก',
-                    style: TextStyle(color: Colors.white60),
+                    style: TextStyle(color: AppColors.secondaryText),
                   ),
                 ),
               ],
@@ -1418,7 +1418,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     height: 34,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.25),
+                      color: AppColors.accentBorder,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(
@@ -1441,7 +1441,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.primaryText,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1452,7 +1452,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         const Text(
                           'แนบสื่อการสอนแล้ว · AI สามารถใช้เนื้อหาได้',
                           style: TextStyle(
-                            color: Colors.white60,
+                            color: AppColors.secondaryText,
                             fontSize: 9.5,
                           ),
                         ),
@@ -1475,7 +1475,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     icon: const Icon(
                       Icons.close_rounded,
                       size: 18,
-                      color: Colors.white60,
+                      color: AppColors.secondaryText,
                     ),
                   ),
                 ],
@@ -1514,7 +1514,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       height: 34,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withOpacity(0.25),
+                        color: AppColors.accentBorder,
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: Icon(
@@ -1537,7 +1537,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.primaryText,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1548,7 +1548,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           const Text(
                             'แนบไฟล์แล้ว · AI สามารถใช้เนื้อหาได้',
                             style: TextStyle(
-                              color: Colors.white60,
+                              color: AppColors.secondaryText,
                               fontSize: 9.5,
                             ),
                           ),
@@ -1567,7 +1567,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: const Icon(
                         Icons.close_rounded,
                         size: 18,
-                        color: Colors.white60,
+                        color: AppColors.secondaryText,
                       ),
                     ),
                   ],
@@ -1967,7 +1967,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final pickedDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -1979,7 +1979,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF19162A),
+                  color: AppColors.sheetBackground,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 child: SingleChildScrollView(
@@ -1991,7 +1991,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         width: 45,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.white24,
+                          color: AppColors.dragHandle,
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -2041,7 +2041,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: AppColors.accentSurface,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppColors.accent.withOpacity(0.25),
+                            color: AppColors.accentBorder,
                           ),
                         ),
                         child: Row(
@@ -2070,9 +2070,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       // ปฏิทิน
                       Theme(
                         data: Theme.of(context).copyWith(
-                          colorScheme: const ColorScheme.dark(
+                          colorScheme: const ColorScheme.light(
                             primary: AppColors.accent,
-                            surface: Color(0xFF19162A),
+                            surface: AppColors.sheetBackground,
+                            onSurface: AppColors.primaryText,
                           ),
                         ),
                         child: CalendarDatePicker(
@@ -2133,7 +2134,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor: AppColors.accent,
-                                  foregroundColor: AppColors.primaryText,
+                                  foregroundColor: AppColors.onAccent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(13),
                                   ),
@@ -2411,8 +2412,8 @@ class _ChatScreenState extends State<ChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.65),
+      backgroundColor: AppColors.transparent,
+      barrierColor: AppColors.loadingOverlay,
       builder: (context) {
         return SafeArea(
           top: false,
@@ -2421,7 +2422,7 @@ class _ChatScreenState extends State<ChatScreen> {
               maxHeight: MediaQuery.of(context).size.height * 0.88,
             ),
             decoration: const BoxDecoration(
-              color: Color(0xFF1B192A),
+              color: AppColors.sheetBackground,
               borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
@@ -2436,7 +2437,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: AppColors.dragHandle,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -2453,12 +2454,12 @@ class _ChatScreenState extends State<ChatScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6C52E5).withOpacity(0.18),
+                          color: AppColors.strongAccentSurface,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.auto_awesome_rounded,
-                          color: Color(0xFF9B87FF),
+                          color: AppColors.accent,
                           size: 25,
                         ),
                       ),
@@ -2472,7 +2473,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             const Text(
                               'เลือก AI สำหรับการสนทนา',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.primaryText,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -2483,7 +2484,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             Text(
                               'เลือกโมเดล AI ที่ต้องการใช้ในการตอบคำถาม',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.55),
+                                color: AppColors.secondaryText,
                                 fontSize: 12,
                               ),
                             ),
@@ -2497,7 +2498,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         },
                         icon: const Icon(
                           Icons.close_rounded,
-                          color: Colors.white54,
+                          color: AppColors.mutedText,
                           size: 27,
                         ),
                       ),
@@ -2582,20 +2583,20 @@ class _ChatScreenState extends State<ChatScreen> {
               ? const LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [Color(0xFF30275E), Color(0xFF3A286A)],
+                  colors: [AppColors.headerGradientStart, AppColors.headerGradientMid],
                 )
               : null,
-          color: isSelected ? null : const Color(0xFF12101D),
+          color: isSelected ? null : AppColors.surface,
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF806BFF)
-                : Colors.white.withOpacity(0.08),
+                ? AppColors.accentBorder
+                : AppColors.surfaceBorder,
             width: isSelected ? 1.4 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6C52E5).withOpacity(0.15),
+                    color: AppColors.strongAccentSurface,
                     blurRadius: 18,
                     spreadRadius: 1,
                   ),
@@ -2612,7 +2613,7 @@ class _ChatScreenState extends State<ChatScreen> {
               height: 58,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 255, 255, 255),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Image.asset(logo, fit: BoxFit.contain),
@@ -2632,7 +2633,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.primaryText,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                           ),
@@ -2647,8 +2648,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     provider,
                     style: TextStyle(
                       color: isSelected
-                          ? const Color(0xFFB7AAFF)
-                          : Colors.white38,
+                          ? AppColors.accent
+                          : AppColors.faintText,
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -2669,17 +2670,17 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected
-                    ? const Color(0xFF806BFF)
-                    : Colors.transparent,
+                    ? AppColors.accent
+                    : AppColors.transparent,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF806BFF) : Colors.white30,
+                  color: isSelected ? AppColors.accent : AppColors.lightMutedText,
                   width: 1.5,
                 ),
               ),
               child: isSelected
                   ? const Icon(
                       Icons.check_rounded,
-                      color: Colors.white,
+                      color: AppColors.onAccent,
                       size: 16,
                     )
                   : null,
@@ -2784,7 +2785,7 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xff1E1B2E),
+        color: AppColors.dialogBackground,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -2792,7 +2793,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.menu_book_rounded, color: Color(0xff8B7CF6)),
+              const Icon(Icons.menu_book_rounded, color: AppColors.accent),
 
               const SizedBox(width: 8),
 
@@ -2800,7 +2801,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Text(
                   'เอกสารที่ใช้ในการวิเคราะห์',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.primaryText,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2809,7 +2810,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
               Text(
                 '${_selectedLessonMaterials.length}/${_lessonMaterials.length}',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
               ),
             ],
           ),
@@ -2818,7 +2819,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const Text(
             'เลือกไฟล์ที่ต้องการให้ AI ใช้ในการวิเคราะห์',
-            style: TextStyle(color: Colors.white60, fontSize: 12),
+            style: TextStyle(color: AppColors.secondaryText, fontSize: 12),
           ),
 
           const SizedBox(height: 10),
@@ -2832,15 +2833,15 @@ class _ChatScreenState extends State<ChatScreen> {
               contentPadding: EdgeInsets.zero,
               dense: true,
               value: isSelected,
-              activeColor: const Color(0xff6C52E5),
-              checkColor: Colors.white,
+              activeColor: AppColors.accent,
+              checkColor: AppColors.onAccent,
               title: Text(
                 material['fileName']?.toString() ?? 'ไม่ทราบชื่อไฟล์',
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
               ),
               subtitle: Text(
                 material['fileType']?.toString() ?? '',
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
+                style: const TextStyle(color: AppColors.mutedText, fontSize: 11),
               ),
               onChanged: (value) {
                 setState(() {
@@ -3058,8 +3059,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 9, 20, 12),
       decoration: const BoxDecoration(
-        color: Color(0x08FFFFFF),
-        border: Border(top: BorderSide(color: Color(0x12FFFFFF))),
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.navigationBorder)),
       ),
       child: Row(
         children: [
@@ -3097,7 +3098,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   contentPadding: EdgeInsets.zero,
                   hintText: 'พิมพ์ข้อความ หรือแนบไฟล์...',
                   hintStyle: TextStyle(
-                    color: Color(0x40FFFFFF),
+                    color: AppColors.faintText,
                     fontSize: 12.5,
                   ),
                 ),
@@ -3112,10 +3113,10 @@ class _ChatScreenState extends State<ChatScreen> {
             height: 36,
             child: Material(
               color: isSending
-                  ? AppColors.accent.withOpacity(0.45)
+                  ? AppColors.disabledAccent
                   : AppColors.accent,
               borderRadius: BorderRadius.circular(11),
-              shadowColor: AppColors.accent.withOpacity(0.4),
+              shadowColor: AppColors.accentShadow,
               elevation: 7,
               child: InkWell(
                 onTap: isSending
@@ -3127,7 +3128,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: const Icon(
                   Icons.send_rounded,
                   size: 16,
-                  color: AppColors.primaryText,
+                  color: AppColors.onAccent,
                 ),
               ),
             ),
@@ -3164,15 +3165,15 @@ class _ChatScreenState extends State<ChatScreen> {
       child: AbsorbPointer(
         absorbing: true,
         child: Container(
-          color: Colors.black.withOpacity(0.65),
+          color: AppColors.loadingOverlay,
           child: Center(
             child: Container(
               width: 280,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               decoration: BoxDecoration(
-                color: const Color(0xff1E1B2E),
+                color: AppColors.dialogBackground,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: AppColors.dialogBorder),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3189,7 +3190,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const Text(
                     'กำลังโหลดข้อมูล',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3198,12 +3199,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     _attachmentLoadingText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'กรุณารอสักครู่...',
-                    style: TextStyle(color: Colors.white38, fontSize: 10.5),
+                    style: TextStyle(color: AppColors.faintText, fontSize: 10.5),
                   ),
                 ],
               ),
@@ -3231,8 +3232,8 @@ class _ChatScreenState extends State<ChatScreen> {
             center: Alignment(-0.15, -1.15),
             radius: 1.05,
             colors: [
-              Color(0xFF31245C),
-              Color(0xFF171329),
+              AppColors.headerGradientStart,
+              AppColors.headerGradientMid,
               AppColors.background,
             ],
             stops: [0, 0.40, 1],

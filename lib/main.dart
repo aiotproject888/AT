@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'screens/login.dart';
+import 'screens/home.dart';
 import 'services/auth_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -46,7 +46,7 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
 
-      home: const LoginScreen(),
+      home: const HomeScreen(),
     );
   }
 }

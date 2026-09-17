@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../constants/app_colors.dart';
 import '../models/chat_message.dart';
 
 class SuggestionCard extends StatelessWidget {
@@ -21,7 +23,7 @@ class SuggestionCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: AppColors.lightSurface,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -29,7 +31,7 @@ class SuggestionCard extends StatelessWidget {
             children: [
               Icon(
                 item["icon"] ?? Icons.lightbulb_outline,
-                color: Colors.white,
+                color: AppColors.accent,
                 size: 18,
               ),
 
@@ -42,7 +44,7 @@ class SuggestionCard extends StatelessWidget {
                     Text(
                       item["title"] ?? "",
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.primaryText,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -52,7 +54,7 @@ class SuggestionCard extends StatelessWidget {
                     Text(
                       item["desc"] ?? "",
                       style: const TextStyle(
-                        color: Colors.white70,
+                        color: AppColors.lightSecondaryText,
                         fontSize: 12,
                       ),
                     ),

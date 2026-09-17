@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../models/chat_message.dart';
+import '../constants/app_colors.dart';
 
 class EmotionSummary extends StatelessWidget {
   final ChatMessage message;
@@ -53,8 +55,7 @@ class EmotionSummary extends StatelessWidget {
     // ------------------------------------------------------------
 
     if (!hasBefore && !hasDuring && !hasAfter) {
-      final String type =
-          data['type']?.toString() ?? 'before_class';
+      final String type = data['type']?.toString() ?? 'before_class';
 
       final int totalResponses =
           (data['totalResponses'] as num?)?.toInt() ?? 0;
@@ -65,15 +66,12 @@ class EmotionSummary extends StatelessWidget {
         case 'before_class':
           classType = 'ก่อนเรียน';
           break;
-
         case 'during_class':
           classType = 'ระหว่างเรียน';
           break;
-
         case 'after_class':
           classType = 'หลังเรียน';
           break;
-
         default:
           classType = type;
       }
@@ -141,10 +139,10 @@ class EmotionSummary extends StatelessWidget {
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: AppColors.lightSurface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.12),
+          color: AppColors.surfaceBorder,
         ),
       ),
       child: Row(
@@ -154,12 +152,12 @@ class EmotionSummary extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFF6C52E5).withOpacity(0.18),
+              color: AppColors.accentSurface,
               borderRadius: BorderRadius.circular(9),
             ),
             child: const Icon(
               Icons.bar_chart_rounded,
-              color: Color(0xFF9B87FF),
+              color: AppColors.accent,
               size: 21,
             ),
           ),
@@ -175,7 +173,7 @@ class EmotionSummary extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.primaryText,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -189,7 +187,7 @@ class EmotionSummary extends StatelessWidget {
                     child: Text(
                       '${item.title} · ${item.responses} responses',
                       style: const TextStyle(
-                        color: Colors.white60,
+                        color: AppColors.lightSecondaryText,
                         fontSize: 11,
                       ),
                     ),

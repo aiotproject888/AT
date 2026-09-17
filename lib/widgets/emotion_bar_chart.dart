@@ -1,9 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-class EmotionBarChart extends StatelessWidget {
+import '../constants/app_colors.dart';
 
-  final Map<String,int> emotions;
+class EmotionBarChart extends StatelessWidget {
+  final Map<String, int> emotions;
 
   const EmotionBarChart({
     super.key,
@@ -12,50 +13,31 @@ class EmotionBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    if(emotions.isEmpty){
-
+    if (emotions.isEmpty) {
       return const Center(
         child: Text(
           "ยังไม่มีข้อมูล",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppColors.primaryText),
         ),
       );
-
     }
 
-    int x=0;
+    int x = 0;
 
     return BarChart(
-
       BarChartData(
-
-        barGroups:
-
-        emotions.entries.map((e){
-
+        barGroups: emotions.entries.map((e) {
           return BarChartGroupData(
-
-            x:x++,
-
-            barRods:[
-
+            x: x++,
+            barRods: [
               BarChartRodData(
-
-                toY:e.value.toDouble(),
-
-              )
-
+                toY: e.value.toDouble(),
+                color: AppColors.accent,
+              ),
             ],
-
           );
-
         }).toList(),
-
       ),
-
     );
-
   }
-
 }

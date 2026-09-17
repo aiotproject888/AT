@@ -222,15 +222,15 @@ class _MaterialScreenState extends State<MaterialScreen> {
       child: AbsorbPointer(
         absorbing: true,
         child: Container(
-          color: Colors.black.withOpacity(0.65),
+          color: AppColors.loadingOverlay,
           child: Center(
             child: Container(
               width: 280,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               decoration: BoxDecoration(
-                color: const Color(0xff1E1B2E),
+                color: AppColors.dialogBackground,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: AppColors.dialogBorder),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -247,7 +247,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   const Text(
                     'กำลังโหลดข้อมูล',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -256,12 +256,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   Text(
                     _loadingText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'กรุณารอสักครู่...',
-                    style: TextStyle(color: Colors.white38, fontSize: 10.5),
+                    style: TextStyle(color: AppColors.faintText, fontSize: 10.5),
                   ),
                 ],
               ),
@@ -318,8 +318,8 @@ class _MaterialScreenState extends State<MaterialScreen> {
             center: Alignment(0.55, -1.05),
             radius: 1.15,
             colors: [
-              Color(0xFF29344D),
-              Color(0xFF19142E),
+              AppColors.headerGradientStart,
+              AppColors.headerGradientMid,
               AppColors.background,
             ],
             stops: [0, 0.35, 1],
@@ -354,10 +354,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.08),
+                              color: const Color.fromARGB(255, 170, 169, 175).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: AppColors.accent.withValues(alpha: 0.20),
+                                color: const Color.fromARGB(255, 7, 7, 7).withValues(alpha: 0.20),
                               ),
                             ),
                             child: Row(
@@ -365,7 +365,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                               children: [
                                 const Icon(
                                   Icons.lightbulb_outline_rounded,
-                                  color: Color.fromARGB(255, 255, 241, 114),
+                                  color: AppColors.accent,
                                   size: 19,
                                 ),
                                 const SizedBox(width: 10),
@@ -378,7 +378,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                                         'แนะนำไฟล์ไม่เกิน 50,000 ตัวอักษร เพื่อให้ AI อ่านเนื้อหาได้ครบถ้วน',
                                         style: TextStyle(
                                           color: AppColors.secondaryText,
-                                          fontSize: 10,
+                                          fontSize: 13,
                                           height: 1.4,
                                         ),
                                       ),
@@ -387,7 +387,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                                         'ขนาดไฟล์สูงสุด 50 MB ต่อ ไฟล์',
                                         style: TextStyle(
                                           color: AppColors.mutedText,
-                                          fontSize: 9.5,
+                                          fontSize: 11,
                                         ),
                                       ),
 
@@ -513,7 +513,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               Container(
                 width: 1,
                 height: 42,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppColors.surfaceBorder,
               ),
               Expanded(
                 child: _OverviewItem(
@@ -526,7 +526,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               Container(
                 width: 1,
                 height: 42,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppColors.surfaceBorder,
               ),
               Expanded(
                 child: _OverviewItem(
@@ -555,7 +555,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               Text(
                 latestText,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
+                  color: AppColors.secondaryText,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -589,7 +589,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   _searchText = value;
                 });
               },
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
               cursorColor: AppColors.accent,
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -640,7 +640,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.accent.withValues(alpha: 0.25)
-                    : Colors.white.withValues(alpha: 0.035),
+                    : AppColors.lightSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selected
@@ -652,7 +652,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 child: Text(
                   _categories[index],
                   style: TextStyle(
-                    color: selected ? Colors.white : AppColors.secondaryText,
+                    color: selected ? AppColors.accent : AppColors.secondaryText,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -675,7 +675,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         const Text(
           'ไฟล์ทั้งหมด',
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.primaryText,
             fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
@@ -684,7 +684,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: AppColors.lightSurface,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -763,7 +763,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.primaryText,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -865,7 +865,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
           Text(
             isSearch ? 'ไม่พบไฟล์ที่ค้นหา' : 'ยังไม่มีสื่อการสอน',
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.primaryText,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -890,7 +890,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   void _showUploadDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1729),
+      backgroundColor: AppColors.dialogBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -905,7 +905,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: AppColors.dragHandle,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
@@ -915,7 +915,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   child: Text(
                     'เพิ่มสื่อการสอน',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.primaryText,
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1480,7 +1480,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF1B6E55),
+        backgroundColor: AppColors.green,
         content: Text(message),
         duration: const Duration(seconds: 2),
       ),
@@ -1492,7 +1492,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: const Color(0xFF6E2929),
+        backgroundColor: AppColors.danger,
         content: Text(message),
         duration: const Duration(seconds: 3),
       ),
@@ -1514,7 +1514,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   void _showSortDialog() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1729),
+      backgroundColor: AppColors.dialogBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1529,7 +1529,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 const Text(
                   'เรียงลำดับ',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.primaryText,
                     fontSize: 19,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1593,7 +1593,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   void _showFileMenu(_MaterialFile file) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1A1729),
+      backgroundColor: AppColors.dialogBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1618,7 +1618,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.primaryText,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1627,15 +1627,15 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ],
                 ),
                 const SizedBox(height: 15),
-                const Divider(color: Color(0x12FFFFFF)),
+                const Divider(color: AppColors.surfaceBorder),
                 ListTile(
                   leading: const Icon(
                     Icons.visibility_rounded,
-                    color: Colors.white70,
+                    color: AppColors.secondaryText,
                   ),
                   title: const Text(
                     'ดูรายละเอียด',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: AppColors.primaryText, fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1645,11 +1645,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 ListTile(
                   leading: const Icon(
                     Icons.download_rounded,
-                    color: Colors.white70,
+                    color: AppColors.secondaryText,
                   ),
                   title: const Text(
                     'ดาวน์โหลด',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: AppColors.primaryText, fontSize: 13),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1687,13 +1687,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1A1729),
+          backgroundColor: AppColors.dialogBackground,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
             'รายละเอียดไฟล์',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            style: TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1732,13 +1732,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1A1729),
+          backgroundColor: AppColors.dialogBackground,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
             'ลบไฟล์?',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            style: TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.w800),
           ),
           content: Text(
             'ต้องการลบ "${file.name}" หรือไม่',
@@ -2032,7 +2032,7 @@ class _PdfViewerScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.primaryText,
         title: Text(
           fileName,
           maxLines: 1,
@@ -2245,7 +2245,7 @@ class _OverviewItem extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.primaryText,
             fontSize: 14,
             fontWeight: FontWeight.w800,
           ),
@@ -2295,7 +2295,7 @@ class _FileIcon extends StatelessWidget {
           Text(
             extension,
             style: const TextStyle(
-              color: Colors.white70,
+              color: AppColors.secondaryText,
               fontSize: 6.5,
               fontWeight: FontWeight.w800,
             ),
@@ -2388,12 +2388,12 @@ class _UploadButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 22),
+              Icon(Icons.add_rounded, color: AppColors.onAccent, size: 22),
               SizedBox(width: 8),
               Text(
                 'อัปโหลดไฟล์',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.onAccent,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2419,7 +2419,7 @@ class _SmallActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.035),
+      color: AppColors.lightSurface,
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         borderRadius: BorderRadius.circular(13),
@@ -2451,7 +2451,7 @@ class _FileActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.035),
+      color: AppColors.lightSurface,
       borderRadius: BorderRadius.circular(9),
       child: InkWell(
         borderRadius: BorderRadius.circular(9),
@@ -2524,16 +2524,16 @@ class _DashboardBottomNavigation extends StatelessWidget {
                   duration: const Duration(milliseconds: 160),
                   height: 66,
                   decoration: BoxDecoration(
-                    color: const Color(0x40191820),
+                    color: selected ? AppColors.accentSurface : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: selected
-                          ? AppColors.searchBorder
-                          : const Color(0x1A928B8B),
+                          ? AppColors.accentBorder
+                          : AppColors.navigationBorder,
                     ),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x40000000),
+                        color: AppColors.navigationShadow,
                         offset: Offset(0, 4),
                         blurRadius: 4,
                       ),
@@ -2546,7 +2546,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         selected ? item.activeIcon : item.icon,
                         size: 24,
                         color: selected
-                            ? AppColors.primaryText
+                            ? AppColors.accent
                             : AppColors.secondaryText,
                       ),
 
@@ -2557,7 +2557,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
                         maxLines: 1,
                         style: TextStyle(
                           color: selected
-                              ? AppColors.primaryText
+                              ? AppColors.accent
                               : AppColors.secondaryText,
                           fontSize: 11,
                         ),
@@ -2606,7 +2606,7 @@ class _UploadOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.035),
+      color: AppColors.lightSurface,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
@@ -2636,7 +2636,7 @@ class _UploadOption extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.primaryText,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2691,7 +2691,7 @@ class _SortOption extends StatelessWidget {
       ),
       title: Text(
         title,
-        style: const TextStyle(color: Colors.white, fontSize: 13),
+        style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
       ),
       trailing: Icon(
         selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
@@ -2730,7 +2730,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.primaryText,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -2755,7 +2755,7 @@ class _SquareIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.045),
+      color: AppColors.lightSurface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -2767,7 +2767,7 @@ class _SquareIconButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.surfaceBorder),
           ),
-          child: Icon(icon, color: Colors.white, size: 17),
+          child: Icon(icon, color: AppColors.primaryText, size: 17),
         ),
       ),
     );
