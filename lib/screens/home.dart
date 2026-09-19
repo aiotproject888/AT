@@ -1740,7 +1740,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
                             strokeWidth: 2,
 
-                            color: AppColors.onAccent,
+                            color: AppColors.green,
 
                           ),
 
@@ -1768,7 +1768,7 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
                     elevation: 0,
 
-                    backgroundColor: AppColors.accent,
+                    backgroundColor: AppColors.green,
 
                     foregroundColor: AppColors.onAccent,
 

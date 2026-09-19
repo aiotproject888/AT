@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:microsoft_viewer/microsoft_viewer.dart';
 
 import 'chat.dart';
 import '../services/emotion_service.dart';
@@ -256,12 +257,18 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   Text(
                     _loadingText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'กรุณารอสักครู่...',
-                    style: TextStyle(color: AppColors.faintText, fontSize: 10.5),
+                    style: TextStyle(
+                      color: AppColors.faintText,
+                      fontSize: 10.5,
+                    ),
                   ),
                 ],
               ),
@@ -354,10 +361,20 @@ class _MaterialScreenState extends State<MaterialScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 170, 169, 175).withValues(alpha: 0.08),
+                              color: const Color.fromARGB(
+                                255,
+                                170,
+                                169,
+                                175,
+                              ).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: const Color.fromARGB(255, 7, 7, 7).withValues(alpha: 0.20),
+                                color: const Color.fromARGB(
+                                  255,
+                                  7,
+                                  7,
+                                  7,
+                                ).withValues(alpha: 0.20),
                               ),
                             ),
                             child: Row(
@@ -510,11 +527,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   subtitle: 'ไฟล์',
                 ),
               ),
-              Container(
-                width: 1,
-                height: 42,
-                color: AppColors.surfaceBorder,
-              ),
+              Container(width: 1, height: 42, color: AppColors.surfaceBorder),
               Expanded(
                 child: _OverviewItem(
                   icon: Icons.category_rounded,
@@ -523,11 +536,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   subtitle: 'ประเภท',
                 ),
               ),
-              Container(
-                width: 1,
-                height: 42,
-                color: AppColors.surfaceBorder,
-              ),
+              Container(width: 1, height: 42, color: AppColors.surfaceBorder),
               Expanded(
                 child: _OverviewItem(
                   icon: Icons.storage_rounded,
@@ -589,7 +598,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   _searchText = value;
                 });
               },
-              style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.primaryText,
+                fontSize: 13,
+              ),
               cursorColor: AppColors.accent,
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -652,7 +664,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 child: Text(
                   _categories[index],
                   style: TextStyle(
-                    color: selected ? AppColors.accent : AppColors.secondaryText,
+                    color: selected
+                        ? AppColors.accent
+                        : AppColors.secondaryText,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -961,7 +975,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx'],
+        allowedExtensions: ['pdf', 'docx', 'pptx'],
         withData: true,
       );
 
@@ -1331,12 +1345,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
   String _getFileType(String extension) {
     switch (extension) {
       case 'pdf':
-      case 'doc':
       case 'docx':
-      case 'txt':
         return 'เอกสาร';
 
-      case 'ppt':
       case 'pptx':
         return 'สไลด์';
 
@@ -1359,33 +1370,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
     switch (extension) {
       case 'pdf':
         return 'application/pdf';
-
-      case 'ppt':
-        return 'application/vnd.ms-powerpoint';
-
       case 'pptx':
         return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
-      case 'doc':
-        return 'application/msword';
-
       case 'docx':
         return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-      case 'mp4':
-        return 'video/mp4';
-
-      case 'mp3':
-        return 'audio/mpeg';
-
-      case 'wav':
-        return 'audio/wav';
-
-      case 'm4a':
-        return 'audio/mp4';
-
-      case 'txt':
-        return 'text/plain';
 
       default:
         return 'application/octet-stream';
@@ -1401,25 +1390,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
       case 'pdf':
         return Icons.picture_as_pdf_rounded;
 
-      case 'ppt':
       case 'pptx':
         return Icons.slideshow_rounded;
 
-      case 'doc':
       case 'docx':
-      case 'txt':
         return Icons.description_rounded;
-
-      case 'mp4':
-      case 'mov':
-      case 'avi':
-      case 'mkv':
-        return Icons.video_file_rounded;
-
-      case 'mp3':
-      case 'wav':
-      case 'm4a':
-        return Icons.audio_file_rounded;
 
       default:
         return Icons.insert_drive_file_rounded;
@@ -1635,7 +1610,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                   title: const Text(
                     'ดูรายละเอียด',
-                    style: TextStyle(color: AppColors.primaryText, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.primaryText,
+                      fontSize: 13,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1649,7 +1627,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   ),
                   title: const Text(
                     'ดาวน์โหลด',
-                    style: TextStyle(color: AppColors.primaryText, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.primaryText,
+                      fontSize: 13,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -1693,7 +1674,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
           title: const Text(
             'รายละเอียดไฟล์',
-            style: TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: AppColors.primaryText,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1738,7 +1722,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
           ),
           title: const Text(
             'ลบไฟล์?',
-            style: TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: AppColors.primaryText,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: Text(
             'ต้องการลบ "${file.name}" หรือไม่',
@@ -1853,9 +1840,13 @@ class _MaterialScreenState extends State<MaterialScreen> {
     _showComingSoon('ระบบดาวน์โหลดไฟล์จะเชื่อมต่อในขั้นตอนถัดไป');
   }
 
+  // เปิดดูไฟล์ที่อัปโหลดไว้ในห้องเรียน
   Future<void> _viewFile(_MaterialFile file) async {
-    if (file.extension.toLowerCase() != 'PDF'.toLowerCase()) {
-      _showComingSoon('ขณะนี้รองรับการดูไฟล์ PDF ภายในแอป');
+    final extension = file.extension.toLowerCase();
+
+    // รองรับเฉพาะ PDF / DOCX / PPTX
+    if (extension != 'pdf' && extension != 'docx' && extension != 'pptx') {
+      _showComingSoon('ไม่สามารถเปิดไฟล์ประเภทนี้ได้');
       return;
     }
 
@@ -1867,6 +1858,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     _showLoading('กำลังเปิดไฟล์...');
 
     try {
+      // ขอ Download URL จาก Backend
       final response = await http.post(
         Uri.parse('$_backendBaseUrl/api/materials/download-url'),
         headers: {'Content-Type': 'application/json'},
@@ -1889,42 +1881,64 @@ class _MaterialScreenState extends State<MaterialScreen> {
         throw Exception('ไม่พบ URL ของไฟล์');
       }
 
+      // ดาวน์โหลดไฟล์ต้นฉบับจาก Storage
       final fileResponse = await http.get(Uri.parse(downloadUrl));
 
       if (fileResponse.statusCode != 200) {
         throw Exception('ไม่สามารถโหลดไฟล์ได้ (${fileResponse.statusCode})');
       }
 
-      if (fileResponse.bodyBytes.isEmpty) {
-        throw Exception('ไฟล์ที่โหลดมาไม่มีข้อมูล');
-      }
-
-      // ตรวจสอบว่าเป็น PDF จริง
       final bytes = fileResponse.bodyBytes;
 
-      if (bytes.length < 5 ||
-          bytes[0] != 0x25 || // %
-          bytes[1] != 0x50 || // P
-          bytes[2] != 0x44 || // D
-          bytes[3] != 0x46 || // F
-          bytes[4] != 0x2D) {
-        // -
-        throw Exception('ไฟล์ที่ได้รับไม่ใช่ไฟล์ PDF');
+      if (bytes.isEmpty) {
+        throw Exception('ไฟล์ที่โหลดมาไม่มีข้อมูล');
       }
 
       if (!mounted) return;
 
       _hideLoading();
 
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => _PdfViewerScreen(
-            fileName: file.name,
-            bytes: bytes,
+      // ============================================================
+      // PDF
+      // ============================================================
+
+      if (extension == 'pdf') {
+        // ตรวจสอบว่าเป็น PDF จริง
+        if (bytes.length < 5 ||
+            bytes[0] != 0x25 || // %
+            bytes[1] != 0x50 || // P
+            bytes[2] != 0x44 || // D
+            bytes[3] != 0x46 || // F
+            bytes[4] != 0x2D) {
+          // -
+          throw Exception('ไฟล์ที่ได้รับไม่ใช่ไฟล์ PDF');
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => _PdfViewerScreen(fileName: file.name, bytes: bytes),
           ),
-        ),
-      );
+        );
+
+        return;
+      }
+
+      // ============================================================
+      // DOCX / PPTX
+      // ============================================================
+
+      if (extension == 'docx' || extension == 'pptx') {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                _OfficeViewerScreen(fileName: file.name, bytes: bytes),
+          ),
+        );
+
+        return;
+      }
     } catch (error) {
       _hideLoading();
 
@@ -2041,6 +2055,31 @@ class _PdfViewerScreen extends StatelessWidget {
         ),
       ),
       body: SfPdfViewer.memory(bytes),
+    );
+  }
+}
+
+class _OfficeViewerScreen extends StatelessWidget {
+  final String fileName;
+  final Uint8List bytes;
+
+  const _OfficeViewerScreen({required this.fileName, required this.bytes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.primaryText,
+        title: Text(
+          fileName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+      body: MicrosoftViewer(bytes, true),
     );
   }
 }
@@ -2524,7 +2563,9 @@ class _DashboardBottomNavigation extends StatelessWidget {
                   duration: const Duration(milliseconds: 160),
                   height: 66,
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.accentSurface : AppColors.surface,
+                    color: selected
+                        ? AppColors.accentSurface
+                        : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: selected

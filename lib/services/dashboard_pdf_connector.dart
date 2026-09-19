@@ -41,52 +41,44 @@ class DashboardPdfConnector {
       };
 
       final periods = await Future.wait(
-        phases.entries.map(
-          (phase) async {
-            final records = await service.getEmotionRecordsByDate(
-              subjectCode: subjectCode,
-              date: selectedDate,
-              type: phase.key,
-            );
+        phases.entries.map((phase) async {
+          final records = await service.getEmotionRecordsByDate(
+            subjectCode: subjectCode,
+            date: selectedDate,
+            type: phase.key,
+          );
 
-            final counts = <String, int>{};
+          final counts = <String, int>{};
 
-            for (final record in records) {
-              final raw = record['counter'] ?? 1;
+          for (final record in records) {
+            final raw = record['counter'] ?? 1;
 
-              final number =
-                  raw is num ? raw : num.tryParse(raw.toString());
+            final number = raw is num ? raw : num.tryParse(raw.toString());
 
-              if (number == null ||
-                  !number.isFinite ||
-                  number < 0 ||
-                  number != number.truncateToDouble()) {
-                throw FormatException(
-                  'counter ไม่ถูกต้องในช่วง ${phase.value}',
-                );
-              }
-
-              final name =
-                  (record['emotion'] ?? record['emotion_name'])
-                      ?.toString()
-                      .trim();
-
-              final emotion =
-                  name == null || name.isEmpty
-                      ? 'ไม่ระบุอารมณ์'
-                      : name;
-
-              counts[emotion] =
-                  (counts[emotion] ?? 0) + number.toInt();
+            if (number == null ||
+                !number.isFinite ||
+                number < 0 ||
+                number != number.truncateToDouble()) {
+              throw FormatException('counter ไม่ถูกต้องในช่วง ${phase.value}');
             }
 
-            return EmotionPeriodData(
-              type: phase.key,
-              label: phase.value,
-              counts: counts,
-            );
-          },
-        ),
+            final name = (record['emotion'] ?? record['emotion_name'])
+                ?.toString()
+                .trim();
+
+            final emotion = name == null || name.isEmpty
+                ? 'ไม่ระบุอารมณ์'
+                : name;
+
+            counts[emotion] = (counts[emotion] ?? 0) + number.toInt();
+          }
+
+          return EmotionPeriodData(
+            type: phase.key,
+            label: phase.value,
+            counts: counts,
+          );
+        }),
       );
 
       // ============================================================
@@ -157,9 +149,26 @@ class DashboardPdfConnector {
         final chatService = ChatService();
 
         final aiReply = await chatService.sendMessage(
-          message:
-              'วิเคราะห์ข้อมูลอารมณ์ทั้ง 3 ช่วง '
-              'และสร้างคำแนะนำสำหรับรายงานตามรูปแบบ JSON',
+          message: '''
+วิเคราะห์ข้อมูลอารมณ์ของผู้เรียนทั้ง 3 ช่วง ได้แก่ ก่อนเรียน ระหว่างเรียน และหลังเรียน
+แล้วสร้างคำแนะนำสำหรับอาจารย์ผู้สอนในรูปแบบ JSON ตามโครงสร้างที่กำหนด
+
+คำแนะนำต้อง:
+- อ้างอิงจากข้อมูลอารมณ์ที่ได้รับจริง
+- เน้นแนวทางที่สามารถนำไปใช้ในการจัดการเรียนการสอนได้จริง
+- หากเป็นรายวิชาด้านคอมพิวเตอร์ เทคโนโลยี หรือการเขียนโปรแกรม
+  ให้เน้นวิธีสอนที่เกี่ยวข้องกับการปฏิบัติ การเขียนโค้ด การแก้โจทย์
+  การสาธิต การแบ่งโจทย์เป็นขั้นตอน การทำงานเป็นคู่/กลุ่ม
+  การทบทวนพื้นฐาน และการให้ Feedback
+- ไม่ควรแนะนำ "Ice Breaker" หรือกิจกรรมละลายพฤติกรรมเป็นคำแนะนำหลัก
+  เว้นแต่ข้อมูลอารมณ์และบริบทจะสนับสนุนอย่างชัดเจน
+- หลีกเลี่ยงคำแนะนำทั่วไปที่ไม่เกี่ยวข้องกับลักษณะการเรียน
+- ไม่สร้างข้อมูลจำนวนผู้เรียนหรืออารมณ์ที่ไม่มีอยู่ในข้อมูล
+- ใช้ภาษาไทยเป็นหลัก
+- คำแนะนำควรสั้น กระชับ และนำไปปฏิบัติได้
+
+สร้างผลลัพธ์เป็น JSON เท่านั้น
+''',
           emotionData: emotionData,
           subjectCode: subjectCode,
           reportAnalysis: true,
@@ -169,10 +178,7 @@ class DashboardPdfConnector {
         // 7. แปลง JSON ที่ AI ส่งกลับมา
         // ==========================================================
 
-        final advice = _parseAiAdvice(
-          aiReply,
-          snapshotKey,
-        );
+        final advice = _parseAiAdvice(aiReply, snapshotKey);
 
         if (advice != null) {
           report = report.withAdvice(advice);
@@ -198,20 +204,14 @@ class DashboardPdfConnector {
       await Navigator.push<void>(
         context,
         MaterialPageRoute<void>(
-          builder: (_) => PdfReportPreviewScreen(
-            report: report,
-          ),
+          builder: (_) => PdfReportPreviewScreen(report: report),
         ),
       );
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'สร้างรายงานไม่สำเร็จ: $error',
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('สร้างรายงานไม่สำเร็จ: $error')));
       }
     } finally {
       _opening = false;
@@ -222,10 +222,7 @@ class DashboardPdfConnector {
   // แปลง JSON จาก AI → ReportAiAdvice
   // ================================================================
 
-  static ReportAiAdvice? _parseAiAdvice(
-    String aiReply,
-    String snapshotKey,
-  ) {
+  static ReportAiAdvice? _parseAiAdvice(String aiReply, String snapshotKey) {
     try {
       var text = aiReply.trim();
 
@@ -234,15 +231,9 @@ class DashboardPdfConnector {
       // ------------------------------------------------------------
 
       if (text.startsWith('```')) {
-        text = text.replaceFirst(
-          RegExp(r'^```(?:json)?\s*'),
-          '',
-        );
+        text = text.replaceFirst(RegExp(r'^```(?:json)?\s*'), '');
 
-        text = text.replaceFirst(
-          RegExp(r'\s*```$'),
-          '',
-        );
+        text = text.replaceFirst(RegExp(r'\s*```$'), '');
       }
 
       text = text.trim();
@@ -254,21 +245,15 @@ class DashboardPdfConnector {
       final decoded = jsonDecode(text);
 
       if (decoded is! Map<String, dynamic>) {
-        throw const FormatException(
-          'รูปแบบผล AI ไม่ใช่ JSON object',
-        );
+        throw const FormatException('รูปแบบผล AI ไม่ใช่ JSON object');
       }
 
-      final technique =
-          decoded['technique']?.toString().trim() ?? '';
+      final technique = decoded['technique']?.toString().trim() ?? '';
 
-      final reason =
-          decoded['reason']?.toString().trim() ?? '';
+      final reason = decoded['reason']?.toString().trim() ?? '';
 
       if (technique.isEmpty || reason.isEmpty) {
-        throw const FormatException(
-          'ผล AI ไม่มี technique หรือ reason',
-        );
+        throw const FormatException('ผล AI ไม่มี technique หรือ reason');
       }
 
       // ------------------------------------------------------------
@@ -283,22 +268,15 @@ class DashboardPdfConnector {
         for (final item in rawActions) {
           if (item is! Map) continue;
 
-          final phase =
-              item['phase']?.toString().trim() ?? '';
+          final phase = item['phase']?.toString().trim() ?? '';
 
-          final action =
-              item['action']?.toString().trim() ?? '';
+          final action = item['action']?.toString().trim() ?? '';
 
           if (phase.isEmpty || action.isEmpty) {
             continue;
           }
 
-          actions.add(
-            TeachingAction(
-              phase: phase,
-              action: action,
-            ),
-          );
+          actions.add(TeachingAction(phase: phase, action: action));
         }
       }
 
@@ -313,13 +291,9 @@ class DashboardPdfConnector {
         actions: actions,
       );
     } catch (error) {
-      debugPrint(
-        'Report AI JSON parse error: $error',
-      );
+      debugPrint('Report AI JSON parse error: $error');
 
-      debugPrint(
-        'AI Reply: $aiReply',
-      );
+      debugPrint('AI Reply: $aiReply');
 
       return null;
     }

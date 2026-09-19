@@ -14,12 +14,6 @@ import '../services/dashboard_pdf_connector.dart';
 import 'chat.dart';
 import '../constants/app_colors.dart';
 
-// ============================================================
-// Dashboard Colors
-// ============================================================
-
-class _DashboardColors {}
-
 enum _SubjectManagementAction { edit, delete }
 
 // ============================================================
@@ -110,6 +104,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   bool _isLoadingHistory = false;
 
+  bool _isLoadingOverlay = false;
+  String _loadingText = 'กำลังโหลดข้อมูล...';
+
   // ==========================================================
   // Emotion Score
   //
@@ -125,8 +122,11 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
     int positive = 0;
     int negative = 0;
+    int total = 0;
 
     distribution.forEach((emotion, count) {
+      total += count;
+
       if (emotion == 'รู้สึกสนใจ' ||
           emotion == 'รู้สึกตื่นเต้น' ||
           emotion == 'รู้สึกสนุกสนาน') {
@@ -139,44 +139,16 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       }
     });
 
-    final total = positive + negative;
-
     if (total == 0) {
       return 0;
     }
 
-    final positiveRatio = positive / total;
-    final negativeRatio = negative / total;
-
-    if (positiveRatio > negativeRatio) {
-      return 1;
-    }
-
-    if (negativeRatio > positiveRatio) {
-      return -1;
-    }
-
-    return 0;
-  }
-
-  // ==========================================================
-  // Score Getters
-  // ==========================================================
-
-  double? get _beforeScore {
-    if (beforeStudentCount == 0) {
-      return null;
-    }
-
-    return _calculateEmotionScore(beforeEmotionDistribution);
-  }
-
-  double? get _afterScore {
-    if (afterStudentCount == 0) {
-      return null;
-    }
-
-    return _calculateEmotionScore(afterEmotionDistribution);
+    // Emotion Score อยู่ระหว่าง -1 ถึง +1
+    //
+    // +1 = อารมณ์ด้านบวกทั้งหมด
+    //  0 = อารมณ์สมดุล / มีอารมณ์กลางร่วมด้วย
+    // -1 = อารมณ์ด้านลบทั้งหมด
+    return (positive - negative) / total;
   }
 
   // ==========================================================
@@ -184,19 +156,35 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
 
   int get _totalStudents {
-    if (beforeStudentCount > afterStudentCount) {
-      return beforeStudentCount;
+    int total = beforeStudentCount;
+
+    if (duringStudentCount > total) {
+      total = duringStudentCount;
     }
 
-    return afterStudentCount;
+    if (afterStudentCount > total) {
+      total = afterStudentCount;
+    }
+
+    return total;
   }
 
   int get _completedStudents {
-    if (beforeStudentCount < afterStudentCount) {
-      return beforeStudentCount;
+    if (_totalStudents == 0) {
+      return 0;
     }
 
-    return afterStudentCount;
+    int completed = beforeStudentCount;
+
+    if (duringStudentCount < completed) {
+      completed = duringStudentCount;
+    }
+
+    if (afterStudentCount < completed) {
+      completed = afterStudentCount;
+    }
+
+    return completed;
   }
 
   int get _engagementPercentage {
@@ -619,10 +607,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       );
     }
   }
-
-  // ==========================================================
-  // Chatbot
-  // ==========================================================
 
   // ==========================================================
   // Chatbot
@@ -1368,6 +1352,14 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                     const SizedBox(height: 17),
 
+                    const _SectionLabel('การมีส่วนร่วม'),
+
+                    const SizedBox(height: 9),
+
+                    _buildEngagementCard(),
+
+                    const SizedBox(height: 15),
+
                     const _SectionLabel('ภาพรวมอารมณ์'),
 
                     const SizedBox(height: 10),
@@ -1408,14 +1400,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
                     const SizedBox(height: 15),
 
-                    const _SectionLabel('การมีส่วนร่วม'),
-
-                    const SizedBox(height: 9),
-
-                    _buildEngagementCard(),
-
-                    const SizedBox(height: 15),
-
                     _buildBottomActions(),
                   ],
                 ),
@@ -1432,6 +1416,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                     backgroundColor: AppColors.transparent,
                   ),
                 ),
+
+              _buildLoadingOverlay(),
             ],
           ),
         ),
@@ -1702,11 +1688,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [Column(crossAxisAlignment: CrossAxisAlignment.start)],
-          ),
-
-          Row(
             children: [
               Expanded(
                 child: _summaryItem(
@@ -1824,7 +1805,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       return const Center(
         child: Text(
           'รอการประเมิน',
-          style: TextStyle(color: AppColors.faintText, fontSize: 12),
+          style: TextStyle(color: AppColors.lightMutedText, fontSize: 14),
         ),
       );
     }
@@ -2087,13 +2068,55 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
 
   Widget _buildEngagementCard() {
-    final pending = _totalStudents - _completedStudents;
+    final referenceCount = _totalStudents;
+
+    final beforeMissing = referenceCount - beforeStudentCount;
+    final duringMissing = referenceCount - duringStudentCount;
+    final afterMissing = referenceCount - afterStudentCount;
+
+    final isComplete =
+        referenceCount > 0 &&
+        beforeMissing == 0 &&
+        duringMissing == 0 &&
+        afterMissing == 0;
+
+    Widget periodStatus(String title, int missing) {
+      final complete = missing == 0;
+
+      return SizedBox(
+        height: 18,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 78,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 10,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            Text(
+              complete ? 'ครบ' : 'ขาด $missing คน',
+              style: TextStyle(
+                color: complete ? AppColors.greenText : AppColors.danger,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
-      height: 84,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: _cardDecoration(16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: 54,
@@ -2107,7 +2130,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
                   backgroundColor: AppColors.buttonBorder,
                   color: AppColors.accent,
                 ),
-
                 Center(
                   child: Text(
                     '$_engagementPercentage%',
@@ -2125,44 +2147,188 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
           const SizedBox(width: 16),
 
           Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _totalStudents == 0
-                      ? 'ยังไม่มีข้อมูลการมีส่วนร่วม'
-                      : '$_completedStudents '
-                            'จาก $_totalStudents '
-                            'คนกดครบ',
-                  style: const TextStyle(
-                    color: AppColors.primaryText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+            child: referenceCount == 0
+                ? const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ยังไม่มีข้อมูลการมีส่วนร่วม',
+                        style: TextStyle(
+                          color: AppColors.primaryText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'ข้อมูลจะแสดงเมื่อนักเรียนบันทึกอารมณ์',
+                        style: TextStyle(
+                          color: AppColors.faintText,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isComplete
+                            ? 'บันทึกอารมณ์ครบทั้ง 3 ช่วง'
+                            : 'ยังบันทึกอารมณ์ไม่ครบ',
+                        style: const TextStyle(
+                          color: AppColors.primaryText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
 
-                const SizedBox(height: 5),
+                      const SizedBox(height: 7),
 
-                Text(
-                  _totalStudents == 0
-                      ? 'ข้อมูลจะแสดงเมื่อนักเรียนบันทึกอารมณ์'
-                      : pending == 0
-                      ? 'นักเรียนกดบันทึกครบแล้ว'
-                      : '$pending คนยังบันทึกข้อมูลไม่ครบ',
-                  style: const TextStyle(
-                    color: AppColors.faintText,
-                    fontSize: 10,
+                      periodStatus('ก่อนเรียน', beforeMissing),
+                      periodStatus('ระหว่างเรียน', duringMissing),
+                      periodStatus('หลังเรียน', afterMissing),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
+
+          const SizedBox(width: 10),
 
           const _MiniBars(),
         ],
       ),
     );
+  }
+
+  // ============================================================
+  // LOADING OVERLAY
+  // ============================================================
+
+  void _showLoading(String text) {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingOverlay = true;
+      _loadingText = text;
+    });
+  }
+
+  void _updateLoading(String text) {
+    if (!mounted) return;
+
+    setState(() {
+      _loadingText = text;
+    });
+  }
+
+  void _hideLoading() {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingOverlay = false;
+    });
+  }
+
+  Widget _buildLoadingOverlay() {
+    if (!_isLoadingOverlay) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned.fill(
+      child: AbsorbPointer(
+        absorbing: true,
+        child: Container(
+          color: AppColors.loadingOverlay,
+          child: Center(
+            child: Container(
+              width: 280,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              decoration: BoxDecoration(
+                color: AppColors.dialogBackground,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.dialogBorder),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'กำลังโหลดข้อมูล',
+                    style: TextStyle(
+                      color: AppColors.primaryText,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadingText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'กรุณารอสักครู่...',
+                    style: TextStyle(
+                      color: AppColors.faintText,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // Export PDF
+  // ==========================================================
+
+  Future<void> _exportPdf() async {
+    if (_isLoadingOverlay) return;
+
+    _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
+
+    try {
+      _updateLoading('กำลังสร้างรายงาน PDF...');
+
+      await DashboardPdfConnector.open(
+        context: context,
+        subjectName: _subject.subjectName,
+        subjectCode: _subject.subjectCode,
+        academicYear: _subject.year,
+        semester: _subject.semester,
+        selectedDate: _selectedDate ?? DateTime.now(),
+      );
+
+      _hideLoading();
+    } catch (error) {
+      debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
+
+      _hideLoading();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error')),
+      );
+    }
   }
 
   // ==========================================================
@@ -2172,29 +2338,16 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   Widget _buildBottomActions() {
     return Row(
       children: [
-        // ==================================================
-        // PDF
-        // ปิดใช้งานชั่วคราว
-        // ==================================================
         Expanded(
           flex: 3,
           child: SizedBox(
             height: 46,
             child: OutlinedButton.icon(
-              onPressed: () async {
-                await DashboardPdfConnector.open(
-                  context: context,
-                  subjectName: _subject.subjectName,
-                  subjectCode: _subject.subjectCode,
-                  academicYear: _subject.year,
-                  semester: _subject.semester,
-                  selectedDate: _selectedDate ?? DateTime.now(),
-                );
-              },
+              onPressed: _exportPdf,
               icon: const Icon(Icons.insert_drive_file_outlined, size: 17),
               label: const Text('PDF'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.faintText,
+                foregroundColor: AppColors.primaryText,
                 disabledForegroundColor: AppColors.faintText,
                 backgroundColor: AppColors.subtleSurface,
                 side: const BorderSide(color: AppColors.buttonBorder),
@@ -2611,7 +2764,9 @@ class _DashboardBottomNavigation extends StatelessWidget {
                   duration: const Duration(milliseconds: 160),
                   height: 66,
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.accentSurface : AppColors.surface,
+                    color: selected
+                        ? AppColors.accentSurface
+                        : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: selected

@@ -16,7 +16,6 @@ class _SubjectCardColors {
   // Text
   static const primaryText = AppColors.primaryText;
   static const secondaryText = AppColors.lightSecondaryText;
-  static const faintText = AppColors.lightMutedText;
 
   // Brand
   static const accent = AppColors.accent;

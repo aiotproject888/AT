@@ -37,6 +37,7 @@ dependencies:
   file_picker: ^10.3.3
   syncfusion_flutter_pdf: ^31.2.5
   syncfusion_flutter_pdfviewer: ^31.2.5
+  microsoft_viewer: ^0.0.8
   url_launcher: ^6.3.2
   firebase_core: ^4.12.1
   firebase_database: ^12.4.6

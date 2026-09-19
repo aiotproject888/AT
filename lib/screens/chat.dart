@@ -476,11 +476,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'ก่อนเรียน',
-                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.primaryText,
+                        fontSize: 14,
+                      ),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์ก่อนเริ่มเรียน',
-                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
+                      style: TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 11,
+                      ),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -496,11 +502,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'ระหว่างเรียน',
-                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.primaryText,
+                        fontSize: 14,
+                      ),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์ระหว่างเริ่มเรียน',
-                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
+                      style: TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 11,
+                      ),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -516,11 +528,17 @@ class _ChatScreenState extends State<ChatScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'หลังเรียน',
-                      style: TextStyle(color: AppColors.primaryText, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.primaryText,
+                        fontSize: 14,
+                      ),
                     ),
                     subtitle: const Text(
                       'ข้อมูลอารมณ์หลังเรียน',
-                      style: TextStyle(color: AppColors.mutedText, fontSize: 11),
+                      style: TextStyle(
+                        color: AppColors.mutedText,
+                        fontSize: 11,
+                      ),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -1695,10 +1713,15 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       debugPrint('subjectCode: ${widget.subjectCode}');
-
       debugPrint('sessionId: ${widget.sessionId}');
 
-      final conversations = await _historyService.getConversations();
+      // โหลด Conversation ทั้งหมดของประเภทปัจจุบัน
+      // Classroom = เฉพาะวิชานี้
+      // General = Chat ทั่วไปทั้งหมด
+      final conversations = await _historyService.getConversations(
+        type: isClassroom ? 'classroom' : 'general',
+        subjectCode: widget.subjectCode,
+      );
 
       if (conversations.isEmpty) {
         debugPrint('ยังไม่มีประวัติการสนทนา');
@@ -1712,23 +1735,20 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      QueryDocumentSnapshot<Map<String, dynamic>>? matchedConversation;
+      final List<ChatMessage> loadedMessages = [];
 
+      // โหลดข้อความจากทุก Conversation
       for (final conversation in conversations) {
         final data = conversation.data();
 
         final String type = data['type']?.toString() ?? '';
-
         final String conversationSubjectCode =
             data['subjectCode']?.toString() ?? '';
 
-        final String conversationSessionId =
-            data['sessionId']?.toString() ?? '';
-
+        // ตรวจสอบอีกครั้งเพื่อป้องกันข้อมูลผิดประเภท
         if (!isClassroom) {
-          if (type == 'general') {
-            matchedConversation = conversation;
-            break;
+          if (type != 'general') {
+            continue;
           }
         } else {
           if (type != 'classroom') {
@@ -1738,71 +1758,61 @@ class _ChatScreenState extends State<ChatScreen> {
           if (conversationSubjectCode != widget.subjectCode) {
             continue;
           }
+        }
 
-          if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
-            if (conversationSessionId != widget.sessionId) {
+        try {
+          final historyMessages = await _historyService.getMessages(
+            conversationId: conversation.id,
+            type: isClassroom ? 'classroom' : 'general',
+            subjectCode: widget.subjectCode,
+          );
+
+          debugPrint(
+            'Conversation ${conversation.id}: '
+            '${historyMessages.length} ข้อความ',
+          );
+
+          for (final doc in historyMessages) {
+            final messageData = doc.data();
+
+            final String role =
+                messageData['role']?.toString() ?? 'assistant';
+            final String text = messageData['text']?.toString() ?? '';
+
+            if (text.trim().isEmpty) {
               continue;
             }
+
+            DateTime messageTime = DateTime.now();
+
+            final timestamp = messageData['timestamp'];
+
+            if (timestamp is Timestamp) {
+              messageTime = timestamp.toDate();
+            }
+
+            loadedMessages.add(
+              ChatMessage(
+                isAI: role == 'assistant',
+                text: text,
+                time: messageTime,
+              ),
+            );
           }
-
-          matchedConversation = conversation;
-          break;
+        } catch (e) {
+          debugPrint(
+            'โหลดข้อความจาก Conversation ${conversation.id} ไม่สำเร็จ: $e',
+          );
         }
       }
 
-      if (matchedConversation == null) {
-        debugPrint('ไม่พบ Conversation ที่ตรงกับ Chat ปัจจุบัน');
-
-        if (mounted) {
-          setState(() {
-            _isLoadingHistory = false;
-          });
-        }
-
-        return;
-      }
-
-      _conversationId = matchedConversation.id;
-
-      debugPrint('พบ Conversation: $_conversationId');
-
-      final historyMessages = await _historyService.getMessages(
-        _conversationId!,
-      );
-
-      debugPrint(
-        'พบข้อความทั้งหมด: '
-        '${historyMessages.length}',
+      // เรียงข้อความทั้งหมดตามเวลาจากเก่า -> ใหม่
+      loadedMessages.sort(
+        (a, b) => a.time.compareTo(b.time),
       );
 
       if (!mounted) {
         return;
-      }
-
-      final List<ChatMessage> loadedMessages = [];
-
-      for (final doc in historyMessages) {
-        final data = doc.data();
-
-        final String role = data['role']?.toString() ?? 'assistant';
-
-        final String text = data['text']?.toString() ?? '';
-
-        if (text.trim().isEmpty) {
-          continue;
-        }
-
-        DateTime messageTime = DateTime.now();
-
-        final timestamp = data['timestamp'];
-
-        if (timestamp is Timestamp) {
-          messageTime = timestamp.toDate();
-        }
-
-        loadedMessages.add(
-          ChatMessage(isAI: role == 'assistant', text: text, time: messageTime),
-        );
       }
 
       setState(() {
@@ -1815,7 +1825,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       debugPrint(
         'โหลดประวัติสำเร็จ: '
-        '${loadedMessages.length} ข้อความ',
+        '${loadedMessages.length} ข้อความ จาก ${conversations.length} Conversation',
       );
 
       debugPrint('======================================');
@@ -1839,7 +1849,13 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('========== LOAD CHAT HISTORY BY DATE ==========');
       debugPrint('Selected date: $selectedDate');
 
-      final conversations = await _historyService.getConversations();
+      final bool isClassroom =
+          widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+
+      final conversations = await _historyService.getConversations(
+        type: isClassroom ? 'classroom' : 'general',
+        subjectCode: widget.subjectCode,
+      );
 
       final DateTime startOfDay = DateTime(
         selectedDate.year,
@@ -1848,9 +1864,6 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
-
-      final bool isClassroom =
-          widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
       final List<QueryDocumentSnapshot<Map<String, dynamic>>>
       filteredConversations = [];
@@ -2040,9 +2053,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.accentSurface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.accentBorder,
-                          ),
+                          border: Border.all(color: AppColors.accentBorder),
                         ),
                         child: Row(
                           children: [
@@ -2254,6 +2265,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final String userMessage = _controller.text.trim();
+    final bool isClassroom =
+    widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
     final Map<String, dynamic>? attachedEmotionData = _emotionData != null
         ? Map<String, dynamic>.from(_emotionData!)
@@ -2325,10 +2338,15 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('==================================');
 
       try {
+        final bool isClassroom =
+            widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+
         await _historyService.saveMessage(
           conversationId: _conversationId!,
           role: 'user',
           text: userMessage,
+          type: isClassroom ? 'classroom' : 'general',
+          subjectCode: widget.subjectCode,
         );
       } catch (e) {
         debugPrint('บันทึกข้อความ User ไม่สำเร็จ: $e');
@@ -2371,12 +2389,16 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
 
       try {
+
         await _historyService.saveMessage(
           conversationId: _conversationId!,
           role: 'assistant',
           text: answer,
+          type: isClassroom ? 'classroom' : 'general',
+          subjectCode: widget.subjectCode,
         );
-      } catch (e) {
+      }
+       catch (e) {
         debugPrint('บันทึกคำตอบ AI ไม่สำเร็จ: $e');
       }
     } catch (e) {
@@ -2583,7 +2605,10 @@ class _ChatScreenState extends State<ChatScreen> {
               ? const LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [AppColors.headerGradientStart, AppColors.headerGradientMid],
+                  colors: [
+                    AppColors.headerGradientStart,
+                    AppColors.headerGradientMid,
+                  ],
                 )
               : null,
           color: isSelected ? null : AppColors.surface,
@@ -2669,11 +2694,11 @@ class _ChatScreenState extends State<ChatScreen> {
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected
-                    ? AppColors.accent
-                    : AppColors.transparent,
+                color: isSelected ? AppColors.accent : AppColors.transparent,
                 border: Border.all(
-                  color: isSelected ? AppColors.accent : AppColors.lightMutedText,
+                  color: isSelected
+                      ? AppColors.accent
+                      : AppColors.lightMutedText,
                   width: 1.5,
                 ),
               ),
@@ -2810,7 +2835,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
               Text(
                 '${_selectedLessonMaterials.length}/${_lessonMaterials.length}',
-                style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -2837,11 +2865,17 @@ class _ChatScreenState extends State<ChatScreen> {
               checkColor: AppColors.onAccent,
               title: Text(
                 material['fileName']?.toString() ?? 'ไม่ทราบชื่อไฟล์',
-                style: const TextStyle(color: AppColors.primaryText, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.primaryText,
+                  fontSize: 13,
+                ),
               ),
               subtitle: Text(
                 material['fileType']?.toString() ?? '',
-                style: const TextStyle(color: AppColors.mutedText, fontSize: 11),
+                style: const TextStyle(
+                  color: AppColors.mutedText,
+                  fontSize: 11,
+                ),
               ),
               onChanged: (value) {
                 setState(() {
@@ -3112,9 +3146,7 @@ class _ChatScreenState extends State<ChatScreen> {
             width: 36,
             height: 36,
             child: Material(
-              color: isSending
-                  ? AppColors.disabledAccent
-                  : AppColors.accent,
+              color: isSending ? AppColors.disabledAccent : AppColors.accent,
               borderRadius: BorderRadius.circular(11),
               shadowColor: AppColors.accentShadow,
               elevation: 7,
@@ -3199,12 +3231,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     _attachmentLoadingText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.secondaryText, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'กรุณารอสักครู่...',
-                    style: TextStyle(color: AppColors.faintText, fontSize: 10.5),
+                    style: TextStyle(
+                      color: AppColors.faintText,
+                      fontSize: 10.5,
+                    ),
                   ),
                 ],
               ),

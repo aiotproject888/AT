@@ -389,11 +389,6 @@ class EmotionPdfReportService {
                 ),
               ),
               pw.Spacer(),
-              _scoreLegend(_green, 'ดีมาก'),
-              pw.SizedBox(width: 7),
-              _scoreLegend(_neutral, 'เฉย ๆ'),
-              pw.SizedBox(width: 7),
-              _scoreLegend(_negative, 'แย่มาก'),
             ],
           ),
 
@@ -406,8 +401,6 @@ class EmotionPdfReportService {
                 // ------------------------------------------------
                 // Y Axis
                 // ------------------------------------------------
-                
-
                 pw.SizedBox(width: 4),
 
                 // ------------------------------------------------
@@ -502,9 +495,21 @@ class EmotionPdfReportService {
                       child: pw.Row(
                         crossAxisAlignment: pw.CrossAxisAlignment.end,
                         children: [
-                          _scoreBar(score: beforeScore, hasData: hasBefore),
-                          _scoreBar(score: duringScore, hasData: hasDuring),
-                          _scoreBar(score: afterScore, hasData: hasAfter),
+                          _scoreBar(
+                            score: beforeScore,
+                            hasData: hasBefore,
+                            color: _blue,
+                          ),
+                          _scoreBar(
+                            score: duringScore,
+                            hasData: hasDuring,
+                            color: _orange,
+                          ),
+                          _scoreBar(
+                            score: afterScore,
+                            hasData: hasAfter,
+                            color: _green,
+                          ),
                         ],
                       ),
                     ),
@@ -529,7 +534,7 @@ class EmotionPdfReportService {
     );
   }
 
-  static pw.Widget _scoreBar({required double score, required bool hasData}) {
+  static pw.Widget _scoreBar({required double score, required bool hasData, required PdfColor color}) {
     return pw.Expanded(
       child: pw.Padding(
         padding: const pw.EdgeInsets.symmetric(horizontal: 10),
@@ -543,7 +548,7 @@ class EmotionPdfReportService {
                 child: pw.Container(
                   height: ((score + 1) / 2) * 100,
                   decoration: pw.BoxDecoration(
-                    color: _scoreColor(score),
+                    color: color,
                     borderRadius: const pw.BorderRadius.vertical(
                       top: pw.Radius.circular(4),
                     ),
@@ -578,27 +583,7 @@ class EmotionPdfReportService {
     );
   }
 
-  static pw.Widget _scoreLegend(PdfColor color, String text) {
-    return pw.Row(
-      children: [
-        pw.Container(
-          width: 5,
-          height: 5,
-          decoration: pw.BoxDecoration(color: color, shape: pw.BoxShape.circle),
-        ),
-        pw.SizedBox(width: 2),
-        pw.Text(text, style: pw.TextStyle(fontSize: 5.7, color: _muted)),
-      ],
-    );
-  }
 
-  static pw.Widget _axisLabel(String text) {
-    return pw.Text(text, style: pw.TextStyle(fontSize: 5.5, color: _muted));
-  }
-
-  // ============================================================
-  // SAME SCORE CALCULATION AS DASHBOARD
-  // ============================================================
 
   static double _calculateEmotionScore(Map<String, int> distribution) {
     if (distribution.isEmpty) {
@@ -636,34 +621,8 @@ class EmotionPdfReportService {
     return (positive - negative) / total;
   }
 
-  static PdfColor _scoreColor(double score) {
-    if (score > 0) {
-      return _positive;
-    }
-
-    if (score < 0) {
-      return _negative;
-    }
-
-    return _neutral;
-  }
-
-  static String _scoreLabel(double score) {
-    if (score > 0) {
-      return 'ดีมาก';
-    }
-
-    if (score < 0) {
-      return 'แย่มาก';
-    }
-
-    return 'เฉย ๆ';
-  }
-
   // ============================================================
   // Emotion Comparison Table
-  // ============================================================
-
   static pw.Widget _emotionComparisonTable({
     required EmotionPeriodData before,
     required EmotionPeriodData during,
@@ -1068,8 +1027,8 @@ class EmotionPdfReportService {
                 pw.SizedBox(height: 2),
 
                 pw.Text(
-                  advice.technique,
-                  maxLines: 2,
+                  _cleanPdfText(advice.technique),
+                  maxLines: 3,
                   style: pw.TextStyle(
                     fontSize: 8.2,
                     color: _darkPurple,
@@ -1091,8 +1050,8 @@ class EmotionPdfReportService {
                 pw.SizedBox(height: 1.5),
 
                 pw.Text(
-                  advice.reason,
-                  maxLines: 4,
+                  _cleanPdfText(advice.reason),
+                  maxLines: 5,
                   style: pw.TextStyle(
                     fontSize: 6.8,
                     color: _ink,
@@ -1156,7 +1115,7 @@ class EmotionPdfReportService {
             ),
             children: [
               _tableCell(limitedActions[index].phase, bold: true, center: true),
-              _tableCell(_excerpt(limitedActions[index].action, 145)),
+              _tableCell(_cleanPdfText(limitedActions[index].action)),
             ],
           ),
       ],
@@ -1166,6 +1125,34 @@ class EmotionPdfReportService {
   // ============================================================
   // Helpers
   // ============================================================
+
+  //ทำความสะอาดข้อความก่อนใส่ใน PDF เพื่อหลีกเลี่ยงปัญหาอักขระแปลก ๆ หลังจากการวิเคราะห์จาก AI
+
+  static String _cleanPdfText(String text) {
+    return text
+        // Dash ที่อาจแสดงเป็นกล่องใน PDF
+        .replaceAll('–', '-')
+        .replaceAll('—', '-')
+        .replaceAll('−', '-')
+        // จุดไข่ปลา
+        .replaceAll('…', '...')
+        // อักขระที่ไม่จำเป็น / มองไม่เห็น
+        .replaceAll('\u200B', '')
+        .replaceAll('\u200C', '')
+        .replaceAll('\u200D', '')
+        .replaceAll('\uFEFF', '')
+        .replaceAll('\u2010', '-') // hyphen
+        .replaceAll('\u2011', '-') // non-breaking hyphen
+        .replaceAll('\u2012', '-') // figure dash
+        .replaceAll('\u2013', '-') // en dash
+        .replaceAll('\u2014', '-') // em dash
+        .replaceAll('\u2212', '-') // minus sign
+        .replaceAll('\u00A0', ' ') // non-breaking space
+        .replaceAll('\u202F', ' ') // narrow no-break space
+        // ทำ whitespace ให้เป็นระเบียบ
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
 
   static EmotionPeriodData _period(
     EmotionReportData data,
@@ -1243,8 +1230,8 @@ class EmotionPdfReportService {
       alignment: center ? pw.Alignment.center : pw.Alignment.centerLeft,
       padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       child: pw.Text(
-        text,
-        maxLines: 2,
+        _cleanPdfText(text),
+        maxLines: 4,
         style: pw.TextStyle(
           fontSize: header ? 6.4 : 6.2,
           color: header ? PdfColors.white : (bold ? _darkPurple : _ink),
@@ -1254,16 +1241,6 @@ class EmotionPdfReportService {
         ),
       ),
     );
-  }
-
-  static String _excerpt(String value, int limit) {
-    final clean = value.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    if (clean.runes.length <= limit) {
-      return clean;
-    }
-
-    return '${String.fromCharCodes(clean.runes.take(limit))}...';
   }
 
   static pw.Widget _footer(EmotionReportData data) {
