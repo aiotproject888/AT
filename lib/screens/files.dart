@@ -6,7 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:microsoft_viewer/microsoft_viewer.dart';
+//import 'package:microsoft_viewer/microsoft_viewer.dart';
 
 import 'chat.dart';
 import '../services/emotion_service.dart';
@@ -2079,7 +2079,7 @@ class _OfficeViewerScreen extends StatelessWidget {
           style: const TextStyle(fontSize: 14),
         ),
       ),
-      body: MicrosoftViewer(bytes, true),
+     
     );
   }
 }
