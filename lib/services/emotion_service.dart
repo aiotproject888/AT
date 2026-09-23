@@ -159,12 +159,12 @@ class EmotionService {
 
   Future<Map<String, int>> getEmotionDistributionByDate({
     required String subjectCode,
-    required DateTime date,
+    required String sessionId,
     required String type,
   }) async {
     final records = await getEmotionRecordsByDate(
       subjectCode: subjectCode,
-      date: date,
+      sessionId: sessionId,
       type: type,
     );
 

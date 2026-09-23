@@ -244,36 +244,30 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // Load Emotion Data
   // ==========================================================
 
-  Future<void> _loadEmotionData({DateTime? date}) async {
-    final selectedDate = date ?? DateTime.now();
+Future<void> _loadEmotionData({String? sessionId}) async {
+  if (sessionId == null || sessionId.isEmpty) {
+    return;
+  }
 
-    try {
-      // --------------------------------------------------------
-      // Records
-      // --------------------------------------------------------
+  final beforeRecords = await _emotionService.getEmotionRecordsBySession(
+    subjectCode: _subject.subjectCode,
+    sessionId: sessionId,
+    type: 'before_class',
+  );
 
-      final beforeRecords = await _emotionService.getEmotionRecordsByDate(
-        subjectCode: _subject.subjectCode,
-        date: selectedDate,
-        type: 'before_class',
-      );
+  final duringRecords = await _emotionService.getEmotionRecordsBySession(
+    subjectCode: _subject.subjectCode,
+    sessionId: sessionId,
+    type: 'during_class',
+  );
 
-      final duringRecords = await _emotionService.getEmotionRecordsByDate(
-        subjectCode: _subject.subjectCode,
-        date: selectedDate,
-        type: 'during_class',
-      );
+  final afterRecords = await _emotionService.getEmotionRecordsBySession(
+    subjectCode: _subject.subjectCode,
+    sessionId: sessionId,
+    type: 'after_class',
+  );
 
-      final afterRecords = await _emotionService.getEmotionRecordsByDate(
-        subjectCode: _subject.subjectCode,
-        date: selectedDate,
-        type: 'after_class',
-      );
-
-      // --------------------------------------------------------
       // Distribution
-      // --------------------------------------------------------
-
       final beforeDistribution = await _emotionService
           .getEmotionDistributionByDate(
             subjectCode: _subject.subjectCode,
