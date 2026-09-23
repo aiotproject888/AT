@@ -611,79 +611,53 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
   // Chatbot
   // ==========================================================
+Future<void> _openChatbot() async {
+  Map<String, dynamic>? emotionData;
 
-  Future<void> _openChatbot() async {
-    Map<String, dynamic>? emotionData;
+  // ใช้ session ปัจจุบันถ้ามี
+  String? sessionId = _sessionId;
 
-    // ใช้ session ปัจจุบันก่อน
-    String? sessionId = _sessionId;
+  try {
+    final selectedDate = _selectedDate ?? DateTime.now();
 
-    try {
-      // ถ้าไม่มี sessionId ใน state ให้ดึงจาก Firestore ใหม่
-      if (sessionId == null) {
-        final activeSession = await _sessionService.getActiveSession(
-          _subject.subjectCode,
-        );
-
-        sessionId = activeSession?['sessionId']?.toString();
-      }
-
-      final selectedDate = _selectedDate ?? DateTime.now();
-
-      emotionData = await _emotionService.getEmotionSummaryForAI(
-        subjectCode: _subject.subjectCode,
-        date: selectedDate,
-        type: 'before_class',
-      );
-
-      debugPrint('========== CHAT CONTEXT ==========');
-      debugPrint('subjectCode: ${_subject.subjectCode}');
-      debugPrint('sessionId: $sessionId');
-      debugPrint('==================================');
-
-      // Classroom Chat ต้องมี sessionId
-      if (sessionId == null || sessionId.isEmpty) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ไม่พบ Session ของห้องเรียนนี้')),
-        );
-
-        return;
-      }
-    } catch (error) {
-      debugPrint('ไม่สามารถโหลดข้อมูลสำหรับ Chatbot: $error');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถเปิด Chatbot ได้: $error')),
-      );
-
-      return;
-    }
+    emotionData = await _emotionService.getEmotionSummaryForAI(
+      subjectCode: _subject.subjectCode,
+      date: selectedDate,
+      type: 'before_class',
+    );
+    debugPrint('subjectCode: ${_subject.subjectCode}');
+    debugPrint('sessionId: $sessionId');
+    debugPrint('selectedDate: $selectedDate');
+  } catch (error) {
+    debugPrint('ไม่สามารถโหลดข้อมูลสำหรับ Chatbot: $error');
 
     if (!mounted) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          return ChatScreen(
-            emotionData: emotionData,
-            subjectCode: _subject.subjectCode,
-            sessionId: sessionId,
-            autoAttachEmotion: true,
-          );
-        },
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('ไม่สามารถเปิด Chatbot ได้: $error'),
       ),
     );
+    return;
   }
+  if (!mounted) return;
 
-  // ==========================================================
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) {
+        return ChatScreen(
+          emotionData: emotionData,
+          subjectCode: _subject.subjectCode,
+          sessionId: sessionId,
+          autoAttachEmotion: true,
+        );
+      },
+    ),
+  );
+}
+
   // Subject Management
-  // ==========================================================
-
   Future<void> _showSubjectManagement() async {
     final action = await showModalBottomSheet<_SubjectManagementAction>(
       context: context,

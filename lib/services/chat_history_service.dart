@@ -3,22 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ChatHistoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ============================================================
-  // ALL CONVERSATIONS
-  //
-  // conversations/{conversationId}
-  //
-  // ใช้ร่วมกันทั้ง:
-  // - General Chat
-  // - Classroom Chat
-  // ============================================================
   CollectionReference<Map<String, dynamic>> get _conversationsRef {
     return _firestore.collection('conversations');
   }
 
-  // ============================================================
-  // CREATE CONVERSATION
-  // ============================================================
+  // สร้างข้อความใน Firestore
   Future<String> createConversation({
     required String type,
     String? subjectCode,
@@ -51,15 +40,17 @@ class ChatHistoryService {
     return conversationRef.id;
   }
 
-  // ============================================================
-  // SAVE MESSAGE
-  // ============================================================
+  //ทำการบันทึกข้อความลงใน Firestore
   Future<void> saveMessage({
     required String conversationId,
     required String role,
     required String text,
     required String type,
     String? subjectCode,
+    Map<String, dynamic>? emotionData,
+    List<Map<String, dynamic>>? lessonMaterials,
+    String? fileName,
+    String? fileType,
   }) async {
     // ไม่บันทึกข้อความว่าง
     if (text.trim().isEmpty) {
@@ -71,12 +62,12 @@ class ChatHistoryService {
       throw Exception('role ต้องเป็น user หรือ assistant เท่านั้น');
     }
 
-    // ตรวจสอบ type
+    // ตรวจสอบ type ว่าเป็นแชทบอททั่วไป หรือแชทบอทในห้องเรียน
     if (type != 'general' && type != 'classroom') {
       throw Exception('type ต้องเป็น general หรือ classroom เท่านั้น');
     }
 
-    // Classroom ต้องมี subjectCode
+    //แชทบอทในห้องเรียนกจะมีรหัสห้องเรียนมาด้วย
     if (type == 'classroom') {
       if (subjectCode == null || subjectCode.trim().isEmpty) {
         throw Exception('Classroom Chat ต้องมี subjectCode');
@@ -93,6 +84,11 @@ class ChatHistoryService {
       'role': role,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
+
+      'emotionData': emotionData,
+      'lessonMaterials': lessonMaterials ?? [],
+      'fileName': fileName,
+      'fileType': fileType,
     });
 
     // อัปเดตเวลาของ conversation
@@ -101,9 +97,7 @@ class ChatHistoryService {
     });
   }
 
-  // ============================================================
   // UPDATE CONVERSATION TITLE
-  // ============================================================
   Future<void> updateConversationTitle({
     required String conversationId,
     required String title,
@@ -126,17 +120,9 @@ class ChatHistoryService {
     });
   }
 
-  // ============================================================
-  // GET CONVERSATIONS
-  //
-  // type:
-  // - general
-  // - classroom
-  //
+  // ดึงข้อความบทสนทนา
   // classroom สามารถกรองด้วย subjectCode ได้
-  // ============================================================
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-  getConversations({
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> getConversations({
     required String type,
     String? subjectCode,
   }) async {
@@ -155,15 +141,10 @@ class ChatHistoryService {
         throw Exception('Classroom Chat ต้องมี subjectCode');
       }
 
-      query = query.where(
-        'subjectCode',
-        isEqualTo: subjectCode,
-      );
+      query = query.where('subjectCode', isEqualTo: subjectCode);
     }
 
-    final snapshot = await query
-        .orderBy('updatedAt', descending: true)
-        .get();
+    final snapshot = await query.orderBy('updatedAt', descending: true).get();
 
     return snapshot.docs;
   }
@@ -195,9 +176,39 @@ class ChatHistoryService {
     return snapshot.docs;
   }
 
-  // ============================================================
+  ///////////////////////ดึงข้อมูลบทสนทนาก่อนหน้า
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  getPreviousConversations({
+    required String type,
+    String? subjectCode,
+    int limit = 3, //ตั้งไว้3 เพื่อดึง ล่าสุด ก่อนหน้าและอีกก่อนหน้า
+  }) async {
+    if (type != 'general' && type != 'classroom') {
+      throw Exception('type ต้องเป็น general หรือ classroom เท่านั้น');
+    }
+
+    Query<Map<String, dynamic>> query = _conversationsRef.where(
+      'type',
+      isEqualTo: type,
+    );
+
+    if (type == 'classroom') {
+      if (subjectCode == null || subjectCode.trim().isEmpty) {
+        throw Exception('Classroom Chat ต้องมี subjectCode');
+      }
+
+      query = query.where('subjectCode', isEqualTo: subjectCode);
+    }
+
+    final snapshot = await query
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .get();
+
+    return snapshot.docs;
+  }
+
   // MESSAGES STREAM
-  // ============================================================
   Stream<QuerySnapshot<Map<String, dynamic>>> messagesStream({
     required String conversationId,
     required String type,
@@ -241,14 +252,9 @@ class ChatHistoryService {
         throw Exception('Classroom Chat ต้องมี subjectCode');
       }
 
-      query = query.where(
-        'subjectCode',
-        isEqualTo: subjectCode,
-      );
+      query = query.where('subjectCode', isEqualTo: subjectCode);
     }
 
-    return query
-        .orderBy('updatedAt', descending: true)
-        .snapshots();
+    return query.orderBy('updatedAt', descending: true).snapshots();
   }
 }

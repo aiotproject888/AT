@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/home.dart';
-import 'services/auth_service.dart';
+
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
@@ -11,11 +11,6 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  final authService = AuthService();
-
-  await authService.signInAnonymously();
-  print('USER UID: ${authService.uid}');
 
   runApp(const MyApp());
 }

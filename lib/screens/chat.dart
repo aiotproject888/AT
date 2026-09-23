@@ -1715,17 +1715,59 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('subjectCode: ${widget.subjectCode}');
       debugPrint('sessionId: ${widget.sessionId}');
 
+      final conversations2 = await _historyService.getPreviousConversations(
+        type: isClassroom ? 'classroom' : 'general',
+        subjectCode: widget.subjectCode,
+        limit: 3,
+      );
+
+      debugPrint('========== PREVIOUS CONVERSATIONS ==========');
+      debugPrint('จำนวน Conversation: ${conversations2.length}');
+
+      for (int i = 0; i < conversations2.length; i++) {
+        final data = conversations2[i].data();
+
+        debugPrint(
+          '${i == 0 ? 'ล่าสุด' : 'ก่อนหน้า'}'
+          ' | ID: ${conversations2[i].id}'
+          ' | title: ${data['title']}'
+          ' | subjectCode: ${data['subjectCode']}'
+          ' | updatedAt: ${data['updatedAt']}',
+        );
+      }
+
+      debugPrint('============================================');
+
       // โหลด Conversation ทั้งหมดของประเภทปัจจุบัน
       // Classroom = เฉพาะวิชานี้
       // General = Chat ทั่วไปทั้งหมด
-      final conversations = await _historyService.getConversations(
+      final allConversations = await _historyService.getConversations(
         type: isClassroom ? 'classroom' : 'general',
         subjectCode: widget.subjectCode,
       );
 
-      if (conversations.isEmpty) {
-        debugPrint('ยังไม่มีประวัติการสนทนา');
+      // วันนี้ 00:00
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
 
+      // เมื่อวาน 00:00
+      final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+
+      // กรองเฉพาะ Conversation ของวันนี้และเมื่อวาน
+      final conversations = allConversations.where((conversation) {
+        final data = conversation.data();
+        final timestamp = data['updatedAt'];
+
+        if (timestamp is! Timestamp) {
+          return false;
+        }
+
+        final updatedAt = timestamp.toDate();
+
+        return !updatedAt.isBefore(yesterdayStart);
+      }).toList();
+
+      if (conversations.isEmpty) {
         if (mounted) {
           setState(() {
             _isLoadingHistory = false;
@@ -1775,8 +1817,7 @@ class _ChatScreenState extends State<ChatScreen> {
           for (final doc in historyMessages) {
             final messageData = doc.data();
 
-            final String role =
-                messageData['role']?.toString() ?? 'assistant';
+            final String role = messageData['role']?.toString() ?? 'assistant';
             final String text = messageData['text']?.toString() ?? '';
 
             if (text.trim().isEmpty) {
@@ -1791,11 +1832,26 @@ class _ChatScreenState extends State<ChatScreen> {
               messageTime = timestamp.toDate();
             }
 
+            // ข้อมูลอารมณ์ที่เคยแนบ
+            final emotionDataRaw = messageData['emotionData'];
+
+            final Map<String, dynamic>? emotionData = emotionDataRaw is Map
+                ? Map<String, dynamic>.from(emotionDataRaw)
+                : null;
+
+            // ข้อมูลไฟล์ที่เคยแนบ
+            final String? fileName = messageData['fileName']?.toString();
+
+            final String? fileType = messageData['fileType']?.toString();
+
             loadedMessages.add(
               ChatMessage(
                 isAI: role == 'assistant',
                 text: text,
                 time: messageTime,
+                emotionData: emotionData,
+                fileName: fileName,
+                fileType: fileType,
               ),
             );
           }
@@ -1807,9 +1863,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       // เรียงข้อความทั้งหมดตามเวลาจากเก่า -> ใหม่
-      loadedMessages.sort(
-        (a, b) => a.time.compareTo(b.time),
-      );
+      loadedMessages.sort((a, b) => a.time.compareTo(b.time));
 
       if (!mounted) {
         return;
@@ -1844,6 +1898,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /////เรียกดูประวัติการสนทนาตามวันที่
   Future<void> _loadChatHistoryByDate(DateTime selectedDate) async {
     try {
       debugPrint('========== LOAD CHAT HISTORY BY DATE ==========');
@@ -1868,12 +1923,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final List<QueryDocumentSnapshot<Map<String, dynamic>>>
       filteredConversations = [];
 
+      // ==========================================================
+      // กรอง Conversation ตามวันที่
+      // ==========================================================
+
       for (final conversation in conversations) {
         final data = conversation.data();
-
-        // ----------------------------------------------------------
-        // ตรวจสอบวันที่สร้าง Conversation
-        // ----------------------------------------------------------
 
         final createdAt = data['createdAt'];
 
@@ -1887,10 +1942,6 @@ class _ChatScreenState extends State<ChatScreen> {
             !conversationDate.isBefore(endOfDay)) {
           continue;
         }
-
-        // ----------------------------------------------------------
-        // Classroom / General
-        // ----------------------------------------------------------
 
         final String type = data['type']?.toString() ?? '';
 
@@ -1913,6 +1964,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
         filteredConversations.add(conversation);
       }
+
+      debugPrint(
+        'พบ Conversation ในวันที่เลือก: '
+        '${filteredConversations.length}',
+      );
+
+      // ==========================================================
+      // ไม่พบข้อมูล
+      // ==========================================================
 
       if (filteredConversations.isEmpty) {
         if (!mounted) return;
@@ -1940,7 +2000,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
               content: Text(
-                'วันที่ ${_formatThaiDate(selectedDate)}\nไม่มีประวัติการสนทนา',
+                'วันที่ ${_formatThaiDate(selectedDate)}\n'
+                'ไม่มีประวัติการสนทนา',
                 style: const TextStyle(
                   color: AppColors.secondaryText,
                   fontSize: 14,
@@ -1967,13 +2028,106 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
 
-      // ตรงนี้เอา filteredConversations
-      // ไปแสดงใน Dialog / BottomSheet ของประวัติ
+      // ==========================================================
+      // โหลดข้อความจาก Conversation ที่พบ
+      // ==========================================================
+
+      final List<ChatMessage> loadedMessages = [];
+
+      for (final conversation in filteredConversations) {
+        try {
+          final historyMessages = await _historyService.getMessages(
+            conversationId: conversation.id,
+            type: isClassroom ? 'classroom' : 'general',
+            subjectCode: widget.subjectCode,
+          );
+
+          debugPrint(
+            'Conversation ${conversation.id}: '
+            '${historyMessages.length} ข้อความ',
+          );
+
+          for (final doc in historyMessages) {
+            final messageData = doc.data();
+
+            final String role = messageData['role']?.toString() ?? 'assistant';
+
+            final String text = messageData['text']?.toString() ?? '';
+
+            if (text.trim().isEmpty) {
+              continue;
+            }
+
+            DateTime messageTime = DateTime.now();
+
+            final timestamp = messageData['timestamp'];
+
+            if (timestamp is Timestamp) {
+              messageTime = timestamp.toDate();
+            }
+
+            // เอาเฉพาะข้อความของวันที่เลือก
+            if (messageTime.isBefore(startOfDay) ||
+                !messageTime.isBefore(endOfDay)) {
+              continue;
+            }
+
+            loadedMessages.add(
+              ChatMessage(
+                isAI: role == 'assistant',
+                text: text,
+                time: messageTime,
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint(
+            'โหลดข้อความจาก Conversation ${conversation.id} '
+            'ไม่สำเร็จ: $e',
+          );
+        }
+      }
+
+      // ==========================================================
+      // เรียงข้อความจากเก่า -> ใหม่
+      // ==========================================================
+
+      loadedMessages.sort((a, b) => a.time.compareTo(b.time));
+
+      debugPrint(
+        'พบข้อความในวันที่เลือก: '
+        '${loadedMessages.length} ข้อความ',
+      );
+
+      // ==========================================================
+      // แสดงข้อความ
+      // ==========================================================
+
+      if (!mounted) return;
+
+      setState(() {
+        messages.clear();
+
+        messages.addAll(loadedMessages);
+
+        _isLoadingHistory = false;
+      });
+
+      debugPrint('==============================================');
+
+      _scrollToBottom();
     } catch (e) {
       debugPrint('โหลดประวัติตามวันที่ไม่สำเร็จ: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingHistory = false;
+      });
     }
   }
 
+  ////////////////////////
   Future<void> _showConversationHistory() async {
     DateTime selectedDate = DateTime.now();
 
@@ -2198,6 +2352,10 @@ class _ChatScreenState extends State<ChatScreen> {
         '${date.year + 543}';
   }
 
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   // ============================================================
   // สร้าง Conversation ใน Firestore
   // ============================================================
@@ -2266,7 +2424,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final String userMessage = _controller.text.trim();
     final bool isClassroom =
-    widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
+        widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
     final Map<String, dynamic>? attachedEmotionData = _emotionData != null
         ? Map<String, dynamic>.from(_emotionData!)
@@ -2347,6 +2505,9 @@ class _ChatScreenState extends State<ChatScreen> {
           text: userMessage,
           type: isClassroom ? 'classroom' : 'general',
           subjectCode: widget.subjectCode,
+          emotionData: attachedEmotionData,
+          fileName: attachedChatFile?['fileName']?.toString(),
+          fileType: attachedChatFile?['fileType']?.toString(),
         );
       } catch (e) {
         debugPrint('บันทึกข้อความ User ไม่สำเร็จ: $e');
@@ -2389,7 +2550,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
 
       try {
-
         await _historyService.saveMessage(
           conversationId: _conversationId!,
           role: 'assistant',
@@ -2397,8 +2557,7 @@ class _ChatScreenState extends State<ChatScreen> {
           type: isClassroom ? 'classroom' : 'general',
           subjectCode: widget.subjectCode,
         );
-      }
-       catch (e) {
+      } catch (e) {
         debugPrint('บันทึกคำตอบ AI ไม่สำเร็จ: $e');
       }
     } catch (e) {
@@ -2542,7 +2701,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           model: 'gpt-oss-120b',
                           name: 'GPT-OSS 120B',
                           provider: 'OpenAI',
-                          logo: 'assets/images/GPT_Logo.png',
+                          logo: 'assets/images/chatgpt-logo.png',
                           recommended: true,
                         ),
 
@@ -2551,13 +2710,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           name: 'Qwen 3.8 27B',
                           provider: 'Qwen',
                           logo: 'assets/images/QWEN_Logo.webp',
-                        ),
-
-                        _buildAIModelOption(
-                          model: 'lfm-2.5-2.6b',
-                          name: 'LFM2.5-2.6B',
-                          provider: 'Liquid AI',
-                          logo: 'assets/images/LIQUID_Logo.png',
                         ),
 
                         _buildAIModelOption(
@@ -2948,22 +3100,62 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ============================================================
-  // Chat List
-  // ============================================================
-
+  //ส่วนแสดงประวัติแชท
   Widget _buildChatList() {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: MessageBubble(
-            message: messages[index],
-            primaryColor: AppColors.accent,
-          ),
+        final message = messages[index];
+
+        final bool showDate =
+            index == 0 || !_isSameDay(messages[index - 1].time, message.time);
+
+        return Column(
+          children: [
+            if (showDate)
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 12),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Divider(
+                        color: AppColors.inputBorder,
+                        thickness: 0.7,
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        _formatThaiDate(message.time),
+                        style: const TextStyle(
+                          color: AppColors.mutedText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                    const Expanded(
+                      child: Divider(
+                        color: AppColors.inputBorder,
+                        thickness: 0.7,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: MessageBubble(
+                message: message,
+                primaryColor: AppColors.accent,
+              ),
+            ),
+          ],
         );
       },
     );
