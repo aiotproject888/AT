@@ -11,26 +11,23 @@ import '../constants/app_colors.dart';
 class EmotionSummaryWidget extends StatefulWidget {
   final String subjectCode;
 
-  const EmotionSummaryWidget({super.key, required this.subjectCode});
+  const EmotionSummaryWidget({
+    super.key,
+    required this.subjectCode,
+  });
 
   @override
-  State<EmotionSummaryWidget> createState() => _EmotionSummaryWidgetState();
+  State<EmotionSummaryWidget> createState() =>
+      _EmotionSummaryWidgetState();
 }
 
 class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
   StreamSubscription<DatabaseEvent>? _emotionSubscription;
+  StreamSubscription<DatabaseEvent>? _sessionSubscription;
 
   Map<String, int> _emotionCounts = {};
 
   bool _isLoading = true;
-
-  String _currentDateString() {
-    final now = DateTime.now();
-
-    return '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
-  }
 
   @override
   void initState() {
@@ -40,7 +37,9 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant EmotionSummaryWidget oldWidget) {
+  void didUpdateWidget(
+    covariant EmotionSummaryWidget oldWidget,
+  ) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.subjectCode != widget.subjectCode) {
@@ -50,24 +49,21 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
   void _startRealtimeListener() {
     _emotionSubscription?.cancel();
+    _sessionSubscription?.cancel();
 
-    final date = _currentDateString();
-
-    final beforeRef = FirebaseDatabase.instance.ref(
-      'emotion_data/${widget.subjectCode}/before_class_$date',
-    );
-
-    final afterRef = FirebaseDatabase.instance.ref(
-      'emotion_data/${widget.subjectCode}/after_class_$date',
-    );
-
-    // ฟังทั้ง before และ after
-
-    _emotionSubscription = beforeRef.onValue.listen((_) {
+    // ฟังการเปลี่ยนแปลงของ Session ปัจจุบัน
+    _sessionSubscription = FirebaseDatabase.instance
+        .ref('current_session')
+        .onValue
+        .listen((_) {
       _loadTodayEmotion();
     });
 
-    afterRef.onValue.listen((_) {
+    // ฟังการเปลี่ยนแปลงของ Emotion ของวิชานี้
+    _emotionSubscription = FirebaseDatabase.instance
+        .ref('emotion_data/${widget.subjectCode}')
+        .onValue
+        .listen((_) {
       _loadTodayEmotion();
     });
 
@@ -76,49 +72,112 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
   Future<void> _loadTodayEmotion() async {
     try {
-      final date = _currentDateString();
-
-      final beforeSnapshot = await FirebaseDatabase.instance
-          .ref('emotion_data/${widget.subjectCode}/before_class_$date')
+      // -------------------------------------------------
+      // 1. ดึง Session ปัจจุบัน
+      // -------------------------------------------------
+      final sessionSnapshot = await FirebaseDatabase.instance
+          .ref('current_session')
           .get();
 
-      final afterSnapshot = await FirebaseDatabase.instance
-          .ref('emotion_data/${widget.subjectCode}/after_class_$date')
-          .get();
-
-      DatabaseEvent? selectedEvent;
-
-      Map<String, dynamic>? beforeData;
-
-      Map<String, dynamic>? afterData;
-
-      if (beforeSnapshot.exists && beforeSnapshot.value is Map) {
-        beforeData = Map<String, dynamic>.from(beforeSnapshot.value as Map);
-      }
-
-      if (afterSnapshot.exists && afterSnapshot.value is Map) {
-        afterData = Map<String, dynamic>.from(afterSnapshot.value as Map);
-      }
-
-      // ถ้ามี after ให้ใช้ after
-
-      // ถ้ายังไม่มี after ให้ใช้ before
-
-      final Map<String, dynamic>? selectedData =
-          afterData != null && afterData.isNotEmpty ? afterData : beforeData;
-
-      if (selectedData == null || selectedData.isEmpty) {
+      if (!sessionSnapshot.exists ||
+          sessionSnapshot.value == null ||
+          sessionSnapshot.value is! Map) {
         if (!mounted) return;
 
         setState(() {
           _emotionCounts = {};
-
           _isLoading = false;
         });
 
         return;
       }
 
+      final sessionData = Map<String, dynamic>.from(
+        sessionSnapshot.value as Map,
+      );
+
+      final sessionId = sessionData['sessionId']?.toString();
+      final sessionSubjectCode =
+          sessionData['subjectCode']?.toString();
+
+      // ไม่มี Session หรือไม่ใช่วิชานี้
+      if (sessionId == null ||
+          sessionId.isEmpty ||
+          sessionSubjectCode != widget.subjectCode) {
+        if (!mounted) return;
+
+        setState(() {
+          _emotionCounts = {};
+          _isLoading = false;
+        });
+
+        return;
+      }
+
+      // -------------------------------------------------
+      // 2. อ่านข้อมูล Before
+      // -------------------------------------------------
+      final beforeSnapshot = await FirebaseDatabase.instance
+          .ref(
+            'emotion_data/'
+            '${widget.subjectCode}/'
+            '$sessionId/'
+            'before_class',
+          )
+          .get();
+
+      // -------------------------------------------------
+      // 3. อ่านข้อมูล After
+      // -------------------------------------------------
+      final afterSnapshot = await FirebaseDatabase.instance
+          .ref(
+            'emotion_data/'
+            '${widget.subjectCode}/'
+            '$sessionId/'
+            'after_class',
+          )
+          .get();
+
+      Map<String, dynamic>? beforeData;
+      Map<String, dynamic>? afterData;
+
+      if (beforeSnapshot.exists &&
+          beforeSnapshot.value is Map) {
+        beforeData = Map<String, dynamic>.from(
+          beforeSnapshot.value as Map,
+        );
+      }
+
+      if (afterSnapshot.exists &&
+          afterSnapshot.value is Map) {
+        afterData = Map<String, dynamic>.from(
+          afterSnapshot.value as Map,
+        );
+      }
+
+      // -------------------------------------------------
+      // 4. ถ้ามี After ให้แสดง After
+      //    ถ้ายังไม่มี After ให้แสดง Before
+      // -------------------------------------------------
+      final Map<String, dynamic>? selectedData =
+          afterData != null && afterData.isNotEmpty
+              ? afterData
+              : beforeData;
+
+      if (selectedData == null || selectedData.isEmpty) {
+        if (!mounted) return;
+
+        setState(() {
+          _emotionCounts = {};
+          _isLoading = false;
+        });
+
+        return;
+      }
+
+      // -------------------------------------------------
+      // 5. รวมจำนวน Emotion
+      // -------------------------------------------------
       final Map<String, int> counts = {};
 
       for (final item in selectedData.values) {
@@ -127,7 +186,9 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
         final record = Map<String, dynamic>.from(item);
 
         final emotion =
-            record['emotion_name'] ?? record['emotion'] ?? 'ไม่ระบุ';
+            record['emotion_name'] ??
+            record['emotion'] ??
+            'ไม่ระบุ';
 
         final counterValue = record['counter'];
 
@@ -147,17 +208,17 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
       setState(() {
         _emotionCounts = counts;
-
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('โหลด Emotion ของ ${widget.subjectCode} ไม่สำเร็จ: $e');
+      debugPrint(
+        'โหลด Emotion ของ ${widget.subjectCode} ไม่สำเร็จ: $e',
+      );
 
       if (!mounted) return;
 
       setState(() {
         _emotionCounts = {};
-
         _isLoading = false;
       });
     }
@@ -166,6 +227,7 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
   @override
   void dispose() {
     _emotionSubscription?.cancel();
+    _sessionSubscription?.cancel();
 
     super.dispose();
   }
@@ -206,16 +268,12 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
     if (_isLoading) {
       return const SizedBox(
         height: 62,
-
         child: Center(
           child: SizedBox(
             width: 18,
-
             height: 18,
-
             child: CircularProgressIndicator(
               strokeWidth: 2,
-
               color: AppColors.accent,
             ),
           ),
@@ -233,7 +291,6 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
   Widget _buildEmotionSummary() {
     final total = _emotionCounts.values.fold<int>(
       0,
-
       (sum, value) => sum + value,
     );
 
@@ -242,35 +299,28 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
     }
 
     final sortedEmotions = _emotionCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      ..sort(
+        (a, b) => b.value.compareTo(a.value),
+      );
 
     final topEmotion = sortedEmotions.first;
 
-    final topPercent = ((topEmotion.value / total) * 100).round();
+    final topPercent =
+        ((topEmotion.value / total) * 100).round();
 
-    // แสดงอารมณ์รองได้สูงสุด 3 อารมณ์
-
-    final otherEmotions = sortedEmotions.skip(1).take(3).toList();
+    final otherEmotions =
+        sortedEmotions.skip(1).take(3).toList();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
-
       children: [
-        // ==========================
-
-        // อารมณ์หลัก
-
-        // ==========================
         SizedBox(
           width: 92,
-
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             children: [
               Text(
                 _getEmoji(topEmotion.key),
-
                 style: const TextStyle(fontSize: 25),
               ),
 
@@ -278,18 +328,12 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
               Text(
                 topEmotion.key,
-
                 maxLines: 1,
-
                 overflow: TextOverflow.ellipsis,
-
                 textAlign: TextAlign.center,
-
                 style: const TextStyle(
                   color: AppColors.primaryText,
-
                   fontSize: 11,
-
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -298,10 +342,8 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
               Text(
                 '$topPercent% มากที่สุด',
-
                 style: const TextStyle(
                   color: AppColors.lightSecondaryText,
-
                   fontSize: 9,
                 ),
               ),
@@ -309,36 +351,35 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
           ),
         ),
 
-        // เส้นแบ่ง
-        Container(width: 1, height: 48, color: AppColors.surfaceBorder),
+        Container(
+          width: 1,
+          height: 48,
+          color: AppColors.surfaceBorder,
+        ),
 
         const SizedBox(width: 12),
 
-        // ==========================
-
-        // Emotion รอง
-
-        // ==========================
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             children: [
               ...otherEmotions.map((entry) {
-                final percent = ((entry.value / total) * 100).round();
+                final percent =
+                    ((entry.value / total) * 100).round();
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 3,
+                  ),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 22,
-
                         child: Text(
                           _getEmoji(entry.key),
-
-                          style: const TextStyle(fontSize: 13),
+                          style: const TextStyle(
+                            fontSize: 13,
+                          ),
                         ),
                       ),
 
@@ -346,16 +387,16 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-
+                          borderRadius:
+                              BorderRadius.circular(10),
                           child: LinearProgressIndicator(
                             value: entry.value / total,
-
                             minHeight: 5,
-
-                            backgroundColor: AppColors.navigationBorder,
-
-                            valueColor: const AlwaysStoppedAnimation<Color>(
+                            backgroundColor:
+                                AppColors.navigationBorder,
+                            valueColor:
+                                const AlwaysStoppedAnimation<
+                                    Color>(
                               AppColors.accent,
                             ),
                           ),
@@ -366,15 +407,12 @@ class _EmotionSummaryWidgetState extends State<EmotionSummaryWidget> {
 
                       SizedBox(
                         width: 27,
-
                         child: Text(
                           '$percent%',
-
                           textAlign: TextAlign.right,
-
                           style: const TextStyle(
-                            color: AppColors.lightSecondaryText,
-
+                            color:
+                                AppColors.lightSecondaryText,
                             fontSize: 9,
                           ),
                         ),
@@ -398,30 +436,25 @@ class _NoDataWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       height: 62,
-
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-
           children: [
             Text(
               'ยังไม่มีข้อมูล',
-
               style: TextStyle(
                 color: AppColors.secondaryText,
-
                 fontSize: 14,
-
                 fontWeight: FontWeight.w500,
               ),
             ),
-
             SizedBox(height: 2),
-
             Text(
               'รอการประเมิน',
-
-              style: TextStyle(color: AppColors.lightMutedText, fontSize: 14),
+              style: TextStyle(
+                color: AppColors.lightMutedText,
+                fontSize: 14,
+              ),
             ),
           ],
         ),

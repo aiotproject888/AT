@@ -1,24 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models/subject.dart';
-
 import '../services/subject_service.dart';
-
 import '../widgets/subjects_card.dart';
-
 import '../services/session_service.dart';
-
 import 'chat.dart';
-
 import '../constants/app_colors.dart';
-
-
-
-
-
-
-
-
 
 class HomeScreen extends StatefulWidget {
 
@@ -294,7 +281,7 @@ Widget _buildHeader() {
           ),
           const SizedBox(height: 7),
           const Text(
-            'จัดการรายวิชาและเริ่มต้นการสอนของคุณ',
+            'ยินดีตอนรับ',
             style: TextStyle(
               color: AppColors.secondaryText,
               fontSize: 13,

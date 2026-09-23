@@ -144,11 +144,15 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final selectedDate = DateTime.now();
+      final sessionId = widget.sessionId;
+
+      if (sessionId == null || sessionId.isEmpty) {
+        return;
+      }
 
       final beforeData = await _emotionService.getEmotionSummaryForAI(
         subjectCode: widget.subjectCode!,
-        date: selectedDate,
+        sessionId: sessionId,
         type: 'before_class',
       );
 
@@ -253,7 +257,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final selectedDate = DateTime.now();
+      final sessionId = widget.sessionId;
+
+      if (sessionId == null || sessionId.isEmpty) {
+        return;
+      }
 
       Map<String, dynamic>? beforeData;
       Map<String, dynamic>? duringData;
@@ -266,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (beforeSelected) {
         beforeData = await _emotionService.getEmotionSummaryForAI(
           subjectCode: widget.subjectCode!,
-          date: selectedDate,
+          sessionId: sessionId,
           type: 'before_class',
         );
       }
@@ -274,7 +282,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (duringSelected) {
         duringData = await _emotionService.getEmotionSummaryForAI(
           subjectCode: widget.subjectCode!,
-          date: selectedDate,
+          sessionId: sessionId,
           type: 'during_class',
         );
       }
@@ -282,7 +290,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (afterSelected) {
         afterData = await _emotionService.getEmotionSummaryForAI(
           subjectCode: widget.subjectCode!,
-          date: selectedDate,
+          sessionId: sessionId,
           type: 'after_class',
         );
       }

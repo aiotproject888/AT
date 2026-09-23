@@ -207,8 +207,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
     _loadActiveSession();
 
-    _loadEmotionData(date: DateTime.now());
-
     _startEmotionRealtimeListener();
   }
 
@@ -244,47 +242,64 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // Load Emotion Data
   // ==========================================================
 
-Future<void> _loadEmotionData({String? sessionId}) async {
-  if (sessionId == null || sessionId.isEmpty) {
-    return;
-  }
+  Future<void> _loadEmotionData({String? sessionId}) async {
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
 
-  final beforeRecords = await _emotionService.getEmotionRecordsBySession(
-    subjectCode: _subject.subjectCode,
-    sessionId: sessionId,
-    type: 'before_class',
-  );
+    try {
+      // --------------------------------------------------------
+      // Before Class
+      // --------------------------------------------------------
 
-  final duringRecords = await _emotionService.getEmotionRecordsBySession(
-    subjectCode: _subject.subjectCode,
-    sessionId: sessionId,
-    type: 'during_class',
-  );
+      final beforeRecords = await _emotionService.getEmotionRecordsBySession(
+        subjectCode: _subject.subjectCode,
+        sessionId: sessionId,
+        type: 'before_class',
+      );
 
-  final afterRecords = await _emotionService.getEmotionRecordsBySession(
-    subjectCode: _subject.subjectCode,
-    sessionId: sessionId,
-    type: 'after_class',
-  );
+      // --------------------------------------------------------
+      // During Class
+      // --------------------------------------------------------
 
-      // Distribution
+      final duringRecords = await _emotionService.getEmotionRecordsBySession(
+        subjectCode: _subject.subjectCode,
+        sessionId: sessionId,
+        type: 'during_class',
+      );
+
+      // --------------------------------------------------------
+      // After Class
+      // --------------------------------------------------------
+
+      final afterRecords = await _emotionService.getEmotionRecordsBySession(
+        subjectCode: _subject.subjectCode,
+        sessionId: sessionId,
+        type: 'after_class',
+      );
+
+      // --------------------------------------------------------
+      // Emotion Distribution
+      // --------------------------------------------------------
+
       final beforeDistribution = await _emotionService
-          .getEmotionDistributionByDate(
+          .getEmotionDistributionBySession(
             subjectCode: _subject.subjectCode,
-            date: selectedDate,
+            sessionId: sessionId,
             type: 'before_class',
           );
 
       final duringDistribution = await _emotionService
-          .getEmotionDistributionByDate(
+          .getEmotionDistributionBySession(
             subjectCode: _subject.subjectCode,
-            date: selectedDate,
+            sessionId: sessionId,
             type: 'during_class',
           );
+
       final afterDistribution = await _emotionService
-          .getEmotionDistributionByDate(
+          .getEmotionDistributionBySession(
             subjectCode: _subject.subjectCode,
-            date: selectedDate,
+            sessionId: sessionId,
             type: 'after_class',
           );
 
@@ -304,6 +319,10 @@ Future<void> _loadEmotionData({String? sessionId}) async {
           beforePositive += count;
         }
       }
+
+      // --------------------------------------------------------
+      // During Class
+      // --------------------------------------------------------
 
       int duringTotal = 0;
       int duringPositive = 0;
@@ -363,9 +382,12 @@ Future<void> _loadEmotionData({String? sessionId}) async {
         afterEmotionDistribution = afterDistribution;
       });
 
+      debugPrint('Session: $sessionId');
       debugPrint('ก่อนเรียน: $beforeTotal คน');
+      debugPrint('ระหว่างเรียน: $duringTotal คน');
       debugPrint('หลังเรียน: $afterTotal คน');
       debugPrint('ก่อนเรียน Positive: $beforePositivePercentage%');
+      debugPrint('ระหว่างเรียน Positive: $duringPositivePercentage%');
       debugPrint('หลังเรียน Positive: $afterPositivePercentage%');
     } catch (error) {
       debugPrint('โหลด Emotion ไม่สำเร็จ: $error');
@@ -401,7 +423,9 @@ Future<void> _loadEmotionData({String? sessionId}) async {
             '🔄 มีการเปลี่ยนแปลง Emotion ของวิชา ${_subject.subjectCode}',
           );
 
-          _loadEmotionData(date: _selectedDate ?? DateTime.now());
+          if (_sessionId != null && _sessionId!.isNotEmpty) {
+            _loadEmotionData(sessionId: _sessionId);
+          }
         });
   }
 
@@ -418,12 +442,16 @@ Future<void> _loadEmotionData({String? sessionId}) async {
       if (!mounted) return;
 
       if (session != null) {
+        final sessionId = session['sessionId']?.toString();
+
         setState(() {
-          _sessionId = session['sessionId']?.toString();
+          _sessionId = sessionId;
           _isClassActive = true;
         });
 
-        await _loadEmotionData();
+        if (sessionId != null && sessionId.isNotEmpty) {
+          await _loadEmotionData(sessionId: sessionId);
+        }
       } else {
         setState(() {
           _sessionId = null;
@@ -463,7 +491,7 @@ Future<void> _loadEmotionData({String? sessionId}) async {
         const SnackBar(content: Text('เปิดห้องเรียนเรียบร้อยแล้ว')),
       );
 
-      await _loadEmotionData();
+      await _loadEmotionData(sessionId: sessionId);
     } catch (error) {
       if (!mounted) return;
 
@@ -532,8 +560,7 @@ Future<void> _loadEmotionData({String? sessionId}) async {
   }
 
   // ==========================================================
-  // Select Date
-  // ==========================================================
+  //เลือกวันที่
 
   Future<void> _selectDate() async {
     final pickedDate = await showModalBottomSheet<DateTime>(
@@ -547,7 +574,196 @@ Future<void> _loadEmotionData({String? sessionId}) async {
 
     if (pickedDate == null) return;
 
+    // โหลด Session ของวันที่เลือก
     await _loadSessionsByDate(pickedDate);
+
+    // ถ้าไม่มี Session
+    if (_selectedSessions.isEmpty) {
+      return;
+    }
+
+    // ถ้ามีแค่ 1 Session ให้โหลดทันที
+    if (_selectedSessions.length == 1) {
+      final sessionId = _selectedSessions.first['sessionId']?.toString();
+
+      if (sessionId != null && sessionId.isNotEmpty) {
+        await _loadEmotionData(sessionId: sessionId);
+      }
+
+      return;
+    }
+
+    // ถ้ามีหลาย Session ให้ผู้ใช้เลือก
+    if (!mounted) return;
+
+    final selectedSession = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.transparent,
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
+            decoration: const BoxDecoration(
+              color: AppColors.sheetBackground,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 45,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.dragHandle,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: AppColors.accent),
+                    SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'เลือก Session',
+                          style: TextStyle(
+                            color: AppColors.primaryText,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'เลือกข้อมูลการเรียนที่ต้องการดู',
+                          style: TextStyle(
+                            color: AppColors.faintText,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _selectedSessions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final session = _selectedSessions[index];
+
+                      final startTime = session['startTime'];
+                      final endTime = session['endTime'];
+
+                      String formatTime(dynamic value) {
+                        if (value == null) {
+                          return '--:--';
+                        }
+
+                        try {
+                          final time = (value as dynamic).toDate();
+
+                          return '${time.hour.toString().padLeft(2, '0')}:'
+                              '${time.minute.toString().padLeft(2, '0')}';
+                        } catch (_) {
+                          return '--:--';
+                        }
+                      }
+
+                      final start = formatTime(startTime);
+                      final end = formatTime(endTime);
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          Navigator.pop(context, session);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSurface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.accent.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.accent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.schedule_rounded,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+
+                              const SizedBox(width: 14),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Session ${index + 1}',
+                                      style: const TextStyle(
+                                        color: AppColors.primaryText,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$start - $end น.',
+                                      style: const TextStyle(
+                                        color: AppColors.secondaryText,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.faintText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selectedSession == null) return;
+
+    final sessionId = selectedSession['sessionId']?.toString();
+
+    if (sessionId == null || sessionId.isEmpty) return;
+
+    await _loadEmotionData(sessionId: sessionId);
   }
 
   // ==========================================================
@@ -566,16 +782,30 @@ Future<void> _loadEmotionData({String? sessionId}) async {
         date: date,
       );
 
-      await _loadEmotionData(date: date);
-
       if (!mounted) return;
 
       setState(() {
         _selectedSessions = sessions;
         _isLoadingHistory = false;
       });
+
+      if (sessions.isEmpty) {
+        setState(() {
+          beforeStudentCount = 0;
+          duringStudentCount = 0;
+          afterStudentCount = 0;
+
+          beforePositivePercentage = 0;
+          duringPositivePercentage = 0;
+          afterPositivePercentage = 0;
+
+          beforeEmotionDistribution = {};
+          duringEmotionDistribution = {};
+          afterEmotionDistribution = {};
+        });
+      }
     } catch (error) {
-      debugPrint('โหลดข้อมูลย้อนหลังไม่สำเร็จ: $error');
+      debugPrint('โหลดประวัติ Session ไม่สำเร็จ: $error');
 
       if (!mounted) return;
 
@@ -584,72 +814,70 @@ Future<void> _loadEmotionData({String? sessionId}) async {
         _isLoadingHistory = false;
 
         beforeStudentCount = 0;
+        duringStudentCount = 0;
         afterStudentCount = 0;
 
         beforePositivePercentage = 0;
+        duringPositivePercentage = 0;
         afterPositivePercentage = 0;
 
         beforeEmotionDistribution = {};
+        duringEmotionDistribution = {};
         afterEmotionDistribution = {};
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ไม่มีข้อมูลในวันที่เลือก'),
-          duration: Duration(seconds: 2),
-        ),
-      );
     }
   }
 
   // ==========================================================
   // Chatbot
   // ==========================================================
-Future<void> _openChatbot() async {
-  Map<String, dynamic>? emotionData;
+  Future<void> _openChatbot() async {
+    Map<String, dynamic>? emotionData;
 
-  // ใช้ session ปัจจุบันถ้ามี
-  String? sessionId = _sessionId;
+    // ใช้ session ปัจจุบันถ้ามี
+    String? sessionId = _sessionId;
 
-  try {
-    final selectedDate = _selectedDate ?? DateTime.now();
+    try {
+      final selectedDate = _selectedDate ?? DateTime.now();
 
-    emotionData = await _emotionService.getEmotionSummaryForAI(
-      subjectCode: _subject.subjectCode,
-      date: selectedDate,
-      type: 'before_class',
-    );
-    debugPrint('subjectCode: ${_subject.subjectCode}');
-    debugPrint('sessionId: $sessionId');
-    debugPrint('selectedDate: $selectedDate');
-  } catch (error) {
-    debugPrint('ไม่สามารถโหลดข้อมูลสำหรับ Chatbot: $error');
+      if (_sessionId == null || _sessionId!.isEmpty) {
+        return;
+      }
 
+      emotionData = await _emotionService.getEmotionSummaryForAI(
+        subjectCode: _subject.subjectCode,
+        sessionId: _sessionId!,
+        type: 'before_class',
+      );
+      debugPrint('subjectCode: ${_subject.subjectCode}');
+      debugPrint('sessionId: $sessionId');
+      debugPrint('selectedDate: $selectedDate');
+    } catch (error) {
+      debugPrint('ไม่สามารถโหลดข้อมูลสำหรับ Chatbot: $error');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถเปิด Chatbot ได้: $error')),
+      );
+      return;
+    }
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('ไม่สามารถเปิด Chatbot ได้: $error'),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ChatScreen(
+            emotionData: emotionData,
+            subjectCode: _subject.subjectCode,
+            sessionId: sessionId,
+            autoAttachEmotion: true,
+          );
+        },
       ),
     );
-    return;
   }
-  if (!mounted) return;
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) {
-        return ChatScreen(
-          emotionData: emotionData,
-          subjectCode: _subject.subjectCode,
-          sessionId: sessionId,
-          autoAttachEmotion: true,
-        );
-      },
-    ),
-  );
-}
 
   // Subject Management
   Future<void> _showSubjectManagement() async {
@@ -2269,35 +2497,47 @@ Future<void> _openChatbot() async {
   // ==========================================================
 
   Future<void> _exportPdf() async {
-    if (_isLoadingOverlay) return;
+  if (_isLoadingOverlay) return;
 
-    _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
-
-    try {
-      _updateLoading('กำลังสร้างรายงาน PDF...');
-
-      await DashboardPdfConnector.open(
-        context: context,
-        subjectName: _subject.subjectName,
-        subjectCode: _subject.subjectCode,
-        academicYear: _subject.year,
-        semester: _subject.semester,
-        selectedDate: _selectedDate ?? DateTime.now(),
-      );
-
-      _hideLoading();
-    } catch (error) {
-      debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
-
-      _hideLoading();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error')),
-      );
-    }
+  if (_sessionId == null || _sessionId!.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('ไม่พบข้อมูล Session สำหรับสร้างรายงาน PDF'),
+      ),
+    );
+    return;
   }
+
+  _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
+
+  try {
+    _updateLoading('กำลังสร้างรายงาน PDF...');
+
+    await DashboardPdfConnector.open(
+      context: context,
+      subjectName: _subject.subjectName,
+      subjectCode: _subject.subjectCode,
+      academicYear: _subject.year,
+      semester: _subject.semester,
+      selectedDate: _selectedDate ?? DateTime.now(),
+      sessionId: _sessionId!,
+    );
+
+    _hideLoading();
+  } catch (error) {
+    debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
+
+    _hideLoading();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error'),
+      ),
+    );
+  }
+}
 
   // ==========================================================
   // Bottom Actions
@@ -2784,10 +3024,7 @@ class _DashboardBottomNavigation extends StatelessWidget {
   }
 }
 
-// ============================================================
 // Dashboard Navigation Data
-// ============================================================
-
 class _DashboardNavigationData {
   final IconData icon;
   final IconData activeIcon;

@@ -1997,15 +1997,17 @@ class _MaterialScreenState extends State<MaterialScreen> {
     const String type = 'before_class';
 
     try {
-      // MaterialScreen ไม่มีตัวเลือกวันที่แบบ Dashboard
-      // จึงใช้วันที่ปัจจุบันเหมือนค่าเริ่มต้นของ Dashboard
-      final selectedDate = DateTime.now();
-
-      emotionData = await _emotionService.getEmotionSummaryForAI(
-        subjectCode: widget.subjectCode,
-        date: selectedDate,
-        type: type,
-      );
+      // getEmotionSummaryForAI ใช้ Session เป็นตัวระบุข้อมูล
+      // จึงไม่ต้องส่งวันที่เข้าไปโดยตรง
+      if (sessionId == null || sessionId.isEmpty) {
+        debugPrint('ไม่พบ Session สำหรับโหลดข้อมูล Emotion');
+      } else {
+        emotionData = await _emotionService.getEmotionSummaryForAI(
+          subjectCode: widget.subjectCode,
+          sessionId: sessionId,
+          type: type,
+        );
+      }
 
       debugPrint('========== CHAT CONTEXT ==========');
       debugPrint('subjectCode: ${widget.subjectCode}');
