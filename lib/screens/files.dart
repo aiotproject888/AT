@@ -1835,9 +1835,107 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // ============================================================
   // DOWNLOAD
   // ============================================================
+  Future<void> _downloadFile(_MaterialFile file) async {
+    if (_isLoadingOverlay) return;
 
-  void _downloadFile(_MaterialFile file) {
-    _showComingSoon('ระบบดาวน์โหลดไฟล์จะเชื่อมต่อในขั้นตอนถัดไป');
+    if (file.storageKey.isEmpty) {
+      _showError('ไม่พบข้อมูลไฟล์');
+      return;
+    }
+
+    _showLoading('กำลังเตรียมดาวน์โหลดไฟล์...');
+
+    try {
+      // ============================================================
+      // 1. ขอ Download URL จาก Backend
+      // ============================================================
+
+      _updateLoading('กำลังเชื่อมต่อระบบจัดเก็บไฟล์...');
+
+      final response = await http.post(
+        Uri.parse('$_backendBaseUrl/api/materials/download-url'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'storageKey': file.storageKey,
+          'fileName': file.name,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'ไม่สามารถเตรียมดาวน์โหลดไฟล์ได้ '
+          '(${response.statusCode})',
+        );
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (data['success'] != true) {
+        throw Exception(data['message'] ?? 'ไม่สามารถเตรียมดาวน์โหลดไฟล์ได้');
+      }
+
+      final downloadUrl = data['downloadUrl']?.toString();
+
+      if (downloadUrl == null || downloadUrl.isEmpty) {
+        throw Exception('ไม่พบ URL สำหรับดาวน์โหลดไฟล์');
+      }
+
+      // ============================================================
+      // 2. ดาวน์โหลดไฟล์จาก Backblaze B2
+      // ============================================================
+
+      _updateLoading('กำลังดาวน์โหลดไฟล์...');
+
+      final fileResponse = await http.get(Uri.parse(downloadUrl));
+
+      if (fileResponse.statusCode != 200) {
+        throw Exception(
+          'ไม่สามารถดาวน์โหลดไฟล์ได้ '
+          '(${fileResponse.statusCode})',
+        );
+      }
+
+      final bytes = fileResponse.bodyBytes;
+
+      if (bytes.isEmpty) {
+        throw Exception('ไฟล์ที่ดาวน์โหลดไม่มีข้อมูล');
+      }
+
+      // ============================================================
+      // 3. ให้ผู้ใช้เลือกตำแหน่งบันทึกไฟล์
+      // ============================================================
+
+      _updateLoading('กำลังบันทึกไฟล์...');
+
+      if (!mounted) return;
+
+      _hideLoading();
+
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'บันทึกไฟล์',
+        fileName: file.name,
+        bytes: bytes,
+      );
+
+      // ผู้ใช้กดยกเลิก
+      if (savePath == null || savePath.isEmpty) {
+        return;
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ดาวน์โหลดไฟล์ "${file.name}" สำเร็จ')),
+      );
+    } catch (error) {
+      debugPrint('Download File Error: $error');
+
+      _hideLoading();
+
+      if (!mounted) return;
+
+      _showError('ไม่สามารถดาวน์โหลดไฟล์ได้\n$error');
+    }
   }
 
   // เปิดดูไฟล์ที่อัปโหลดไว้ในห้องเรียน
@@ -1845,7 +1943,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     final extension = file.extension.toLowerCase();
 
     // รองรับเฉพาะ PDF / DOCX / PPTX
-    if (extension != 'pdf' && extension != 'docx' && extension != 'pptx') {
+    if (extension != 'pdf') {
       _showComingSoon('ไม่สามารถเปิดไฟล์ประเภทนี้ได้');
       return;
     }
@@ -2081,7 +2179,6 @@ class _OfficeViewerScreen extends StatelessWidget {
           style: const TextStyle(fontSize: 14),
         ),
       ),
-     
     );
   }
 }

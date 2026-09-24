@@ -27,10 +27,9 @@ class SessionService {
       'subjectCode': subjectCode,
       'status': 'active',
       'startTime': FieldValue.serverTimestamp(),
+      'lastActivityAt': FieldValue.serverTimestamp(),
       'endTime': null,
     });
-
-
 
     final sessionId = sessionRef.id;
 
@@ -43,7 +42,6 @@ class SessionService {
 
     return sessionId;
   }
-
 
   // =====================================================
   // เปลี่ยนเป็นหลังเรียน
@@ -80,26 +78,14 @@ class SessionService {
 
   // =====================================================
   // ดึง Session ที่กำลัง Active
-  // =====================================================
-
-   // =====================================================
-  // ดึง Session ที่กำลัง Active
   // พร้อมตรวจสอบ Auto Close
   // =====================================================
 
-  Future<Map<String, dynamic>?> getActiveSession(
-    String subjectCode,
-  ) async {
+  Future<Map<String, dynamic>?> getActiveSession(String subjectCode) async {
     final snapshot = await _firestore
         .collection('class_sessions')
-        .where(
-          'subjectCode',
-          isEqualTo: subjectCode,
-        )
-        .where(
-          'status',
-          isEqualTo: 'active',
-        )
+        .where('subjectCode', isEqualTo: subjectCode)
+        .where('status', isEqualTo: 'active')
         .limit(1)
         .get();
 
@@ -108,10 +94,7 @@ class SessionService {
     }
 
     final doc = snapshot.docs.first;
-    return {
-      'sessionId': doc.id,
-      ...doc.data(),
-    };
+    return {'sessionId': doc.id, ...doc.data()};
   }
 
   // =====================================================
@@ -162,5 +145,44 @@ class SessionService {
     }
 
     return Map<String, dynamic>.from(snapshot.value as Map);
+  }
+
+  ///อัปเดตการกระทำล่าสุด
+  Future<void> updateLastActivity(String sessionId) async {
+    await _firestore.collection('class_sessions').doc(sessionId).update({
+      'lastActivityAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<bool> checkAndAutoCloseSession(String sessionId) async {
+    final snapshot = await _firestore
+        .collection('class_sessions')
+        .doc(sessionId)
+        .get();
+
+    if (!snapshot.exists) {
+      return false;
+    }
+
+    final data = snapshot.data();
+
+    if (data == null || data['status'] != 'active') {
+      return false;
+    }
+
+    final lastActivity = data['lastActivityAt'];
+
+    if (lastActivity is! Timestamp) {
+      return false;
+    }
+
+    final inactiveDuration = DateTime.now().difference(lastActivity.toDate());
+
+    if (inactiveDuration >= const Duration(minutes: 2)) {
+      await endSession(sessionId);
+      return true;
+    }
+
+    return false;
   }
 }

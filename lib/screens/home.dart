@@ -1538,7 +1538,6 @@ class AddSubjectDialog extends StatefulWidget {
 }
 
 class _AddSubjectDialogState extends State<AddSubjectDialog> {
-
   final nameController = TextEditingController();
 
   final yearController = TextEditingController();
@@ -1551,10 +1550,10 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
   bool _isSaving = false;
 
+  String? _errorMessage;
+
   @override
-
   void dispose() {
-
     nameController.dispose();
 
     yearController.dispose();
@@ -1564,75 +1563,53 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
     codeController.dispose();
 
     super.dispose();
-
   }
 
   @override
-
   Widget build(BuildContext context) {
-
     return Dialog(
-
       alignment: Alignment.bottomCenter,
-
       insetPadding: const EdgeInsets.symmetric(horizontal: 14),
-
       backgroundColor: AppColors.transparent,
-
       elevation: 0,
-
       child: Container(
-
         width: double.infinity,
-
-        constraints: const BoxConstraints(maxWidth: 420, minHeight: 461),
-
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-
-        decoration: BoxDecoration(
-
-          color: AppColors.dialogBackground,
-
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-
-          border: Border.all(color: AppColors.dialogBorder),
-
+        constraints: const BoxConstraints(
+          maxWidth: 420,
+          minHeight: 461,
         ),
-
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+        decoration: BoxDecoration(
+          color: AppColors.dialogBackground,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+          border: Border.all(
+            color: AppColors.dialogBorder,
+          ),
+        ),
         child: SingleChildScrollView(
-
           child: Column(
-
             mainAxisSize: MainAxisSize.min,
-
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
-
               const Text(
-
                 'เพิ่มรายวิชาใหม่',
-
                 style: TextStyle(
-
                   color: AppColors.primaryText,
-
                   fontSize: 20,
-
                   fontWeight: FontWeight.w600,
-
                 ),
-
               ),
 
               const SizedBox(height: 3),
 
               const Text(
-
                 'กรอกข้อมูลวิชาที่ต้องการเพิ่ม',
-
-                style: TextStyle(color: AppColors.secondaryText, fontSize: 15),
-
+                style: TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 15,
+                ),
               ),
 
               const SizedBox(height: 18),
@@ -1641,58 +1618,46 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
               const SizedBox(height: 6),
 
-              _SubjectTextField(controller: nameController),
+              _SubjectTextField(
+                controller: nameController,
+              ),
 
               const SizedBox(height: 12),
 
               Row(
-
                 children: [
-
                   Expanded(
-
                     child: Column(
-
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-
                         const _FieldLabel('ปีการศึกษา*'),
 
                         const SizedBox(height: 6),
 
-                        _SubjectTextField(controller: yearController),
-
+                        _SubjectTextField(
+                          controller: yearController,
+                        ),
                       ],
-
                     ),
-
                   ),
 
                   const SizedBox(width: 9),
 
                   Expanded(
-
                     child: Column(
-
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
-
                         const _FieldLabel('ภาคเรียน*'),
 
                         const SizedBox(height: 6),
 
-                        _SubjectTextField(controller: semesterController),
-
+                        _SubjectTextField(
+                          controller: semesterController,
+                        ),
                       ],
-
                     ),
-
                   ),
-
                 ],
-
               ),
 
               const SizedBox(height: 12),
@@ -1701,100 +1666,101 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
 
               const SizedBox(height: 6),
 
-              _SubjectTextField(controller: codeController),
+              _SubjectTextField(
+                controller: codeController,
+              ),
+
+              // ==========================================================
+              // Error Message
+              // ==========================================================
+
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 10),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: 24),
 
               SizedBox(
-
                 width: double.infinity,
-
                 height: 46,
-
                 child: ElevatedButton.icon(
-
                   onPressed: _isSaving ? null : _addSubject,
 
                   icon: _isSaving
-
                       ? const SizedBox(
-
                           width: 18,
-
                           height: 18,
-
                           child: CircularProgressIndicator(
-
                             strokeWidth: 2,
-
                             color: AppColors.green,
-
                           ),
-
                         )
-
-                      : const Icon(Icons.add, color: AppColors.onAccent, size: 25),
+                      : const Icon(
+                          Icons.add,
+                          color: AppColors.onAccent,
+                          size: 25,
+                        ),
 
                   label: Text(
-
-                    _isSaving ? 'กำลังบันทึก...' : 'เพิ่มรายวิชา',
-
+                    _isSaving
+                        ? 'กำลังบันทึก...'
+                        : 'เพิ่มรายวิชา',
                     style: const TextStyle(
-
                       color: AppColors.onAccent,
-
                       fontSize: 16,
-
                       fontWeight: FontWeight.w400,
-
                     ),
-
                   ),
 
                   style: ElevatedButton.styleFrom(
-
                     elevation: 0,
-
                     backgroundColor: AppColors.green,
-
                     foregroundColor: AppColors.onAccent,
-
-                    disabledBackgroundColor: AppColors.disabledAccent,
-
-                    disabledForegroundColor: AppColors.onAccent,
-
+                    disabledBackgroundColor:
+                        AppColors.disabledAccent,
+                    disabledForegroundColor:
+                        AppColors.onAccent,
                     shape: RoundedRectangleBorder(
-
                       borderRadius: BorderRadius.circular(12),
-
                     ),
-
                   ),
-
                 ),
-
               ),
-
             ],
-
           ),
-
         ),
-
       ),
-
     );
-
   }
 
   // ============================================================
-
   // Add Subject
-
   // ============================================================
 
   Future<void> _addSubject() async {
-
     final subjectName = nameController.text.trim();
 
     final year = yearController.text.trim();
@@ -1804,61 +1770,48 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
     final subjectCode = codeController.text.trim();
 
     // ==========================================================
-
     // Validation
-
     // ==========================================================
 
     if (subjectName.isEmpty ||
-
         year.isEmpty ||
-
         semester.isEmpty ||
-
         subjectCode.isEmpty) {
-
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง')),
-
-      );
+      setState(() {
+        _errorMessage = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+      });
 
       return;
-
     }
 
     // ==========================================================
-
-    // สร้าง Subject
-
+    // ล้างข้อความแจ้งเตือน
     // ==========================================================
 
-    final subject = Subject(
-
-      subjectName: subjectName,
-
-      year: year,
-
-      semester: semester,
-
-      subjectCode: subjectCode,
-
-    );
-
     setState(() {
-
-      _isSaving = true;
-
+      _errorMessage = null;
     });
 
     // ==========================================================
+    // สร้าง Subject
+    // ==========================================================
 
+    final subject = Subject(
+      subjectName: subjectName,
+      year: year,
+      semester: semester,
+      subjectCode: subjectCode,
+    );
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    // ==========================================================
     // บันทึกผ่าน SubjectService
-
     // ==========================================================
 
     try {
-
       await _subjectService.createSubject(subject);
 
       if (!mounted) return;
@@ -1866,29 +1819,20 @@ class _AddSubjectDialogState extends State<AddSubjectDialog> {
       widget.onAdd(subject);
 
       Navigator.pop(context);
-
     } catch (error) {
-
-      debugPrint('เกิดข้อผิดพลาดในการบันทึกวิชา: $error');
+      debugPrint(
+        'เกิดข้อผิดพลาดในการบันทึกวิชา: $error',
+      );
 
       if (!mounted) return;
 
       setState(() {
-
         _isSaving = false;
 
+        _errorMessage = 'ไม่สามารถบันทึกรายวิชาได้';
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text('ไม่สามารถบันทึกรายวิชาได้')),
-
-      );
-
     }
-
   }
-
 }
 
 // ================================================================

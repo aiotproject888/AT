@@ -58,16 +58,9 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
 
   StreamSubscription<DatabaseEvent>? _emotionSubscription;
-
-  // ==========================================================
-  // Subject
-  // ==========================================================
+  Timer? _autoCloseTimer;
 
   late Subject _subject;
-
-  // ==========================================================
-  // Emotion Data
-  // ==========================================================
 
   int beforeStudentCount = 0;
   int beforePositivePercentage = 0;
@@ -217,6 +210,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   @override
   void dispose() {
     _emotionSubscription?.cancel();
+    _autoCloseTimer?.cancel();
 
     _emotionPageController.dispose();
 
@@ -413,7 +407,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
   // Realtime Emotion Listener
   // ==========================================================
-
   void _startEmotionRealtimeListener() {
     _emotionSubscription = FirebaseDatabase.instance
         .ref('emotion_data/${_subject.subjectCode}')
@@ -423,12 +416,17 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
             '🔄 มีการเปลี่ยนแปลง Emotion ของวิชา ${_subject.subjectCode}',
           );
 
-          if (_sessionId != null && _sessionId!.isNotEmpty) {
-            _loadEmotionData(sessionId: _sessionId);
+          final sessionId = _sessionId;
+
+          if (sessionId == null || sessionId.isEmpty) {
+            return;
           }
+
+          _sessionService.updateLastActivity(sessionId);
+
+          _loadEmotionData(sessionId: sessionId);
         });
   }
-
   // ==========================================================
   // Load Active Session
   // ==========================================================
@@ -451,6 +449,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
         if (sessionId != null && sessionId.isNotEmpty) {
           await _loadEmotionData(sessionId: sessionId);
+
+          _startAutoCloseChecker();
         }
       } else {
         setState(() {
@@ -461,6 +461,44 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     } catch (error) {
       debugPrint('ไม่สามารถโหลด Session ได้: $error');
     }
+  }
+
+  //////////////////
+  void _startAutoCloseChecker() {
+    _autoCloseTimer?.cancel();
+
+    _autoCloseTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
+      final sessionId = _sessionId;
+
+      if (sessionId == null || sessionId.isEmpty) {
+        return;
+      }
+
+      try {
+        final closed = await _sessionService.checkAndAutoCloseSession(
+          sessionId,
+        );
+
+        if (!closed || !mounted) {
+          return;
+        }
+
+        setState(() {
+          _sessionId = null;
+          _isClassActive = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'ห้องเรียนถูกปิดอัตโนมัติ เนื่องจากไม่มีการส่งข้อมูลเป็นเวลา 3 ชั่วโมง',
+            ),
+          ),
+        );
+      } catch (error) {
+        debugPrint('ตรวจสอบการปิดห้องเรียนอัตโนมัติไม่สำเร็จ: $error');
+      }
+    });
   }
 
   // ==========================================================
@@ -544,6 +582,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       );
     }
   }
+
+  
 
   // ==========================================================
   // Toggle Classroom
@@ -2497,47 +2537,45 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   // ==========================================================
 
   Future<void> _exportPdf() async {
-  if (_isLoadingOverlay) return;
+    if (_isLoadingOverlay) return;
 
-  if (_sessionId == null || _sessionId!.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ไม่พบข้อมูล Session สำหรับสร้างรายงาน PDF'),
-      ),
-    );
-    return;
+    if (_sessionId == null || _sessionId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ไม่พบข้อมูล Session สำหรับสร้างรายงาน PDF'),
+        ),
+      );
+      return;
+    }
+
+    _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
+
+    try {
+      _updateLoading('กำลังสร้างรายงาน PDF...');
+
+      await DashboardPdfConnector.open(
+        context: context,
+        subjectName: _subject.subjectName,
+        subjectCode: _subject.subjectCode,
+        academicYear: _subject.year,
+        semester: _subject.semester,
+        selectedDate: _selectedDate ?? DateTime.now(),
+        sessionId: _sessionId!,
+      );
+
+      _hideLoading();
+    } catch (error) {
+      debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
+
+      _hideLoading();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error')),
+      );
+    }
   }
-
-  _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
-
-  try {
-    _updateLoading('กำลังสร้างรายงาน PDF...');
-
-    await DashboardPdfConnector.open(
-      context: context,
-      subjectName: _subject.subjectName,
-      subjectCode: _subject.subjectCode,
-      academicYear: _subject.year,
-      semester: _subject.semester,
-      selectedDate: _selectedDate ?? DateTime.now(),
-      sessionId: _sessionId!,
-    );
-
-    _hideLoading();
-  } catch (error) {
-    debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
-
-    _hideLoading();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error'),
-      ),
-    );
-  }
-}
 
   // ==========================================================
   // Bottom Actions
