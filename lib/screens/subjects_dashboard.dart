@@ -95,6 +95,8 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
   List<Map<String, dynamic>> _selectedSessions = [];
 
+  String? _selectedSessionId;
+
   bool _isLoadingHistory = false;
 
   bool _isLoadingOverlay = false;
@@ -583,8 +585,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     }
   }
 
-  
-
   // ==========================================================
   // Toggle Classroom
   // ==========================================================
@@ -627,6 +627,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       final sessionId = _selectedSessions.first['sessionId']?.toString();
 
       if (sessionId != null && sessionId.isNotEmpty) {
+        setState(() {
+          _selectedSessionId = sessionId;
+        });
+
         await _loadEmotionData(sessionId: sessionId);
       }
 
@@ -802,6 +806,10 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     final sessionId = selectedSession['sessionId']?.toString();
 
     if (sessionId == null || sessionId.isEmpty) return;
+
+    setState(() {
+      _selectedSessionId = sessionId;
+    });
 
     await _loadEmotionData(sessionId: sessionId);
   }
@@ -2539,10 +2547,12 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   Future<void> _exportPdf() async {
     if (_isLoadingOverlay) return;
 
-    if (_sessionId == null || _sessionId!.isEmpty) {
+    final sessionId = _selectedSessionId ?? _sessionId;
+
+    if (sessionId == null || sessionId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('ไม่พบข้อมูล Session สำหรับสร้างรายงาน PDF'),
+          content: Text('กรุณาเลือก Session ที่ต้องการสร้างรายงาน'),
         ),
       );
       return;
@@ -2560,7 +2570,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
         academicYear: _subject.year,
         semester: _subject.semester,
         selectedDate: _selectedDate ?? DateTime.now(),
-        sessionId: _sessionId!,
+        sessionId: sessionId,
       );
 
       _hideLoading();

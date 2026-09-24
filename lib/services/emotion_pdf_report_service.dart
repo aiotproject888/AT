@@ -48,7 +48,12 @@ class EmotionPdfReportService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.fromLTRB(30, 22, 30, 20),
         theme: pw.ThemeData.withFont(base: regular, bold: bold),
-        build: (_) => _buildReport(data),
+        build: (_) => pw.Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: PdfColors.white,
+          child: _buildReport(data),
+        ),
       ),
     );
 
@@ -534,7 +539,11 @@ class EmotionPdfReportService {
     );
   }
 
-  static pw.Widget _scoreBar({required double score, required bool hasData, required PdfColor color}) {
+  static pw.Widget _scoreBar({
+    required double score,
+    required bool hasData,
+    required PdfColor color,
+  }) {
     return pw.Expanded(
       child: pw.Padding(
         padding: const pw.EdgeInsets.symmetric(horizontal: 10),
@@ -582,8 +591,6 @@ class EmotionPdfReportService {
       ),
     );
   }
-
-
 
   static double _calculateEmotionScore(Map<String, int> distribution) {
     if (distribution.isEmpty) {
