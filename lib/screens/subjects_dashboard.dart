@@ -2540,52 +2540,101 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
     );
   }
 
+
+
+  
+Future<bool> _hasSessionEmotionData(String sessionId) async {
+  try {
+    const types = [
+      'before_class',
+      'during_class',
+      'after_class',
+    ];
+
+    final emotionService = EmotionService();
+
+    for (final type in types) {
+      final records = await emotionService.getEmotionRecordsBySession(
+        subjectCode: _subject.subjectCode,
+        sessionId: sessionId,
+        type: type,
+      );
+
+      if (records.isNotEmpty) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    debugPrint('ตรวจสอบข้อมูล Session ไม่สำเร็จ: $error');
+    return false;
+  }
+}
   // ==========================================================
   // Export PDF
   // ==========================================================
 
   Future<void> _exportPdf() async {
-    if (_isLoadingOverlay) return;
+  if (_isLoadingOverlay) return;
 
-    final sessionId = _selectedSessionId ?? _sessionId;
+  final sessionId = _selectedSessionId ?? _sessionId;
 
-    if (sessionId == null || sessionId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('กรุณาเลือก Session ที่ต้องการสร้างรายงาน'),
-        ),
-      );
-      return;
-    }
+  if (sessionId == null || sessionId.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('กรุณาเลือก Session ที่ต้องการสร้างรายงาน'),
+      ),
+    );
+    return;
+  }
 
-    _showLoading('กำลังเตรียมข้อมูลสำหรับรายงาน PDF...');
+  _showLoading('กำลังตรวจสอบข้อมูลใน Session...');
 
-    try {
-      _updateLoading('กำลังสร้างรายงาน PDF...');
+  try {
+    final hasData = await _hasSessionEmotionData(sessionId);
 
-      await DashboardPdfConnector.open(
-        context: context,
-        subjectName: _subject.subjectName,
-        subjectCode: _subject.subjectCode,
-        academicYear: _subject.year,
-        semester: _subject.semester,
-        selectedDate: _selectedDate ?? DateTime.now(),
-        sessionId: sessionId,
-      );
-
-      _hideLoading();
-    } catch (error) {
-      debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
-
+    if (!hasData) {
       _hideLoading();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error')),
+        const SnackBar(
+          content: Text('Session นี้ยังไม่มีข้อมูลอารมณ์ จึงไม่สามารถสร้างรายงาน PDF ได้'),
+        ),
       );
+
+      return;
     }
+
+    _updateLoading('กำลังสร้างรายงาน PDF...');
+
+    await DashboardPdfConnector.open(
+      context: context,
+      subjectName: _subject.subjectName,
+      subjectCode: _subject.subjectCode,
+      academicYear: _subject.year,
+      semester: _subject.semester,
+      selectedDate: _selectedDate ?? DateTime.now(),
+      sessionId: sessionId,
+    );
+
+    _hideLoading();
+  } catch (error) {
+    debugPrint('สร้างรายงาน PDF ไม่สำเร็จ: $error');
+
+    _hideLoading();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('ไม่สามารถสร้างรายงาน PDF ได้: $error'),
+      ),
+    );
   }
+}
 
   // ==========================================================
   // Bottom Actions
