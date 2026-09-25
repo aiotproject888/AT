@@ -178,7 +178,7 @@ class SessionService {
 
     final inactiveDuration = DateTime.now().difference(lastActivity.toDate());
 
-    if (inactiveDuration >= const Duration(minutes: 2)) {
+    if (inactiveDuration >= const Duration(hours: 3)) {
       await endSession(sessionId);
       return true;
     }
