@@ -523,6 +523,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
       setState(() {
         _sessionId = sessionId;
+        _selectedSessionId = sessionId;
         _isClassActive = true;
         _isLoading = false;
       });
@@ -565,7 +566,6 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
 
       setState(() {
         _isClassActive = false;
-        _sessionId = null;
         _isLoading = false;
       });
 
@@ -882,21 +882,30 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
   Future<void> _openChatbot() async {
     Map<String, dynamic>? emotionData;
 
-    // ใช้ session ปัจจุบันถ้ามี
-    String? sessionId = _sessionId;
+    // ใช้ Session ที่กำลังแสดง/ถูกเลือกบน Dashboard
+    // ถ้ายังไม่มีการเลือกย้อนหลัง ให้ใช้ Session ปัจจุบัน
+    final sessionId = _selectedSessionId ?? _sessionId;
 
     try {
       final selectedDate = _selectedDate ?? DateTime.now();
 
-      if (_sessionId == null || _sessionId!.isEmpty) {
+      if (sessionId == null || sessionId.isEmpty) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ไม่พบ Session ที่ต้องการวิเคราะห์'),
+          ),
+        );
         return;
       }
 
       emotionData = await _emotionService.getEmotionSummaryForAI(
         subjectCode: _subject.subjectCode,
-        sessionId: _sessionId!,
+        sessionId: sessionId,
         type: 'before_class',
       );
+
       debugPrint('subjectCode: ${_subject.subjectCode}');
       debugPrint('sessionId: $sessionId');
       debugPrint('selectedDate: $selectedDate');
@@ -910,6 +919,7 @@ class _SubjectDashboardState extends State<SubjectDashboard> {
       );
       return;
     }
+
     if (!mounted) return;
 
     Navigator.push(
