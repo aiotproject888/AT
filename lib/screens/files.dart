@@ -40,8 +40,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // ============================================================
 
   static const int _maxFileSize = 50 * 1024 * 1024; // 50 MB
-  int _selectedCategory = 0;
-
   final TextEditingController _searchController = TextEditingController();
 
   String _searchText = '';
@@ -57,8 +55,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
   String _uploadFileName = '';
 
   String _sortMode = 'ล่าสุดก่อน';
-
-  final List<String> _categories = ['ทั้งหมด', 'เอกสาร', 'สไลด์', 'อื่นๆ'];
 
   List<_MaterialFile> _files = [];
 
@@ -170,19 +166,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // ============================================================
 
   List<_MaterialFile> get _filteredFiles {
-    final result = _files.where((file) {
-      final matchesCategory =
-          _selectedCategory == 0 ||
-          file.category == _categories[_selectedCategory];
-
-      final matchesSearch =
-          _searchText.isEmpty ||
+    return _files.where((file) {
+      return _searchText.isEmpty ||
           file.name.toLowerCase().contains(_searchText.toLowerCase());
-
-      return matchesCategory && matchesSearch;
     }).toList();
-
-    return result;
   }
 
   // ============================================================
@@ -349,7 +336,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
                           const SizedBox(height: 18),
                           _buildSearchBar(),
                           const SizedBox(height: 14),
-                          _buildCategoryTabs(),
                           const SizedBox(height: 18),
                           _UploadButton(onPressed: _showUploadDialog),
                           const SizedBox(height: 10),
@@ -492,12 +478,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
     final totalSize = _formatFileSize(totalBytes);
 
-    final fileTypes = _files
-        .map((file) => file.extension)
-        .where((extension) => extension.isNotEmpty)
-        .toSet()
-        .length;
-
     DateTime? latestDate;
 
     if (_files.isNotEmpty) {
@@ -525,15 +505,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
                   title: 'ไฟล์ทั้งหมด',
                   value: '${_files.length}',
                   subtitle: 'ไฟล์',
-                ),
-              ),
-              Container(width: 1, height: 42, color: AppColors.surfaceBorder),
-              Expanded(
-                child: _OverviewItem(
-                  icon: Icons.category_rounded,
-                  title: 'ประเภทไฟล์',
-                  value: '$fileTypes',
-                  subtitle: 'ประเภท',
                 ),
               ),
               Container(width: 1, height: 42, color: AppColors.surfaceBorder),
@@ -623,59 +594,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
           onPressed: _showSortDialog,
         ),
       ],
-    );
-  }
-
-  // ============================================================
-  // CATEGORY
-  // ============================================================
-
-  Widget _buildCategoryTabs() {
-    return SizedBox(
-      height: 39,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final selected = index == _selectedCategory;
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategory = index;
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.accent.withValues(alpha: 0.25)
-                    : AppColors.lightSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected
-                      ? AppColors.accent.withValues(alpha: 0.65)
-                      : AppColors.surfaceBorder,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  _categories[index],
-                  style: TextStyle(
-                    color: selected
-                        ? AppColors.accent
-                        : AppColors.secondaryText,
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
@@ -822,12 +740,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
             const SizedBox(width: 7),
             Column(
               children: [
-                _FileActionButton(
-                  icon: Icons.download_rounded,
-                  onPressed: () {
-                    _downloadFile(file);
-                  },
-                ),
+      
                 const SizedBox(height: 5),
                 _FileActionButton(
                   icon: Icons.more_vert_rounded,
@@ -947,7 +860,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 _UploadOption(
                   icon: Icons.upload_file_rounded,
                   title: 'อัปโหลดไฟล์',
-                  subtitle: 'PDF, PPTX, DOCX',
+                  subtitle: 'PDF เท่านั้น',
                   onTap: () {
                     Navigator.pop(context);
 
@@ -975,7 +888,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'docx', 'pptx'],
+        allowedExtensions: ['pdf'],
         withData: true,
       );
 
@@ -1040,12 +953,11 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
       final extension = _getExtension(fileName);
 
-      final contentType = _getContentType(fileName);
+      if (extension != 'pdf') {
+        throw Exception('รองรับเฉพาะไฟล์ PDF เท่านั้น');
+      }
 
-      final fileType = _getFileType(extension);
-
-      final category = _getCategory(extension);
-
+      const pdfContentType = 'application/pdf';
       final uploadedAt = DateTime.now();
 
       // ========================================================
@@ -1060,7 +972,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         body: jsonEncode({
           'fileName': fileName,
           'fileSize': bytes.length,
-          'contentType': contentType,
+          'contentType': pdfContentType,
         }),
       );
 
@@ -1102,7 +1014,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
       final uploadResponse = await http.put(
         Uri.parse(uploadUrl),
-        headers: {'Content-Type': contentType},
+        headers: {'Content-Type': pdfContentType},
         body: bytes,
       );
 
@@ -1146,7 +1058,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
             'storageKey': storageKey,
             'fileName': fileName,
             'fileSize': bytes.length,
-            'contentType': contentType,
+            'contentType': pdfContentType,
           }),
         );
 
@@ -1226,15 +1138,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
 
         'fileName': fileName,
 
-        'fileType': fileType,
-
         'extension': extension,
 
-        'category': category,
-
         'fileSize': bytes.length,
-
-        'contentType': contentType,
 
         'storageKey': storageKey,
 
@@ -1277,15 +1183,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
       final materialFile = _MaterialFile(
         id: docRef.id,
         name: fileName,
-        type: fileType,
         extension: extension.toUpperCase(),
         size: _formatFileSize(bytes.length),
         date: _formatDate(uploadedAt),
-        category: category,
         status: aiStatus,
         icon: _getFileIcon(extension),
         fileSize: bytes.length,
-        contentType: contentType,
         storageKey: storageKey,
         uploadedAt: uploadedAt,
       );
@@ -1329,7 +1232,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
   }
 
   // ============================================================
-  // FILE TYPE
+  // FILE EXTENSION
   // ============================================================
 
   String _getExtension(String fileName) {
@@ -1342,63 +1245,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
     return fileName.substring(index + 1).toLowerCase();
   }
 
-  String _getFileType(String extension) {
-    switch (extension) {
-      case 'pdf':
-      case 'docx':
-        return 'เอกสาร';
-
-      case 'pptx':
-        return 'สไลด์';
-
-      default:
-        return 'อื่นๆ';
-    }
-  }
-
-  String _getCategory(String extension) {
-    return _getFileType(extension);
-  }
-
-  // ============================================================
-  // CONTENT TYPE
-  // ============================================================
-
-  String _getContentType(String fileName) {
-    final extension = _getExtension(fileName);
-
-    switch (extension) {
-      case 'pdf':
-        return 'application/pdf';
-      case 'pptx':
-        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-
-      case 'docx':
-        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-      default:
-        return 'application/octet-stream';
-    }
-  }
-
   // ============================================================
   // FILE ICON
   // ============================================================
 
   IconData _getFileIcon(String extension) {
-    switch (extension) {
-      case 'pdf':
-        return Icons.picture_as_pdf_rounded;
-
-      case 'pptx':
-        return Icons.slideshow_rounded;
-
-      case 'docx':
-        return Icons.description_rounded;
-
-      default:
-        return Icons.insert_drive_file_rounded;
-    }
+    return Icons.picture_as_pdf_rounded;
   }
 
   // ============================================================
@@ -1620,23 +1472,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     _showFileDetails(file);
                   },
                 ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.download_rounded,
-                    color: AppColors.secondaryText,
-                  ),
-                  title: const Text(
-                    'ดาวน์โหลด',
-                    style: TextStyle(
-                      color: AppColors.primaryText,
-                      fontSize: 13,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _downloadFile(file);
-                  },
-                ),
+                
                 ListTile(
                   leading: const Icon(
                     Icons.delete_outline_rounded,
@@ -1686,7 +1522,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
               _DetailRow(title: 'ชื่อไฟล์', value: file.name),
               _DetailRow(title: 'ประเภท', value: file.extension),
               _DetailRow(title: 'ขนาด', value: file.size),
-              _DetailRow(title: 'หมวดหมู่', value: file.category),
               _DetailRow(title: 'สถานะ AI', value: file.status),
               _DetailRow(title: 'วันที่เพิ่ม', value: file.date),
             ],
@@ -1835,114 +1670,12 @@ class _MaterialScreenState extends State<MaterialScreen> {
   // ============================================================
   // DOWNLOAD
   // ============================================================
-  Future<void> _downloadFile(_MaterialFile file) async {
-    if (_isLoadingOverlay) return;
-
-    if (file.storageKey.isEmpty) {
-      _showError('ไม่พบข้อมูลไฟล์');
-      return;
-    }
-
-    _showLoading('กำลังเตรียมดาวน์โหลดไฟล์...');
-
-    try {
-      // ============================================================
-      // 1. ขอ Download URL จาก Backend
-      // ============================================================
-
-      _updateLoading('กำลังเชื่อมต่อระบบจัดเก็บไฟล์...');
-
-      final response = await http.post(
-        Uri.parse('$_backendBaseUrl/api/materials/download-url'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'storageKey': file.storageKey,
-          'fileName': file.name,
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'ไม่สามารถเตรียมดาวน์โหลดไฟล์ได้ '
-          '(${response.statusCode})',
-        );
-      }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (data['success'] != true) {
-        throw Exception(data['message'] ?? 'ไม่สามารถเตรียมดาวน์โหลดไฟล์ได้');
-      }
-
-      final downloadUrl = data['downloadUrl']?.toString();
-
-      if (downloadUrl == null || downloadUrl.isEmpty) {
-        throw Exception('ไม่พบ URL สำหรับดาวน์โหลดไฟล์');
-      }
-
-      // ============================================================
-      // 2. ดาวน์โหลดไฟล์จาก Backblaze B2
-      // ============================================================
-
-      _updateLoading('กำลังดาวน์โหลดไฟล์...');
-
-      final fileResponse = await http.get(Uri.parse(downloadUrl));
-
-      if (fileResponse.statusCode != 200) {
-        throw Exception(
-          'ไม่สามารถดาวน์โหลดไฟล์ได้ '
-          '(${fileResponse.statusCode})',
-        );
-      }
-
-      final bytes = fileResponse.bodyBytes;
-
-      if (bytes.isEmpty) {
-        throw Exception('ไฟล์ที่ดาวน์โหลดไม่มีข้อมูล');
-      }
-
-      // ============================================================
-      // 3. ให้ผู้ใช้เลือกตำแหน่งบันทึกไฟล์
-      // ============================================================
-
-      _updateLoading('กำลังบันทึกไฟล์...');
-
-      if (!mounted) return;
-
-      _hideLoading();
-
-      final savePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'บันทึกไฟล์',
-        fileName: file.name,
-        bytes: bytes,
-      );
-
-      // ผู้ใช้กดยกเลิก
-      if (savePath == null || savePath.isEmpty) {
-        return;
-      }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ดาวน์โหลดไฟล์ "${file.name}" สำเร็จ')),
-      );
-    } catch (error) {
-      debugPrint('Download File Error: $error');
-
-      _hideLoading();
-
-      if (!mounted) return;
-
-      _showError('ไม่สามารถดาวน์โหลดไฟล์ได้\n$error');
-    }
-  }
 
   // เปิดดูไฟล์ที่อัปโหลดไว้ในห้องเรียน
   Future<void> _viewFile(_MaterialFile file) async {
     final extension = file.extension.toLowerCase();
 
-    // รองรับเฉพาะ PDF / DOCX / PPTX
+    // รองรับเฉพาะ PDF
     if (extension != 'pdf') {
       _showComingSoon('ไม่สามารถเปิดไฟล์ประเภทนี้ได้');
       return;
@@ -2022,21 +1755,6 @@ class _MaterialScreenState extends State<MaterialScreen> {
         return;
       }
 
-      // ============================================================
-      // DOCX / PPTX
-      // ============================================================
-
-      if (extension == 'docx' || extension == 'pptx') {
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                _OfficeViewerScreen(fileName: file.name, bytes: bytes),
-          ),
-        );
-
-        return;
-      }
     } catch (error) {
       _hideLoading();
 
@@ -2159,30 +1877,6 @@ class _PdfViewerScreen extends StatelessWidget {
   }
 }
 
-class _OfficeViewerScreen extends StatelessWidget {
-  final String fileName;
-  final Uint8List bytes;
-
-  const _OfficeViewerScreen({required this.fileName, required this.bytes});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.primaryText,
-        title: Text(
-          fileName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 14),
-        ),
-      ),
-    );
-  }
-}
-
 // ================================================================
 // MATERIAL FILE MODEL
 // ================================================================
@@ -2190,31 +1884,25 @@ class _OfficeViewerScreen extends StatelessWidget {
 class _MaterialFile {
   final String id;
   final String name;
-  final String type;
   final String extension;
   final String size;
   final String date;
-  final String category;
   final String status;
   final IconData icon;
 
   final int fileSize;
-  final String contentType;
   final String storageKey;
   final DateTime uploadedAt;
 
   const _MaterialFile({
     required this.id,
     required this.name,
-    required this.type,
     required this.extension,
     required this.size,
     required this.date,
-    required this.category,
     required this.status,
     required this.icon,
     required this.fileSize,
-    required this.contentType,
     required this.storageKey,
     required this.uploadedAt,
   });
@@ -2244,23 +1932,15 @@ class _MaterialFile {
 
     final extension = data['extension']?.toString().toLowerCase() ?? '';
 
-    final fileType =
-        data['fileType']?.toString() ?? _getFileTypeFromExtension(extension);
-
-    final category = data['category']?.toString() ?? fileType;
-
     return _MaterialFile(
       id: doc.id,
       name: data['fileName']?.toString() ?? 'ไม่ทราบชื่อไฟล์',
-      type: fileType,
       extension: extension.toUpperCase(),
       size: _formatFileSizeFromBytes(fileSize),
       date: _formatDateFromDateTime(uploadedAt),
-      category: category,
       status: data['aiStatus']?.toString() ?? 'อัปโหลดแล้ว',
       icon: _getFileIconFromExtension(extension),
       fileSize: fileSize,
-      contentType: data['contentType']?.toString() ?? '',
       storageKey: data['storageKey']?.toString() ?? '',
       uploadedAt: uploadedAt,
     );
@@ -2271,51 +1951,8 @@ class _MaterialFile {
 // MATERIAL FILE HELPERS
 // ================================================================
 
-String _getFileTypeFromExtension(String extension) {
-  switch (extension.toLowerCase()) {
-    case 'pdf':
-    case 'doc':
-    case 'docx':
-    case 'txt':
-      return 'เอกสาร';
-
-    case 'ppt':
-    case 'pptx':
-      return 'สไลด์';
-
-    default:
-      return 'อื่นๆ';
-  }
-}
-
 IconData _getFileIconFromExtension(String extension) {
-  switch (extension.toLowerCase()) {
-    case 'pdf':
-      return Icons.picture_as_pdf_rounded;
-
-    case 'ppt':
-    case 'pptx':
-      return Icons.slideshow_rounded;
-
-    case 'doc':
-    case 'docx':
-    case 'txt':
-      return Icons.description_rounded;
-
-    case 'mp4':
-    case 'mov':
-    case 'avi':
-    case 'mkv':
-      return Icons.video_file_rounded;
-
-    case 'mp3':
-    case 'wav':
-    case 'm4a':
-      return Icons.audio_file_rounded;
-
-    default:
-      return Icons.insert_drive_file_rounded;
-  }
+  return Icons.picture_as_pdf_rounded;
 }
 
 String _formatFileSizeFromBytes(int bytes) {

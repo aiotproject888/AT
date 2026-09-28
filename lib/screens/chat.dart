@@ -914,9 +914,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                   final fileName =
                                       material['fileName']?.toString() ??
                                       'ไม่ทราบชื่อไฟล์';
-                                  final fileType =
-                                      material['fileType']?.toString() ?? '';
-
                                   return CheckboxListTile(
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 2,
@@ -928,12 +925,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     controlAffinity:
                                         ListTileControlAffinity.leading,
                                     secondary: Icon(
-                                      fileType.toLowerCase() == 'pdf' ||
-                                              fileName.toLowerCase().endsWith(
-                                                '.pdf',
-                                              )
-                                          ? Icons.picture_as_pdf_rounded
-                                          : Icons.description_rounded,
+                                      Icons.picture_as_pdf_rounded,
                                       color: AppColors.cyan,
                                       size: 21,
                                     ),
@@ -946,10 +938,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                         fontSize: 12.5,
                                       ),
                                     ),
-                                    subtitle: Text(
-                                      fileType.isEmpty
-                                          ? 'พร้อมให้ AI วิเคราะห์'
-                                          : '$fileType · พร้อมให้ AI วิเคราะห์',
+                                    subtitle: const Text(
+                                      'PDF · พร้อมให้ AI วิเคราะห์',
                                       style: const TextStyle(
                                         color: AppColors.mutedText,
                                         fontSize: 10.5,
@@ -1040,7 +1030,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx'],
+        allowedExtensions: ['pdf'],
         withData: true,
       );
 
@@ -1067,9 +1057,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final fileName = pickedFile.name;
       final extension = _getLessonMaterialExtension(fileName);
-      final contentType = _getLessonMaterialContentType(fileName);
-      final fileType = _getLessonMaterialFileType(extension);
-      final category = fileType;
+      if (extension != 'pdf') {
+        throw Exception('รองรับเฉพาะไฟล์ PDF เท่านั้น');
+      }
+      const contentType = 'application/pdf';
       final uploadedAt = DateTime.now();
 
       // 1. ขอ Presigned URL
@@ -1159,11 +1150,8 @@ class _ChatScreenState extends State<ChatScreen> {
       final Map<String, dynamic> firestoreData = {
         'subjectCode': widget.subjectCode,
         'fileName': fileName,
-        'fileType': fileType,
         'extension': extension,
-        'category': category,
         'fileSize': bytes.length,
-        'contentType': contentType,
         'storageKey': storageKey,
         'uploadedAt': FieldValue.serverTimestamp(),
         'aiStatus': aiStatus,
@@ -1221,40 +1209,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     return fileName.substring(index + 1).toLowerCase();
-  }
-
-  String _getLessonMaterialFileType(String extension) {
-    switch (extension) {
-      case 'pdf':
-      case 'doc':
-      case 'docx':
-      case 'txt':
-        return 'เอกสาร';
-      case 'ppt':
-      case 'pptx':
-        return 'สไลด์';
-      default:
-        return 'อื่นๆ';
-    }
-  }
-
-  String _getLessonMaterialContentType(String fileName) {
-    switch (_getLessonMaterialExtension(fileName)) {
-      case 'pdf':
-        return 'application/pdf';
-      case 'ppt':
-        return 'application/vnd.ms-powerpoint';
-      case 'pptx':
-        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-      case 'doc':
-        return 'application/msword';
-      case 'docx':
-        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'txt':
-        return 'text/plain';
-      default:
-        return 'application/octet-stream';
-    }
   }
 
   // ============================================================
@@ -1334,7 +1288,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _chatUploadedFile = {
           'id': 'chat_upload_${DateTime.now().millisecondsSinceEpoch}',
           'fileName': file.name,
-          'fileType': file.extension ?? '',
+          'extension': file.extension ?? '',
           'text': textForAI,
         };
 
@@ -1426,8 +1380,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ..._selectedLessonMaterials.map((material) {
             final String fileName = material['fileName']?.toString() ?? 'ไฟล์';
 
-            final String fileType =
-                material['fileType']?.toString().toUpperCase() ?? '';
+            final String extension =
+                material['extension']?.toString().toUpperCase() ?? '';
 
             return Container(
               margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
@@ -1448,7 +1402,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(
-                      fileType == 'PDF'
+                      extension == 'PDF'
                           ? Icons.picture_as_pdf_rounded
                           : Icons.description_rounded,
                       color: AppColors.cyan,
@@ -1518,8 +1472,8 @@ class _ChatScreenState extends State<ChatScreen> {
               final String fileName =
                   _chatUploadedFile!['fileName']?.toString() ?? 'ไฟล์';
 
-              final String fileType =
-                  _chatUploadedFile!['fileType']?.toString().toUpperCase() ??
+              final String extension =
+                  _chatUploadedFile!['extension']?.toString().toUpperCase() ??
                   '';
 
               return Container(
@@ -1544,7 +1498,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         borderRadius: BorderRadius.circular(9),
                       ),
                       child: Icon(
-                        fileType == 'PDF'
+                        extension == 'PDF'
                             ? Icons.picture_as_pdf_rounded
                             : Icons.description_rounded,
                         color: AppColors.cyan,
@@ -1644,8 +1598,6 @@ class _ChatScreenState extends State<ChatScreen> {
             data['name']?.toString() ??
             'ไม่ทราบชื่อไฟล์';
 
-        final String fileType = data['fileType']?.toString() ?? '';
-
         final dynamic rawExtractedText = data['extractedText'];
 
         String extractedText = '';
@@ -1673,8 +1625,8 @@ class _ChatScreenState extends State<ChatScreen> {
           materials.add({
             'id': doc.id,
             'fileName': fileName,
+            'extension': data['extension']?.toString() ?? '',
             'text': extractedText,
-            'fileType': fileType,
           });
         }
       }
@@ -2392,7 +2344,6 @@ class _ChatScreenState extends State<ChatScreen> {
       type: isClassroom ? 'classroom' : 'general',
       subjectCode: widget.subjectCode,
       sessionId: widget.sessionId,
-      title: _makeTitle(firstMessage),
     );
 
     debugPrint(
@@ -2460,7 +2411,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           fileName: attachedChatFile?['fileName']?.toString(),
 
-          fileType: attachedChatFile?['fileType']?.toString(),
+          fileType: attachedChatFile?['extension']?.toString(),
         ),
       );
 
@@ -2515,7 +2466,6 @@ class _ChatScreenState extends State<ChatScreen> {
           subjectCode: widget.subjectCode,
           emotionData: attachedEmotionData,
           fileName: attachedChatFile?['fileName']?.toString(),
-          fileType: attachedChatFile?['fileType']?.toString(),
         );
       } catch (e) {
         debugPrint('บันทึกข้อความ User ไม่สำเร็จ: $e');
@@ -3030,8 +2980,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   fontSize: 13,
                 ),
               ),
-              subtitle: Text(
-                material['fileType']?.toString() ?? '',
+              subtitle: const Text(
+                'PDF',
                 style: const TextStyle(
                   color: AppColors.mutedText,
                   fontSize: 11,

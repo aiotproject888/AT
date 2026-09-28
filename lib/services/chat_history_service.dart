@@ -12,7 +12,7 @@ class ChatHistoryService {
     required String type,
     String? subjectCode,
     String? sessionId,
-    String? title,
+    
   }) async {
     // ตรวจสอบ type
     if (type != 'general' && type != 'classroom') {
@@ -32,7 +32,6 @@ class ChatHistoryService {
       'type': type,
       'subjectCode': subjectCode,
       'sessionId': sessionId,
-      'title': title ?? 'การสนทนาใหม่',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -48,9 +47,8 @@ class ChatHistoryService {
     required String type,
     String? subjectCode,
     Map<String, dynamic>? emotionData,
-    List<Map<String, dynamic>>? lessonMaterials,
+    List<Map<String, dynamic>>? lesson_materials,
     String? fileName,
-    String? fileType,
   }) async {
     // ไม่บันทึกข้อความว่าง
     if (text.trim().isEmpty) {
@@ -86,36 +84,13 @@ class ChatHistoryService {
       'timestamp': FieldValue.serverTimestamp(),
 
       'emotionData': emotionData,
-      'lessonMaterials': lessonMaterials ?? [],
+      'lessonMaterials': lesson_materials ?? [],
       'fileName': fileName,
-      'fileType': fileType,
+
     });
 
     // อัปเดตเวลาของ conversation
     await _conversationsRef.doc(conversationId).update({
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  // UPDATE CONVERSATION TITLE
-  Future<void> updateConversationTitle({
-    required String conversationId,
-    required String title,
-    required String type,
-    String? subjectCode,
-  }) async {
-    if (type != 'general' && type != 'classroom') {
-      throw Exception('type ต้องเป็น general หรือ classroom เท่านั้น');
-    }
-
-    if (type == 'classroom') {
-      if (subjectCode == null || subjectCode.trim().isEmpty) {
-        throw Exception('Classroom Chat ต้องมี subjectCode');
-      }
-    }
-
-    await _conversationsRef.doc(conversationId).update({
-      'title': title,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
