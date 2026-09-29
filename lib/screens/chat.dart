@@ -1802,7 +1802,23 @@ class _ChatScreenState extends State<ChatScreen> {
             // ข้อมูลไฟล์ที่เคยแนบ
             final String? fileName = messageData['fileName']?.toString();
 
-            final String? fileType = messageData['fileType']?.toString();
+            final String? fileType = messageData['fileType']?.toString() ??
+                (fileName != null
+                    ? _getLessonMaterialExtension(fileName)
+                    : null);
+
+            final dynamic lessonMaterialsRaw = messageData['lessonMaterials'];
+
+            final List<Map<String, dynamic>> lessonMaterials =
+                lessonMaterialsRaw is List
+                    ? lessonMaterialsRaw
+                        .whereType<Map>()
+                        .map(
+                          (material) =>
+                              Map<String, dynamic>.from(material),
+                        )
+                        .toList()
+                    : <Map<String, dynamic>>[];
 
             loadedMessages.add(
               ChatMessage(
@@ -1810,6 +1826,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 text: text,
                 time: messageTime,
                 emotionData: emotionData,
+                lessonMaterials: lessonMaterials,
                 fileName: fileName,
                 fileType: fileType,
               ),
@@ -2032,11 +2049,42 @@ class _ChatScreenState extends State<ChatScreen> {
               continue;
             }
 
+            final emotionDataRaw = messageData['emotionData'];
+
+            final Map<String, dynamic>? emotionData = emotionDataRaw is Map
+                ? Map<String, dynamic>.from(emotionDataRaw)
+                : null;
+
+            final String? fileName = messageData['fileName']?.toString();
+
+            final String? fileType = messageData['fileType']?.toString() ??
+                (fileName != null
+                    ? _getLessonMaterialExtension(fileName)
+                    : null);
+
+            final dynamic lessonMaterialsRaw =
+                messageData['lessonMaterials'];
+
+            final List<Map<String, dynamic>> lessonMaterials =
+                lessonMaterialsRaw is List
+                    ? lessonMaterialsRaw
+                        .whereType<Map>()
+                        .map(
+                          (material) =>
+                              Map<String, dynamic>.from(material),
+                        )
+                        .toList()
+                    : <Map<String, dynamic>>[];
+
             loadedMessages.add(
               ChatMessage(
                 isAI: role == 'assistant',
                 text: text,
                 time: messageTime,
+                emotionData: emotionData,
+                lessonMaterials: lessonMaterials,
+                fileName: fileName,
+                fileType: fileType,
               ),
             );
           }
@@ -2458,6 +2506,16 @@ class _ChatScreenState extends State<ChatScreen> {
         final bool isClassroom =
             widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
+        final List<Map<String, dynamic>> historyLessonMaterials = [
+          ...attachedLessonMaterials,
+        ];
+
+        if (attachedChatFile != null) {
+          historyLessonMaterials.add(
+            Map<String, dynamic>.from(attachedChatFile),
+          );
+        }
+
         await _historyService.saveMessage(
           conversationId: _conversationId!,
           role: 'user',
@@ -2465,6 +2523,7 @@ class _ChatScreenState extends State<ChatScreen> {
           type: isClassroom ? 'classroom' : 'general',
           subjectCode: widget.subjectCode,
           emotionData: attachedEmotionData,
+          lesson_materials: historyLessonMaterials,
           fileName: attachedChatFile?['fileName']?.toString(),
         );
       } catch (e) {

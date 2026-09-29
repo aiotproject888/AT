@@ -85,7 +85,6 @@ class ChatHistoryService {
 
       'emotionData': emotionData,
       'lessonMaterials': lesson_materials ?? [],
-      'fileName': fileName,
 
     });
 
