@@ -385,15 +385,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
                                           height: 1.4,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'ขนาดไฟล์สูงสุด 50 MB ต่อ ไฟล์',
-                                        style: TextStyle(
-                                          color: AppColors.mutedText,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-
+                               const SizedBox(height: 4),
                                       //const SizedBox(height: 4),
                                     ],
                                   ),
