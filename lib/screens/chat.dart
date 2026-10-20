@@ -2559,7 +2559,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ChatMessage(isAI: true, text: answer, time: DateTime.now()),
         );
 
-        _emotionData = null;
+        //_emotionData = null;
         _chatUploadedFile = null;
         _selectedLessonMaterials.clear();
       });
