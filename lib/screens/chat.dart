@@ -16,6 +16,7 @@ import '../constants/app_colors.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic>? emotionData;
+  
 
   final String? subjectCode;
 
@@ -58,6 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoadingConversationHistory = false;
 
   Map<String, dynamic>? _emotionData;
+  Map<String, dynamic>? _lastEmotionData;
   bool _isLoadingEmotion = false;
 
   String? _conversationId;
@@ -2433,9 +2435,15 @@ class _ChatScreenState extends State<ChatScreen> {
     final bool isClassroom =
         widget.subjectCode != null && widget.subjectCode!.isNotEmpty;
 
+    if (_emotionData != null) {
+      _lastEmotionData = Map<String, dynamic>.from(_emotionData!);
+    }
+
     final Map<String, dynamic>? attachedEmotionData = _emotionData != null
         ? Map<String, dynamic>.from(_emotionData!)
-        : null;
+        : (_lastEmotionData != null
+              ? Map<String, dynamic>.from(_lastEmotionData!)
+              : null);
 
     final List<Map<String, dynamic>> attachedLessonMaterials =
         _selectedLessonMaterials
