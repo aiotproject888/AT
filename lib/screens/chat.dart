@@ -3489,7 +3489,7 @@ class _ChatScreenState extends State<ChatScreen> {
             colors: [
               AppColors.headerGradientStart,
               AppColors.headerGradientMid,
-              AppColors.background,
+              Color.fromARGB(255, 56, 75, 143),
             ],
             stops: [0, 0.40, 1],
           ),
